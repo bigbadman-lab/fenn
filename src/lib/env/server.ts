@@ -5,8 +5,7 @@ import { z } from "zod";
 import { publicEnv } from "@/lib/env/public";
 
 /**
- * Optional later-stage credentials.
- * Empty strings are treated as unset so Stage 1 can boot without them.
+ * Server-only credentials.
  * This module must never be imported from Client Components.
  */
 const emptyToUndefined = (value: unknown) => {
@@ -20,10 +19,14 @@ const optionalSecret = z.preprocess(
   z.string().min(1).optional(),
 );
 
+const requiredSecret = z.preprocess(
+  emptyToUndefined,
+  z.string().min(1, "required"),
+);
+
 const serverOnlySchema = z.object({
-  SUPABASE_SERVICE_ROLE_KEY: optionalSecret,
-  NEXT_PUBLIC_PRIVY_APP_ID: optionalSecret,
-  PRIVY_APP_SECRET: optionalSecret,
+  SUPABASE_SERVICE_ROLE_KEY: requiredSecret,
+  PRIVY_APP_SECRET: requiredSecret,
   OPENAI_API_KEY: optionalSecret,
   ROBINHOOD_CHAIN_RPC_URL: optionalSecret,
   FENN_TREASURY_ADDRESS: optionalSecret,
@@ -39,7 +42,6 @@ export type ServerOnlyEnv = z.infer<typeof serverOnlySchema>;
 function readServerOnlyEnv(): ServerOnlyEnv {
   const parsed = serverOnlySchema.safeParse({
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    NEXT_PUBLIC_PRIVY_APP_ID: process.env.NEXT_PUBLIC_PRIVY_APP_ID,
     PRIVY_APP_SECRET: process.env.PRIVY_APP_SECRET,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ROBINHOOD_CHAIN_RPC_URL: process.env.ROBINHOOD_CHAIN_RPC_URL,

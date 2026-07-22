@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ShellAuthControls } from "@/components/shell/shell-auth-controls";
 import { SiteFooter } from "@/components/shell/site-footer";
 import { SiteNav } from "@/components/shell/site-nav";
 
@@ -12,9 +13,12 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
     <div className="shell">
       <div className="shell__inner">
         <header className="shell__brand">
-          <pre className="shell__identity ascii" aria-label="FENN">
-            {`FENN`}
-          </pre>
+          <div className="shell__brand-row">
+            <pre className="shell__identity ascii" aria-label="FENN">
+              {`FENN`}
+            </pre>
+            <ShellAuthControls />
+          </div>
           <p className="shell__tag">
             <Link href="/">an old corner of the wood</Link>
           </p>

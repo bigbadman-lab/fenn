@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { Providers } from "@/components/providers";
 import { ApplicationShell } from "@/components/shell/application-shell";
 import { publicEnv } from "@/lib/env/public";
 
@@ -23,7 +24,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ApplicationShell>{children}</ApplicationShell>
+        <Providers>
+          <ApplicationShell>{children}</ApplicationShell>
+        </Providers>
       </body>
     </html>
   );

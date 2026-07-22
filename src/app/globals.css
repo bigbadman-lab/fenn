@@ -38,6 +38,14 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Keep FENN's square corners inside the site shell only.
+   Do not force this onto portaled UI (e.g. Privy modal). */
+.shell,
+.shell *,
+.shell *::before,
+.shell *::after {
   border-radius: 0;
 }
 
@@ -99,11 +107,11 @@ a:hover {
   color: var(--color-leaf);
 }
 
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
+.shell a:focus-visible,
+.shell button:focus-visible,
+.shell input:focus-visible,
+.shell textarea:focus-visible,
+.shell select:focus-visible {
   outline: 1px solid var(--color-leaf);
   outline-offset: 3px;
 }
@@ -160,19 +168,19 @@ button.btn-text:disabled {
   cursor: not-allowed;
 }
 
-/* Raw form controls */
-input,
-textarea,
-select,
-button {
+/* Raw form controls — scoped to FENN shell so Privy portal is untouched */
+.shell input,
+.shell textarea,
+.shell select,
+.shell button {
   font: inherit;
   color: inherit;
   border-radius: 0;
 }
 
-input,
-textarea,
-select {
+.shell input,
+.shell textarea,
+.shell select {
   width: 100%;
   max-width: 28rem;
   padding: 0.4rem 0.5rem;
@@ -182,12 +190,12 @@ select {
   appearance: none;
 }
 
-input::placeholder,
-textarea::placeholder {
+.shell input::placeholder,
+.shell textarea::placeholder {
   color: var(--muted);
 }
 
-label {
+.shell label {
   display: block;
   margin-bottom: 0.35rem;
   color: var(--muted);
@@ -211,6 +219,99 @@ label {
 
 .shell__brand {
   margin-bottom: 1.5rem;
+}
+
+.shell__brand-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+}
+
+.shell-auth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+}
+
+.shell-auth a {
+  text-decoration: none;
+}
+
+.shell-auth a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.fenn-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 1.5rem;
+  max-width: 28rem;
+}
+
+.fenn-form label {
+  margin-top: 0.85rem;
+}
+
+.fenn-form__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  color: var(--color-bone);
+  cursor: pointer;
+}
+
+/* Primitive accessible checkbox: [ ] / [✓] */
+.shell .fenn-form__check input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  min-width: 1.15rem;
+  max-width: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--color-night);
+  color: var(--color-leaf);
+  display: inline-grid;
+  place-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.shell .fenn-form__check input[type="checkbox"]:checked::before {
+  content: "✓";
+  color: var(--color-leaf);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.form-error {
+  color: var(--color-leaf);
+  margin: 0.75rem 0 0;
+}
+
+.profile-block p {
+  margin-bottom: 1.1rem;
+}
+
+.shell textarea {
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--color-night);
+  color: var(--color-bone);
+  resize: vertical;
+  border-radius: 0;
 }
 
 .shell__brand a {
