@@ -50,7 +50,7 @@ export function ShellAuthControls() {
   if (!registered || !profile) {
     return (
       <div className="shell-auth">
-        <Link href="/outlaw/register" className="btn-text">
+        <Link href="/#outlaw-register" className="btn-text">
           [ register ]
         </Link>
         <button type="button" className="btn-text" onClick={() => void logout()}>

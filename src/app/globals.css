@@ -323,6 +323,10 @@ button.btn-text:disabled {
   color: var(--color-leaf);
 }
 
+.shell__identity-link {
+  text-decoration: none;
+}
+
 .shell__identity {
   margin: 0;
   color: var(--color-bone);
@@ -332,6 +336,22 @@ button.btn-text:disabled {
   margin: 0.75rem 0 0;
   color: var(--muted);
   max-width: none;
+}
+
+.shell-return {
+  margin: 0 0 1.75rem;
+}
+
+.shell-return a {
+  text-decoration: none;
+  color: var(--color-bone);
+  letter-spacing: 0.03em;
+}
+
+.shell-return a:hover {
+  color: var(--color-leaf);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 .shell__main {
@@ -371,8 +391,7 @@ button.btn-text:disabled {
   letter-spacing: 0.03em;
 }
 
-.site-nav a:hover,
-.site-nav a[aria-current="page"] {
+.site-nav a:hover {
   color: var(--color-leaf);
   text-decoration: underline;
   text-underline-offset: 0.18em;
@@ -394,6 +413,876 @@ button.btn-text:disabled {
   color: var(--muted);
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Homepage world artifact */
+.home {
+  display: block;
+}
+
+.home-section {
+  padding: 2.25rem 0;
+  border-top: var(--line);
+}
+
+.home-section:first-child {
+  border-top: none;
+  padding-top: 0.5rem;
+}
+
+.home-identity__mark {
+  margin: 0 0 1.5rem;
+  font-size: clamp(0.7rem, 2.2vw, 0.95rem);
+  line-height: 1.2;
+  color: var(--color-bone);
+  overflow-x: auto;
+}
+
+.home-identity__line {
+  margin: 0;
+  max-width: 28rem;
+  color: var(--color-bone);
+  letter-spacing: 0.02em;
+}
+
+.home-welcome__text {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--color-bone);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.home-lore__mark {
+  margin: 0 0 1rem;
+  color: color-mix(in srgb, var(--color-greenwood) 70%, var(--color-bone));
+}
+
+.home-register {
+  scroll-margin-top: 1.5rem;
+}
+
+.home-paths__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1.25rem;
+}
+
+.home-paths__list a {
+  text-decoration: none;
+  color: var(--color-bone);
+}
+
+.home-paths__list a:hover {
+  color: var(--color-leaf);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.book-index {
+  margin: 1.5rem 0 2rem;
+}
+
+.book-index ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.book-index a {
+  text-decoration: none;
+}
+
+.book-index a:hover {
+  color: var(--color-leaf);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.book-entry {
+  margin: 2rem 0 0;
+  padding-top: 1.5rem;
+  border-top: var(--line);
+  scroll-margin-top: 1.25rem;
+}
+
+.book-entry__title {
+  font-size: 0.95rem;
+  margin-bottom: 0.85rem;
+}
+
+.book-entry__body {
+  margin: 0;
+  max-width: 36rem;
+  white-space: pre-wrap;
+}
+
+.oak-mark {
+  margin: 0 0 1.75rem;
+  font-size: clamp(0.65rem, 2vw, 0.85rem);
+  line-height: 1.15;
+  overflow-x: auto;
+}
+
+.oak-fragment {
+  margin: 0 0 1.25rem;
+  max-width: 32rem;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.shell__footer a {
+  color: var(--muted);
+}
+
+.shell__footer a:hover {
+  color: var(--color-leaf);
+}
+
+.shell__footer p + p {
+  margin-top: 0.35rem;
+}
+
+/* The Camp — three inhabitants */
+.camp__intro {
+  margin-bottom: 1.75rem;
+}
+
+.camp__intro p {
+  margin-bottom: 0.35rem;
+}
+
+.camp__intro-clue {
+  margin-top: 0.85rem;
+}
+
+.camp__roster {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.camp__roster--summary {
+  margin-top: 1.35rem;
+  gap: 0.85rem;
+}
+
+.camp__active {
+  margin-bottom: 0.25rem;
+}
+
+.camp__leaf-note {
+  margin: 0 0 1.75rem;
+  max-width: 28rem;
+}
+
+.camp__leaf-rule {
+  margin: 0 0 1rem;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.camp__leaf-note-title {
+  margin: 0 0 0.55rem;
+  letter-spacing: 0.04em;
+}
+
+.camp__leaf-note .muted {
+  margin-bottom: 0.25rem;
+}
+
+.camp-leaf {
+  color: var(--color-leaf);
+}
+
+.camp-box__leaf-clue {
+  margin: 0 0 0.85rem;
+  max-width: 26rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.camp__roster--summary .camp-box__leaf-clue {
+  display: none;
+}
+
+.camp-box {
+  border: 1px solid var(--camp-accent, var(--border));
+  color: var(--color-bone);
+  background: transparent;
+  padding: 1rem 1rem 0.85rem;
+}
+
+.camp-box--fenn {
+  padding-top: 1.15rem;
+  border-left-width: 3px;
+}
+
+.camp-box--wren {
+  padding: 0.85rem 1.15rem 1rem 0.85rem;
+  border-top-width: 2px;
+  border-right-color: color-mix(in srgb, var(--camp-accent) 55%, var(--border));
+}
+
+.camp-box--rook {
+  padding: 1.25rem 0.85rem 0.9rem 1.25rem;
+  border-bottom-width: 2px;
+}
+
+.camp-box--expanded {
+  padding: 1.35rem 1.25rem 1.15rem;
+  border-width: 2px;
+}
+
+.camp-box--collapsed.camp-box--fenn {
+  max-width: 28rem;
+}
+
+.camp-box--collapsed.camp-box--wren {
+  max-width: 24rem;
+  margin-left: 0.75rem;
+}
+
+.camp-box--collapsed.camp-box--rook {
+  max-width: 26rem;
+  margin-left: 1.5rem;
+}
+
+.camp__roster--summary .camp-box--collapsed {
+  max-width: none;
+  margin-left: 0;
+  padding: 0.65rem 0.85rem;
+}
+
+.camp__roster--summary .camp-box__ascii {
+  display: none;
+}
+
+.camp__roster--summary .camp-box__themes {
+  display: none;
+}
+
+.camp-box__head {
+  margin-bottom: 0.75rem;
+}
+
+.camp-box__name {
+  margin: 0 0 0.2rem;
+  color: var(--camp-accent);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+
+.camp-box__role {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.camp-box__ascii {
+  margin: 0 0 0.9rem;
+  color: var(--camp-accent);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  overflow-x: auto;
+}
+
+.camp-box--wren .camp-box__ascii {
+  margin-left: 0.5rem;
+}
+
+.camp-box--rook .camp-box__ascii {
+  text-align: right;
+  margin-right: 0.25rem;
+}
+
+.camp-box__themes {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.camp-box__themes li {
+  margin: 0 0 0.15rem;
+}
+
+.camp-box__status {
+  margin: 0 0 0.85rem;
+  color: var(--camp-accent);
+  font-size: 0.88rem;
+}
+
+.camp-box__placeholder {
+  margin: 0 0 1rem;
+  max-width: 28rem;
+}
+
+.camp-box .btn-text {
+  color: var(--camp-accent);
+}
+
+.camp-box .btn-text:hover {
+  color: var(--color-bone);
+}
+
+.camp-box .btn-text:focus-visible {
+  outline: 1px solid var(--camp-accent);
+  outline-offset: 3px;
+}
+
+/* The Commons — public accounting noticeboard */
+.commons__header {
+  margin-bottom: 1.75rem;
+}
+
+.commons__mark {
+  margin: 0 0 1.25rem;
+  color: color-mix(in srgb, var(--color-greenwood) 55%, var(--color-bone));
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.commons__lede {
+  margin: 0 0 0.85rem;
+  max-width: 28rem;
+  letter-spacing: 0.02em;
+}
+
+.commons__aside {
+  margin: 0;
+  max-width: 32rem;
+  font-size: 0.88rem;
+}
+
+.commons-sheet {
+  margin: 0 0 2rem;
+  border: 1px solid var(--border);
+  border-color: color-mix(in srgb, var(--color-hoard) 35%, var(--border));
+}
+
+.commons-block {
+  border-bottom: 1px solid var(--border);
+}
+
+.commons-block:last-child {
+  border-bottom: none;
+}
+
+.commons-block__label {
+  margin: 0;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  color: var(--color-hoard);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-hoard) 28%, var(--border));
+  background: color-mix(in srgb, var(--color-greenwood) 22%, var(--color-night));
+}
+
+.commons-block__body {
+  padding: 0.95rem 0.85rem 1.05rem;
+}
+
+.commons-empty {
+  margin: 0;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.commons-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.85rem;
+}
+
+.commons-table th,
+.commons-table td {
+  padding: 0.35rem 0.45rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-bone) 12%, transparent);
+}
+
+.commons-table th {
+  color: var(--color-hoard);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-hoard) 40%, var(--border));
+}
+
+.commons-table__empty {
+  color: var(--muted);
+  padding-top: 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: none;
+  letter-spacing: 0.02em;
+}
+
+.commons__maxim {
+  margin: 0 0 1.75rem;
+  max-width: none;
+  padding: 0.85rem 0;
+  border-top: 1px solid
+    color-mix(in srgb, var(--color-hoard) 45%, var(--border));
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-hoard) 45%, var(--border));
+  color: var(--color-hoard);
+  letter-spacing: 0.06em;
+  font-size: 0.92rem;
+}
+
+.commons__nav {
+  margin: 0;
+}
+
+.commons__nav a {
+  text-decoration: none;
+  letter-spacing: 0.03em;
+}
+
+.commons__nav a:hover {
+  color: var(--color-leaf);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+/* The Ledger — public Circulation register */
+.ledger__header {
+  margin-bottom: 1.5rem;
+}
+
+.ledger__mark {
+  margin: 0 0 1.15rem;
+  color: color-mix(in srgb, var(--color-greenwood) 40%, var(--color-bone));
+  font-size: clamp(0.62rem, 1.8vw, 0.82rem);
+  line-height: 1.15;
+  overflow-x: auto;
+}
+
+.ledger__lede {
+  margin: 0 0 0.75rem;
+  max-width: 28rem;
+  letter-spacing: 0.02em;
+}
+
+.ledger__aside {
+  margin: 0 0 1rem;
+  max-width: 28rem;
+  font-size: 0.88rem;
+}
+
+.ledger__page-mark {
+  margin: 0;
+  color: var(--color-hoard);
+  letter-spacing: 0.14em;
+  font-size: 0.78rem;
+}
+
+.ledger-register {
+  margin: 0 0 1.75rem;
+  border: 1px solid var(--border);
+  border-color: color-mix(in srgb, var(--color-hoard) 30%, var(--border));
+}
+
+.ledger-register__title {
+  margin: 0;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  color: var(--color-hoard);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-hoard) 28%, var(--border));
+  background: color-mix(in srgb, var(--color-greenwood) 18%, var(--color-night));
+}
+
+.ledger-register__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ledger-table {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-table th,
+.ledger-table td {
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+  border-right: 1px solid
+    color-mix(in srgb, var(--color-bone) 14%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-bone) 14%, transparent);
+}
+
+.ledger-table th:last-child,
+.ledger-table td:last-child {
+  border-right: none;
+}
+
+.ledger-table thead th {
+  color: var(--color-hoard);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-hoard) 42%, var(--border));
+  background: color-mix(in srgb, var(--color-greenwood) 12%, var(--color-night));
+}
+
+.ledger-table__empty-row td {
+  border-right: none;
+  border-bottom: none;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.ledger-empty {
+  max-width: 22rem;
+  margin: 0 auto;
+}
+
+.ledger-empty p {
+  margin: 0 0 0.45rem;
+  max-width: none;
+}
+
+.ledger-empty p:first-child {
+  color: var(--color-bone);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+}
+
+.ledger-empty p:last-child {
+  margin-bottom: 0;
+}
+
+.ledger__proof-note {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+}
+
+.ledger__nav {
+  margin: 0;
+}
+
+.ledger__nav a {
+  text-decoration: none;
+  letter-spacing: 0.03em;
+}
+
+.ledger__nav a:hover {
+  color: var(--color-leaf);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+/* The Greenwood — crossing + public gate (Stage 5) */
+.greenwood-crossing {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  margin: 0;
+  padding: clamp(0.75rem, 3vw, 1.75rem);
+  overflow: hidden;
+  background: var(--color-night);
+  color: var(--color-bone);
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+.greenwood-crossing--reduced {
+  align-items: center;
+  justify-content: center;
+}
+
+.greenwood-crossing__frame {
+  margin: 0;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  color: var(--color-bone);
+  font-size: clamp(0.72rem, 2.1vw, 1.05rem);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  white-space: pre;
+  transform-origin: center center;
+}
+
+.greenwood-crossing__frame--dense {
+  font-size: clamp(0.62rem, 1.85vw, 0.95rem);
+  line-height: 1.12;
+  width: 100%;
+}
+
+.greenwood-crossing__frame--sparse {
+  font-size: clamp(0.85rem, 2.4vw, 1.15rem);
+  opacity: 0.85;
+}
+
+.greenwood-crossing__frame--center {
+  margin-inline: auto;
+  text-align: center;
+  width: 100%;
+}
+
+.greenwood-crossing__frame--left {
+  align-self: flex-start;
+  text-align: left;
+  margin-top: 8vh;
+}
+
+.greenwood-crossing__frame--right {
+  margin-left: auto;
+  text-align: right;
+  margin-top: 12vh;
+}
+
+.greenwood-crossing__frame--bottom {
+  align-self: flex-end;
+  margin-top: auto;
+  margin-bottom: 6vh;
+  width: 100%;
+}
+
+.greenwood-crossing__frame--glitch {
+  text-shadow:
+    -2px 0 color-mix(in srgb, var(--color-bone) 35%, transparent),
+    2px 0 color-mix(in srgb, var(--color-greenwood) 55%, transparent);
+  letter-spacing: 0.08em;
+}
+
+.greenwood-crossing__frame--tear {
+  clip-path: inset(0 0 0 0);
+  letter-spacing: 0.12em;
+  opacity: 0.92;
+}
+
+.greenwood-crossing__frame--empty {
+  opacity: 0;
+  min-height: 2rem;
+}
+
+.greenwood-crossing__frame--final {
+  width: 100%;
+  text-align: center;
+  font-size: clamp(0.95rem, 2.6vw, 1.25rem);
+  letter-spacing: 0.14em;
+}
+
+.greenwood-crossing__frame--accent-greenwood {
+  color: color-mix(in srgb, var(--color-greenwood) 40%, var(--color-bone));
+}
+
+.greenwood-crossing__frame--accent-leaf {
+  color: color-mix(in srgb, var(--color-leaf) 55%, var(--color-bone));
+}
+
+.greenwood-crossing__frame--accent-invert {
+  color: var(--color-night);
+  background: var(--color-bone);
+  padding: 0.35rem 0.5rem;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.greenwood-crossing__frame--motion-jitter {
+  animation: greenwood-cross-jitter 90ms steps(2, end) 1;
+}
+
+.greenwood-crossing__frame--motion-shift-x {
+  animation: greenwood-cross-shift-x 110ms steps(2, end) 1;
+}
+
+.greenwood-crossing__frame--motion-shift-y {
+  animation: greenwood-cross-shift-y 100ms steps(2, end) 1;
+}
+
+.greenwood-crossing__frame--motion-scale-burst {
+  animation: greenwood-cross-scale 120ms steps(2, end) 1;
+}
+
+.greenwood-crossing--reduced .greenwood-crossing__frame {
+  animation: none;
+  text-shadow: none;
+  letter-spacing: 0.02em;
+}
+
+@keyframes greenwood-cross-jitter {
+  0% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(-3px, 1px);
+  }
+  66% {
+    transform: translate(2px, -2px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes greenwood-cross-shift-x {
+  0% {
+    transform: translateX(0);
+  }
+  40% {
+    transform: translateX(-8px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes greenwood-cross-shift-y {
+  0% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes greenwood-cross-scale {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .greenwood-crossing__frame--motion-jitter,
+  .greenwood-crossing__frame--motion-shift-x,
+  .greenwood-crossing__frame--motion-shift-y,
+  .greenwood-crossing__frame--motion-scale-burst {
+    animation: none;
+  }
+}
+
+.greenwood-gate {
+  color: var(--color-bone);
+}
+
+.greenwood-gate__header {
+  margin-bottom: 1.5rem;
+}
+
+.greenwood-gate__mark {
+  margin: 0.25rem 0 0;
+  max-width: 100%;
+  overflow-x: auto;
+  color: color-mix(in srgb, var(--color-greenwood) 55%, var(--color-bone));
+  font-size: clamp(0.55rem, 1.7vw, 0.8rem);
+  line-height: 1.15;
+  white-space: pre;
+}
+
+.greenwood-gate__body p {
+  margin-bottom: 0.4rem;
+  max-width: 32rem;
+}
+
+.greenwood-gate__pause {
+  margin-top: 0.95rem;
+  margin-bottom: 0.95rem;
+}
+
+.greenwood-gate__enter {
+  margin: 1.5rem 0 1.25rem;
+}
+
+.greenwood-gate__enter-btn {
+  color: var(--color-leaf);
+  letter-spacing: 0.04em;
+}
+
+.greenwood-gate__enter-btn:hover:not(:disabled) {
+  color: var(--color-bone);
+}
+
+.greenwood-gate__enter-btn:focus-visible {
+  outline: 1px solid var(--color-leaf);
+  outline-offset: 3px;
+}
+
+.greenwood-gate__explain {
+  margin: 1.75rem 0 1.25rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid
+    color-mix(in srgb, var(--color-greenwood) 55%, var(--border));
+  max-width: 32rem;
+}
+
+.greenwood-gate__explain p {
+  margin-bottom: 0.35rem;
+}
+
+.greenwood-gate__footnote {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.88rem;
+}
+
+.greenwood-gate--holding .place__title {
+  color: color-mix(in srgb, var(--color-greenwood) 35%, var(--color-bone));
+  letter-spacing: 0.05em;
+}
+
+/* Stage 8 visual shells — unused until admission exists */
+.greenwood-gate--refused .place__title {
+  color: var(--color-bone);
+}
+
+.greenwood-gate--admitted .place__title {
+  color: var(--color-leaf);
+}
+
 @media (max-width: 40rem) {
   body {
     font-size: 0.9rem;
@@ -407,4 +1296,73 @@ button.btn-text:disabled {
   .shell__main {
     padding: 1.25rem 0 2rem;
   }
+
+  .home-section {
+    padding: 1.75rem 0;
+  }
+
+  .home-paths__list {
+    flex-direction: column;
+  }
+
+  .camp-box--collapsed.camp-box--wren,
+  .camp-box--collapsed.camp-box--rook {
+    margin-left: 0;
+    max-width: none;
+  }
+
+  .camp-box--rook .camp-box__ascii {
+    text-align: left;
+  }
+
+  .commons-table {
+    font-size: 0.78rem;
+  }
+
+  .commons-table th:nth-child(3),
+  .commons-table th:nth-child(4) {
+    display: none;
+  }
+
+  .ledger-table {
+    min-width: 0;
+    font-size: 0.78rem;
+  }
+
+  .ledger-col--basis,
+  .ledger-table th:nth-child(4),
+  .ledger-table th:nth-child(5) {
+    display: none;
+  }
+
+  .ledger-table__empty-row td {
+    padding: 1.5rem 0.75rem;
+  }
+
+  .greenwood-crossing {
+    padding: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .greenwood-crossing__frame {
+    font-size: 0.62rem;
+  }
+
+  .greenwood-crossing__frame--dense {
+    font-size: 0.55rem;
+  }
+
+  .greenwood-crossing__frame--final {
+    font-size: 0.85rem;
+    margin-top: 28vh;
+  }
+
+  .greenwood-gate__mark {
+    font-size: 0.58rem;
+  }
+
+  .greenwood-gate__enter {
+    margin: 1.35rem 0 1.1rem;
+  }
 }
+

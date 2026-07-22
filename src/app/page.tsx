@@ -1,15 +1,19 @@
+import { HomeGreenwoodTeaser } from "@/components/home/home-greenwood-teaser";
+import { HomeIdentity } from "@/components/home/home-identity";
+import { HomeLoreInterrupt } from "@/components/home/home-lore-interrupt";
+import { HomeOutlawRegister } from "@/components/home/home-outlaw-register";
+import { HomePaths } from "@/components/home/home-paths";
+import { HomeWelcome } from "@/components/home/home-welcome";
+
 export default function HomePage() {
   return (
-    <article className="place">
-      <h1 className="place__title">FENN</h1>
-      <div className="place__body">
-        <p>the path is open.</p>
-        <p className="muted">
-          this is the edge of the wood. the rest of the world is still being
-          grown.
-        </p>
-        <p className="muted">choose a link. or do not.</p>
-      </div>
-    </article>
+    <div className="home">
+      <HomeIdentity />
+      <HomeWelcome />
+      <HomeLoreInterrupt />
+      <HomeOutlawRegister />
+      <HomeGreenwoodTeaser />
+      <HomePaths />
+    </div>
   );
 }

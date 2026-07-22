@@ -1,9 +1,6 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
-const NAV_ITEMS = [
+const PATHS = [
   { href: "/camp", label: "the camp" },
   { href: "/deeds", label: "deeds" },
   { href: "/greenwood?crossing=1", label: "the greenwood" },
@@ -18,20 +15,12 @@ const NAV_ITEMS = [
   { href: "/oak", label: "the oak" },
 ] as const;
 
-/** Full path list — homepage only. Inner pages use ShellReturn. */
-export function SiteNav() {
-  const pathname = usePathname();
-
-  if (!pathname || pathname !== "/") {
-    return null;
-  }
-
+export function HomePaths() {
   return (
-    <nav className="site-nav" aria-label="FENN">
-      <ul className="site-nav__list">
-        {NAV_ITEMS.map((item) => {
+    <section className="home-section home-paths" aria-label="paths">
+      <ul className="home-paths__list">
+        {PATHS.map((item) => {
           const label = `[ ${item.label} ]`;
-
           if ("external" in item && item.external) {
             return (
               <li key={item.href}>
@@ -45,7 +34,6 @@ export function SiteNav() {
               </li>
             );
           }
-
           return (
             <li key={item.href}>
               <Link href={item.href}>{label}</Link>
@@ -53,6 +41,6 @@ export function SiteNav() {
           );
         })}
       </ul>
-    </nav>
+    </section>
   );
 }
