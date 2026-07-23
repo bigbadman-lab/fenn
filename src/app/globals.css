@@ -705,6 +705,10 @@ button.btn-text:disabled {
   color: #c47a6a;
 }
 
+.ascii-page-title--wall .ascii-page-title__mark {
+  color: var(--color-bone);
+}
+
 .muted {
   color: var(--muted);
 }
@@ -1072,7 +1076,7 @@ a.fenn-map__link:focus-visible {
     "camp greenwood greenwood"
     "deeds greenwood greenwood"
     "commons ledger oak"
-    "book book oak";
+    "book wall oak";
 }
 
 .old-dir__cell {
@@ -1128,6 +1132,14 @@ a.fenn-map__link:focus-visible {
   border-right-width: 2px;
   border-bottom: none;
   border-top: 1px dashed color-mix(in srgb, #d6c7a1 35%, transparent);
+  min-height: 4.5rem;
+}
+
+.old-dir__cell--wall {
+  grid-area: wall;
+  border-right-style: dashed;
+  border-bottom: none;
+  border-top: 1px solid color-mix(in srgb, var(--color-bone) 35%, transparent);
   min-height: 4.5rem;
 }
 
@@ -1242,6 +1254,10 @@ a.fenn-map__link:focus-visible {
 
 .old-dir__link--oak {
   color: #8b6f47;
+}
+
+.old-dir__link--wall {
+  color: var(--color-bone);
 }
 
 .old-dir__note {
@@ -2086,6 +2102,125 @@ a.fenn-map__link:focus-visible {
   text-underline-offset: 0.18em;
 }
 
+/* The Wall — public FENN inscriptions */
+.wall__header {
+  margin-bottom: 1.75rem;
+}
+
+.wall__lede {
+  margin: 0 0 0.55rem;
+  letter-spacing: 0.02em;
+}
+
+.wall__aside {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.88rem;
+}
+
+.wall-unavailable {
+  margin: 0;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.wall-empty {
+  margin: 0;
+  padding: 0.25rem 0 1rem;
+}
+
+.wall-empty__line {
+  margin: 0 0 0.45rem;
+  letter-spacing: 0.02em;
+}
+
+.wall-sheet {
+  margin: 0 0 1.5rem;
+}
+
+.wall-entry {
+  margin: 0 0 0.35rem;
+  scroll-margin-top: 4.5rem;
+}
+
+.wall-entry__meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.wall-entry__body {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: var(--color-bone);
+}
+
+.wall-entry__mark {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+.wall-mark {
+  display: inline;
+}
+
+.wall-mark__action {
+  letter-spacing: 0.05em;
+}
+
+.wall-mark__count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.wall-mark--left .wall-mark__action {
+  color: var(--muted);
+  cursor: default;
+}
+
+.wall-mark--busy .wall-mark__action {
+  color: var(--muted);
+  cursor: default;
+}
+
+button.wall-mark__action {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+button.wall-mark__action:hover,
+button.wall-mark__action:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.wall-entry__rule {
+  margin: 1.15rem 0 1.35rem;
+  border: 0;
+  border-top: 1px solid
+    color-mix(in srgb, var(--color-bone) 32%, transparent);
+}
+
+.wall-end {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+
 /* The Ledger — public Circulation register */
 .ledger__header {
   margin-bottom: 1.5rem;
@@ -2703,6 +2838,7 @@ a.fenn-map__link:focus-visible {
   .old-dir__cell--commons,
   .old-dir__cell--ledger,
   .old-dir__cell--book,
+  .old-dir__cell--wall,
   .old-dir__cell--oak,
   .old-dir__cell--greenwood {
     grid-area: auto;

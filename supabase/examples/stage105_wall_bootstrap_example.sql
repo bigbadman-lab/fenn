@@ -1,0 +1,34 @@
+-- FENN Stage 10.5 — Wall founding inscription EXAMPLE (non-migration)
+--
+-- Trusted service-role / SQL editor / writeFennWallEntry() only.
+-- Do NOT apply as a migration. Do NOT create a public composer.
+-- Prefer: writeFennWallEntry({ body, sourceType: "bootstrap" }) from trusted ops.
+--
+-- Approved founding copy (Stage 10.5.4):
+--
+--   this wall was here before the road.
+--
+--   i only recently learned how to write on it.
+--
+-- Optional SQL (commented — run once per environment if product wants a founding mark):
+--
+-- INSERT INTO public.wall_entries (body, source_type, source_external_id)
+-- VALUES (
+--   E'this wall was here before the road.\n\ni only recently learned how to write on it.',
+--   'bootstrap',
+--   'founding:stage105'
+-- );
+--
+-- Equivalent trusted TS:
+--
+--   await writeFennWallEntry({
+--     body: "this wall was here before the road.\n\ni only recently learned how to write on it.",
+--     sourceType: "bootstrap",
+--     sourceExternalId: "founding:stage105",
+--   });
+--
+-- Rules:
+-- * body plain text / ASCII only, <= 4000 chars, non-empty when trimmed
+-- * source_type IN ('bootstrap', 'system', 'x_agent')
+-- * entries are append-only; provenance retries are idempotent
+-- * Application code must NOT auto-seed this on boot

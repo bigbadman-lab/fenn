@@ -7,7 +7,8 @@ type DirectoryTone =
   | "book"
   | "commons"
   | "ledger"
-  | "oak";
+  | "oak"
+  | "wall";
 
 type DirectoryEntry = {
   number: string;
@@ -15,7 +16,15 @@ type DirectoryEntry = {
   href: string;
   tone: DirectoryTone;
   note: string;
-  region: "camp" | "greenwood" | "deeds" | "commons" | "ledger" | "book" | "oak";
+  region:
+    | "camp"
+    | "greenwood"
+    | "deeds"
+    | "commons"
+    | "ledger"
+    | "book"
+    | "oak"
+    | "wall";
 };
 
 const DIRECTORY: DirectoryEntry[] = [
@@ -74,6 +83,14 @@ const DIRECTORY: DirectoryEntry[] = [
     tone: "oak",
     note: "it was here before you.",
     region: "oak",
+  },
+  {
+    number: "08",
+    label: "the wall",
+    href: "/wall",
+    tone: "wall",
+    note: "only fenn writes here.",
+    region: "wall",
   },
 ];
 
@@ -139,6 +156,7 @@ export function HomePaths() {
           <DirectoryCell entry={byRegion.ledger} />
           <DirectoryCell entry={byRegion.book} />
           <DirectoryCell entry={byRegion.oak} />
+          <DirectoryCell entry={byRegion.wall} />
         </div>
 
         <div className="old-dir__ask">

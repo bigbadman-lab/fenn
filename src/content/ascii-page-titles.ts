@@ -222,6 +222,7 @@ export const PAGE_ASCII_MARKS = {
   OAK: renderAsciiMark("OAK"),
   OUTLAW: renderAsciiMark("OUTLAW"),
   REGISTER: renderAsciiMark("REGISTER"),
+  WALL: renderAsciiMark("WALL"),
 } as const;
 
 export type PageAsciiMarkKey = keyof typeof PAGE_ASCII_MARKS;
@@ -229,6 +230,7 @@ export type PageAsciiMarkKey = keyof typeof PAGE_ASCII_MARKS;
 /**
  * Stable ASCII title accents — one deliberate colour per world surface.
  * Register shares `outlaw` so identity surfaces stay connected.
+ * Wall reuses bone/neutral treatment (no new palette).
  */
 export type AsciiTitleAccent =
   | "camp"
@@ -238,4 +240,5 @@ export type AsciiTitleAccent =
   | "commons"
   | "ledger"
   | "oak"
-  | "outlaw";
+  | "outlaw"
+  | "wall";

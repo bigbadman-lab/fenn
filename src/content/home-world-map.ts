@@ -152,6 +152,7 @@ const DESKTOP_LINKS: readonly MapLink[] = [
   { label: "[ the camp ]", href: "/camp", c: "camp" },
   { label: "[ the ledger ]", href: "/ledger", c: "ledger" },
   { label: "[ the commons ]", href: "/commons", c: "commons" },
+  { label: "[ the wall ]", href: "/wall", c: "bone" },
 ];
 
 const DESKTOP_LINES: string[] = [
@@ -221,6 +222,9 @@ const DESKTOP_LINES: string[] = [
   place("  notice.          ...............", "...............", "tents."),
   place("  work waits.", "", "the fire is low."),
   "",
+  place("  [ the wall ]", "", ". . ."),
+  place("  by the road.", "", ""),
+  "",
   place("       [ the ledger ]", "\\    |    /", ". . ."),
   place("          |||||", "|", ": : :"),
   place("          |||||", "[ the commons ]", ""),
@@ -249,6 +253,12 @@ const MOBILE_LINES: string[] = [
   place(" ..", "~  ~", "||||       \\|||/", MOBILE_WIDTH),
   place("  ...", ".", "", MOBILE_WIDTH),
   "",
+  place(
+    "[ the wall ] by road",
+    "..",
+    ".................",
+    MOBILE_WIDTH,
+  ),
   place(
     "[ deeds ]....woods....",
     "^^^ ^^^ ^^^",
