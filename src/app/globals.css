@@ -2322,18 +2322,40 @@ a.fenn-map__link:focus-visible {
   font-size: 0.88rem;
 }
 
-.greenwood-gate--holding .place__title {
+.greenwood-gate--listening .place__title {
   color: color-mix(in srgb, var(--color-greenwood) 35%, var(--color-bone));
   letter-spacing: 0.05em;
 }
 
-/* Stage 8 visual shells — unused until admission exists */
 .greenwood-gate--refused .place__title {
   color: var(--color-bone);
 }
 
 .greenwood-gate--admitted .place__title {
   color: var(--color-leaf);
+}
+
+.greenwood-gate__standing {
+  margin: 1.25rem 0 0.75rem;
+  max-width: 28rem;
+}
+
+.greenwood-gate__standing-label {
+  margin-bottom: 0.35rem;
+  letter-spacing: 0.08em;
+  font-size: 0.88rem;
+  color: color-mix(in srgb, var(--color-greenwood) 40%, var(--color-bone));
+}
+
+.greenwood-gate__standing-line {
+  margin-bottom: 0.35rem;
+  letter-spacing: 0.04em;
+}
+
+.greenwood-gate__standing-remain {
+  margin: 0.75rem 0 0;
+  max-width: 28rem;
+  letter-spacing: 0.03em;
 }
 
 @media (max-width: 40rem) {
