@@ -51,6 +51,7 @@ export function CampCharacterCard({
         </p>
 
         <CampConversation
+          key={character.id}
           characterId={character.id}
           characterName={character.name}
         />

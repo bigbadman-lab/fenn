@@ -10,7 +10,7 @@ import type {
 } from "@/lib/camp/dto";
 import { toSafeCampMessage } from "@/lib/camp/dto";
 import { CampAiError } from "@/lib/camp/errors";
-import { resolveConversationalCampCharacter } from "@/lib/camp/resolve-character";
+import { resolveCampCharacterForHistory } from "@/lib/camp/resolve-character-history";
 import { findCampSession } from "@/lib/camp/sessions";
 import type { CampHistoryMessage } from "@/lib/camp/types";
 
@@ -29,7 +29,7 @@ export async function getCampConversation(input: {
   displayLimit?: number;
 }): Promise<SafeCampConversation> {
   const admin = input.admin ?? (await defaultAdmin());
-  const character = await resolveConversationalCampCharacter(
+  const character = await resolveCampCharacterForHistory(
     input.characterSlug,
     admin,
   );
@@ -49,6 +49,7 @@ export async function getCampConversation(input: {
       messages: [],
       sessionStartedAt: null,
       lastMessageAt: null,
+      hasOlderMessages: false,
     };
   }
 
@@ -84,6 +85,7 @@ export async function getCampConversation(input: {
     messages,
     sessionStartedAt: session.started_at,
     lastMessageAt: session.last_message_at,
+    hasOlderMessages: session.message_count > limit,
   };
 }
 

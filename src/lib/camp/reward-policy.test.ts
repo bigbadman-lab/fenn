@@ -259,7 +259,7 @@ describe("Camp reward source safety", () => {
     assert.doesNotMatch(source, /awardLeaf\s*\(/);
     assert.doesNotMatch(source, /profiles\.leaf_balance/);
     assert.doesNotMatch(source, /leaf_lifetime_earned/);
-    assert.doesNotMatch(source, /\.from\(\s*["']memory_candidates["']\s*\)/);
+    assert.doesNotMatch(source, /\.from\(\s*["']fenn_memories["']\s*\)/);
   });
 
   it("reward service calls grant_camp_message_reward RPC only", () => {

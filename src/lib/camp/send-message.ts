@@ -19,6 +19,7 @@ import {
   loadCampHistoryForModel,
   MESSAGE_SELECT,
 } from "@/lib/camp/conversation";
+import { createMemoryCandidateFromCampMessage } from "@/lib/camp/memory-candidate";
 import { resolveConversationalCampCharacter } from "@/lib/camp/resolve-character";
 import {
   getOrCreateCampSession,
@@ -58,10 +59,18 @@ export type CampRewardApplicator = (input: {
   admin: SupabaseClient;
 }) => Promise<ApplyCampMessageRewardResult>;
 
+export type CampMemoryCandidateApplicator = (input: {
+  messageId: string;
+  admin: SupabaseClient;
+}) => Promise<unknown>;
+
 /**
- * Persist user turn + assistant reply with request idempotency, then apply
- * server-controlled Camp LEAF reward (caps/cooldown via RPC).
- * No memory_candidates inserts. Conversation survives reward failures.
+ * Persist user turn + assistant reply with request idempotency, then:
+ * 1) Stage 7.4 reward (caps/cooldown via RPC)
+ * 2) Stage 7.5 best-effort pending memory_candidate
+ *
+ * Priority: conversation > economic idempotency > memory candidate.
+ * Memory failures never fail the turn.
  */
 export async function sendCampMessage(input: {
   profileId: string;
@@ -72,9 +81,12 @@ export async function sendCampMessage(input: {
   admin?: SupabaseClient;
   callModel?: CampModelCaller;
   applyReward?: CampRewardApplicator;
+  applyMemoryCandidate?: CampMemoryCandidateApplicator;
 }): Promise<SendCampMessageResult> {
   const admin = input.admin ?? (await defaultAdmin());
   const applyReward = input.applyReward ?? defaultApplyReward;
+  const applyMemoryCandidate =
+    input.applyMemoryCandidate ?? defaultApplyMemoryCandidate;
 
   if (!isCampClientMessageId(input.clientMessageId)) {
     throw new CampAiError(
@@ -85,6 +97,7 @@ export async function sendCampMessage(input: {
   }
 
   const userContent = validateCampUserMessage(input.message);
+  // Fresh character active/locked check on every send — not card-open state.
   const character = await resolveConversationalCampCharacter(
     input.characterSlug,
     admin,
@@ -147,6 +160,18 @@ export async function sendCampMessage(input: {
       }
     }
 
+    // Best-effort memory candidate on replay (unique camp_message_id).
+    if (existingAssistant.memory_candidate_flag) {
+      try {
+        await applyMemoryCandidate({
+          messageId: existingAssistant.id,
+          admin,
+        });
+      } catch {
+        // Memory is lowest criticality — never fail the turn.
+      }
+    }
+
     return {
       userMessage: userSafe,
       assistantMessage: assistantSafe,
@@ -173,6 +198,7 @@ export async function sendCampMessage(input: {
       characterId: character.row.id,
       content: userContent,
       clientMessageHash: userHash,
+      clientMessageId: input.clientMessageId,
     });
     await refreshCampSessionCounters(session.id, admin);
   }
@@ -232,6 +258,8 @@ export async function sendCampMessage(input: {
     characterId: character.row.id,
     content: turn.reply,
     clientMessageHash: assistantHash,
+    clientMessageId: input.clientMessageId,
+    pairedUserMessageId: userRow.id,
     evaluation: normalized.evaluation,
     promptVersion: turn.promptVersion,
     moderationFlags: {
@@ -245,6 +273,8 @@ export async function sendCampMessage(input: {
       finalRecommendation: normalized.finalRecommendation,
       originalMemoryCandidate: normalized.originalMemoryCandidate,
       finalMemoryCandidate: normalized.finalMemoryCandidate,
+      clientMessageId: input.clientMessageId,
+      pairedUserMessageId: userRow.id,
     },
   });
 
@@ -258,7 +288,6 @@ export async function sendCampMessage(input: {
       admin,
     });
     granted = rewardResult.actualGrant;
-    // Refresh row fields for SafeCampMessage mapping when store updated.
     assistantRow = {
       ...assistantRow,
       reward_granted: granted,
@@ -266,6 +295,18 @@ export async function sendCampMessage(input: {
     };
   } catch {
     rewardUnavailable = true;
+  }
+
+  // Best-effort memory candidate after reward — never blocks conversation/LEAF.
+  if (normalized.evaluation.memoryCandidate) {
+    try {
+      await applyMemoryCandidate({
+        messageId: assistantRow.id,
+        admin,
+      });
+    } catch {
+      // Intentionally swallowed.
+    }
   }
 
   const userSafe = toSafeCampMessage(userRow);
@@ -297,6 +338,16 @@ async function defaultApplyReward(input: {
   });
 }
 
+async function defaultApplyMemoryCandidate(input: {
+  messageId: string;
+  admin: SupabaseClient;
+}): Promise<unknown> {
+  return createMemoryCandidateFromCampMessage({
+    messageId: input.messageId,
+    admin: input.admin,
+  });
+}
+
 function hasFinalizedRewardPolicy(
   flags: Record<string, unknown> | null | undefined,
 ): boolean {
@@ -315,6 +366,7 @@ async function insertUserMessage(input: {
   characterId: string;
   content: string;
   clientMessageHash: string;
+  clientMessageId: string;
 }): Promise<CampMessageRow> {
   const { data, error } = await input.admin
     .from("camp_messages")
@@ -327,7 +379,9 @@ async function insertUserMessage(input: {
       client_message_hash: input.clientMessageHash,
       reward_granted: 0,
       memory_candidate_flag: false,
-      moderation_flags: {},
+      moderation_flags: {
+        clientMessageId: input.clientMessageId,
+      },
     })
     .select(MESSAGE_SELECT)
     .single();
@@ -359,6 +413,8 @@ async function insertAssistantMessage(input: {
   characterId: string;
   content: string;
   clientMessageHash: string;
+  clientMessageId: string;
+  pairedUserMessageId: string;
   evaluation: CampContributionEvaluation;
   promptVersion: string;
   moderationFlags: Record<string, unknown>;
@@ -380,7 +436,11 @@ async function insertAssistantMessage(input: {
       spam_probability: input.evaluation.spamProbability,
       memory_candidate_flag: input.evaluation.memoryCandidate,
       leaf_ledger_id: null,
-      moderation_flags: input.moderationFlags,
+      moderation_flags: {
+        ...input.moderationFlags,
+        clientMessageId: input.clientMessageId,
+        pairedUserMessageId: input.pairedUserMessageId,
+      },
     })
     .select(MESSAGE_SELECT)
     .single();

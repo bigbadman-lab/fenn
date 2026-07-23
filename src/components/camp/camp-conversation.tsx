@@ -12,7 +12,10 @@ import {
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import type { CampCharacterId } from "@/components/camp/camp-characters";
-import { CAMP_USER_MESSAGE_MAX_CHARS } from "@/lib/camp/config";
+import {
+  CAMP_EMPTY_CONVERSATION_PROMPTS,
+  CAMP_USER_MESSAGE_MAX_CHARS,
+} from "@/lib/camp/config";
 import { campErrorCopy } from "@/lib/camp/errors";
 import type { SafeCampMessage } from "@/lib/camp/dto";
 import { formatOutlawNumber } from "@/lib/profiles/types";
@@ -26,6 +29,7 @@ type ConversationResponse = {
   ok?: boolean;
   conversation?: {
     messages: SafeCampMessage[];
+    hasOlderMessages?: boolean;
   };
   code?: string;
   error?: string;
@@ -70,24 +74,40 @@ export function CampConversation({
   } = useFennAuth();
 
   const [messages, setMessages] = useState<SafeCampMessage[] | null>(null);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingClientMessageId, setPendingClientMessageId] = useState<
     string | null
   >(null);
+  const [activeCharacterId, setActiveCharacterId] = useState(characterId);
   const endRef = useRef<HTMLDivElement | null>(null);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset local transcript state when the selected character changes (render-time).
+  if (characterId !== activeCharacterId) {
+    setActiveCharacterId(characterId);
+    setMessages(null);
+    setHasOlderMessages(false);
+    setDraft("");
+    setError(null);
+    setPendingClientMessageId(null);
+    setSending(false);
+  }
 
   const outlawLabel = profile
     ? `OUTLAW ${formatOutlawNumber(profile.outlawNumber)}`
     : "YOU";
+
+  const emptyPrompt = CAMP_EMPTY_CONVERSATION_PROMPTS[characterId];
 
   const loadConversation = useCallback(async () => {
     setError(null);
     const headers = await getAuthHeaders();
     if (!headers) {
       setMessages([]);
+      setHasOlderMessages(false);
       return;
     }
     const response = await fetch(`/api/camp/${characterId}/messages`, {
@@ -97,10 +117,12 @@ export function CampConversation({
     const data = (await response.json()) as ConversationResponse;
     if (!response.ok) {
       setMessages([]);
+      setHasOlderMessages(false);
       setError(campErrorCopy(data.code ?? "internal_error"));
       return;
     }
     setMessages(data.conversation?.messages ?? []);
+    setHasOlderMessages(Boolean(data.conversation?.hasOlderMessages));
   }, [characterId, getAuthHeaders]);
 
   useEffect(() => {
@@ -210,7 +232,7 @@ export function CampConversation({
   if (!privyReady || loading) {
     return (
       <div className="camp-talk" aria-live="polite">
-        <p className="muted">...</p>
+        <p className="muted camp-talk__loading">the fire is settling...</p>
       </div>
     );
   }
@@ -231,7 +253,7 @@ export function CampConversation({
   if (profileLoading || !profileResolved) {
     return (
       <div className="camp-talk" aria-live="polite">
-        <p className="muted">...</p>
+        <p className="muted camp-talk__loading">the fire is settling...</p>
       </div>
     );
   }
@@ -257,33 +279,40 @@ export function CampConversation({
         aria-live="polite"
       >
         {messages === null ? (
-          <p className="muted">...</p>
+          <p className="muted camp-talk__loading">recalling the fire...</p>
         ) : messages.length === 0 ? (
-          <p className="muted camp-talk__empty">the fire waits.</p>
+          <p className="muted camp-talk__empty">{emptyPrompt}</p>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={
-                message.role === "assistant"
-                  ? `camp-talk__turn camp-talk__turn--${characterId}`
-                  : "camp-talk__turn camp-talk__turn--you"
-              }
-            >
-              <p className="camp-talk__label">
-                {message.role === "assistant" ? characterName : outlawLabel}
+          <>
+            {hasOlderMessages ? (
+              <p className="muted camp-talk__older">
+                older words remain in the wood.
               </p>
-              <p className="camp-talk__body">{message.content}</p>
-              {message.role === "assistant" &&
-              message.rewardGranted &&
-              message.rewardGranted > 0 ? (
-                <p className="camp-talk__reward">
-                  +{message.rewardGranted}{" "}
-                  <span className="camp-leaf">LEAF</span>
+            ) : null}
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={
+                  message.role === "assistant"
+                    ? `camp-talk__turn camp-talk__turn--${characterId}`
+                    : "camp-talk__turn camp-talk__turn--you"
+                }
+              >
+                <p className="camp-talk__label">
+                  {message.role === "assistant" ? characterName : outlawLabel}
                 </p>
-              ) : null}
-            </div>
-          ))
+                <p className="camp-talk__body">{message.content}</p>
+                {message.role === "assistant" &&
+                message.rewardGranted &&
+                message.rewardGranted > 0 ? (
+                  <p className="camp-talk__reward">
+                    +{message.rewardGranted}{" "}
+                    <span className="camp-leaf">LEAF</span>
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </>
         )}
         <div ref={endRef} />
       </div>
@@ -320,6 +349,7 @@ export function CampConversation({
             disabled={sending}
             placeholder="write something..."
             autoComplete="off"
+            enterKeyHint="send"
           />
         </label>
         <p className="camp-talk__actions">

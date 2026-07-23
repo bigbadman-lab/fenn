@@ -155,11 +155,13 @@ describe("camp persistence safety (source)", () => {
   it("send-message normalizes evaluation and never awards LEAF via awardLeaf", () => {
     const source = readFileSync(join(here, "send-message.ts"), "utf8");
     assert.doesNotMatch(source, /awardLeaf\s*\(/);
-    assert.doesNotMatch(source, /\.from\(\s*["']memory_candidates["']\s*\)/);
+    assert.doesNotMatch(source, /\.from\(\s*["']fenn_memories["']\s*\)/);
     assert.doesNotMatch(source, /web_search/);
     assert.match(source, /normalizeCampEvaluation/);
     assert.match(source, /detectCampRepetition/);
     assert.match(source, /applyReward/);
+    assert.match(source, /applyMemoryCandidate/);
+    assert.match(source, /createMemoryCandidateFromCampMessage/);
     assert.match(source, /reward_granted:\s*0/);
     assert.match(source, /leaf_ledger_id:\s*null/);
   });
@@ -236,6 +238,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
           finalized: true,
         };
       },
+      applyMemoryCandidate: async () => ({ skipped: true }),
     });
 
     assert.equal(first.reused, false);
@@ -268,6 +271,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
       applyReward: async () => {
         throw new Error("should not re-grant when finalized");
       },
+      applyMemoryCandidate: async () => ({ skipped: true }),
     });
 
     assert.equal(second.reused, true);
@@ -307,6 +311,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
           finalized: true,
         };
       },
+      applyMemoryCandidate: async () => ({ skipped: true }),
     });
 
     assert.equal(aiCalls, 2);
@@ -393,6 +398,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
       admin: state.asAdmin() as never,
       callModel,
       applyReward: noopReward,
+      applyMemoryCandidate: async () => ({ skipped: true }),
     });
     await sendCampMessage({
       profileId,
@@ -403,6 +409,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
       admin: state.asAdmin() as never,
       callModel,
       applyReward: noopReward,
+      applyMemoryCandidate: async () => ({ skipped: true }),
     });
 
     assert.equal(state.sessions.size, 2);
@@ -466,6 +473,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
           finalized: true,
         };
       },
+      applyMemoryCandidate: async () => ({ skipped: true }),
     });
 
     assert.equal(result.reward.granted, 2);
@@ -508,12 +516,82 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
       applyReward: async () => {
         throw new Error("rpc down");
       },
+      applyMemoryCandidate: async () => ({ skipped: true }),
     });
 
     assert.equal(result.assistantMessage.content, "keep going.");
     assert.equal(result.reward.granted, 0);
     assert.equal(result.rewardUnavailable, true);
     assert.equal(state.messages.length, 2);
+  });
+
+  it("memory candidate failure does not lose reply or undo reward", async () => {
+    const { sendCampMessage } = await import("./send-message");
+    const state = createMemoryCampStore();
+    state.characters.set("fenn", {
+      id: "22222222-2222-4222-8222-222222222222",
+      slug: "fenn",
+      display_name: "FENN",
+      prompt_key: "camp.character.fenn",
+      is_active: true,
+      is_locked: false,
+    });
+
+    let memoryCalls = 0;
+    const result = await sendCampMessage({
+      profileId: "11111111-1111-4111-8111-111111111111",
+      outlawNumber: 7,
+      characterSlug: "fenn",
+      message: "a strong idea about circulation and thresholds",
+      clientMessageId: "99999999-9999-4999-8999-999999999999",
+      admin: state.asAdmin() as never,
+      callModel: async () => ({
+        reply: "worth carrying.",
+        evaluation: {
+          rewardRecommendation: 2,
+          memoryCandidate: true,
+          quality: 3,
+          originality: 2,
+          relevance: 3,
+          spamProbability: 0.05,
+          reason: "strong",
+        },
+      }),
+      applyReward: async ({ messageId }) => {
+        const msg = state.messages.find((m) => m.id === messageId);
+        if (msg) {
+          msg.reward_granted = 2;
+          msg.leaf_ledger_id = "ledger-mem";
+          msg.moderation_flags = {
+            ...msg.moderation_flags,
+            rewardPolicy: { recommended: 2, actual: 2, reason: "eligible" },
+          };
+        }
+        return {
+          recommended: 2,
+          actualGrant: 2,
+          reason: "eligible",
+          characterDailyGranted: 2,
+          globalDailyGranted: 2,
+          ledgerId: "ledger-mem",
+          finalized: true,
+        };
+      },
+      applyMemoryCandidate: async () => {
+        memoryCalls += 1;
+        throw new Error("memory insert failed");
+      },
+    });
+
+    assert.equal(memoryCalls, 1);
+    assert.equal(result.assistantMessage.content, "worth carrying.");
+    assert.equal(result.reward.granted, 2);
+    assert.equal(result.rewardUnavailable, false);
+    assert.equal(
+      state.messages.find((m) => m.role === "assistant")?.reward_granted,
+      2,
+    );
+    assert.equal("memoryCandidate" in result.assistantMessage, false);
   });
 
   it("locked character fails closed", async () => {

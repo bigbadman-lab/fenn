@@ -42,3 +42,20 @@ export const CAMP_REPETITION_SIMILARITY_THRESHOLD = 0.9;
 
 /** Minimum spamProbability when repetition or farming is detected. */
 export const CAMP_SPAM_FLOOR_ON_SIGNAL = 0.8;
+
+/**
+ * Static empty-state lines (not persisted assistant messages).
+ * Safe for client import — no prompts/secrets.
+ */
+export const CAMP_EMPTY_CONVERSATION_PROMPTS = {
+  fenn: "say something worth carrying.",
+  wren: "speak. she is listening.",
+  rook: "what did you see?",
+} as const;
+
+/**
+ * Suggested minimum interval between Camp AI sends (cost protection).
+ * Not enforced in Stage 7 — requires distributed rate limiting (Stage 14).
+ * Distinct from Camp reward cooldown (60s).
+ */
+export const CAMP_SEND_MIN_INTERVAL_SECONDS_DEFERRED = 2;

@@ -26,6 +26,8 @@ export type SafeCampConversation = {
   messages: SafeCampMessage[];
   sessionStartedAt: string | null;
   lastMessageAt: string | null;
+  /** True when session has more than the display window (most recent N shown). */
+  hasOlderMessages?: boolean;
 };
 
 export type CampMessageRow = {

@@ -1674,23 +1674,39 @@ a.fenn-map__link:focus-visible {
 .camp-talk {
   margin: 0 0 1.1rem;
   max-width: 36rem;
+  min-height: 12rem;
 }
 
 .camp-talk__transcript {
-  max-height: 22rem;
+  min-height: 8.5rem;
+  max-height: min(52vh, 28rem);
   overflow-y: auto;
+  overflow-x: hidden;
   margin: 0 0 0.85rem;
   padding: 0.55rem 0;
   border-top: 1px dashed color-mix(in srgb, var(--camp-accent) 35%, transparent);
   border-bottom: 1px dashed color-mix(in srgb, var(--camp-accent) 35%, transparent);
+  -webkit-overflow-scrolling: touch;
 }
 
 .camp-talk__empty {
   margin: 0.35rem 0;
+  font-style: italic;
+}
+
+.camp-talk__loading {
+  margin: 0.35rem 0;
+}
+
+.camp-talk__older {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
 }
 
 .camp-talk__turn {
   margin: 0 0 0.95rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .camp-talk__turn:last-child {
@@ -1726,6 +1742,8 @@ a.fenn-map__link:focus-visible {
 .camp-talk__body {
   margin: 0;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   color: color-mix(in srgb, var(--color-bone) 92%, var(--color-night));
 }
 
