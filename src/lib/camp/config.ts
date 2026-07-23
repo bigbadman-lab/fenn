@@ -9,6 +9,12 @@ export const CAMP_OPENAI_MODEL = "gpt-4o-mini";
 /** Last N user/assistant messages sent to the model (excluding the new user turn). */
 export const CAMP_HISTORY_MESSAGE_LIMIT = 20;
 
+/**
+ * Max user/assistant messages returned to the Camp UI on load.
+ * Older history remains in DB; UI does not paginate in Stage 7.2.
+ */
+export const CAMP_DISPLAY_MESSAGE_LIMIT = 50;
+
 /** Max characters for a single user message (server-authoritative). */
 export const CAMP_USER_MESSAGE_MAX_CHARS = 4000;
 

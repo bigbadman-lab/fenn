@@ -12,6 +12,7 @@ export type {
 export { CAMP_CHARACTER_SLUGS } from "@/lib/camp/types";
 
 export {
+  CAMP_DISPLAY_MESSAGE_LIMIT,
   CAMP_HISTORY_MESSAGE_LIMIT,
   CAMP_MAX_COMPLETION_TOKENS,
   CAMP_OPENAI_MODEL,
@@ -21,7 +22,25 @@ export {
   CAMP_USER_MESSAGE_MAX_CHARS,
 } from "@/lib/camp/config";
 
-export { CampAiError, type CampAiErrorCode } from "@/lib/camp/errors";
+export {
+  CampAiError,
+  campErrorCopy,
+  type CampAiErrorCode,
+} from "@/lib/camp/errors";
+
+export type {
+  SafeCampCharacter,
+  SafeCampConversation,
+  SafeCampMessage,
+} from "@/lib/camp/dto";
+
+export {
+  campRequestHashes,
+  isCampClientMessageId,
+  isCampCharacterSlugParam,
+} from "@/lib/camp/hash";
+
+export { sendCampMessageBodySchema } from "@/lib/camp/request";
 
 export {
   campContributionEvaluationSchema,
@@ -35,6 +54,4 @@ export {
   validateCampUserMessage,
 } from "@/lib/camp/history";
 
-// Server-only: prompts, characters, runtime — import those modules directly
-// from trusted server code. Do not re-export here (keeps pure helpers testable
-// without pulling OpenAI / system prompts into every consumer).
+// Server-only persistence / runtime: import modules directly from trusted server code.

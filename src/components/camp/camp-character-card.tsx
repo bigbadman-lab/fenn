@@ -1,6 +1,7 @@
 "use client";
 
 import type { CampCharacter } from "@/components/camp/camp-characters";
+import { CampConversation } from "@/components/camp/camp-conversation";
 import { CampLeafText } from "@/components/camp/camp-leaf-text";
 
 type CampCharacterCardProps = {
@@ -48,7 +49,11 @@ export function CampCharacterCard({
         <p className="camp-box__leaf-clue">
           <CampLeafText text={character.leafClue} />
         </p>
-        <p className="camp-box__placeholder">{character.placeholder}</p>
+
+        <CampConversation
+          characterId={character.id}
+          characterName={character.name}
+        />
 
         <p>
           <button type="button" className="btn-text" onClick={onClose}>
