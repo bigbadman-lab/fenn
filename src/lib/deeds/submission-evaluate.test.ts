@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   createDeedSubmissionBodySchema,
   evaluateCreateDeedSubmission,
+  evaluateDeedUploadEligibility,
   ownDeedSubmissionFilters,
 } from "./submission-evaluate";
 import { toSafeDeedSubmission } from "./submission-dto";
@@ -131,18 +132,71 @@ describe("evaluateCreateDeedSubmission", () => {
     if (!result.ok) assert.equal(result.code, "invalid_evidence");
   });
 
-  it("image-required Deed fails closed", () => {
+  it("image-required Deed accepts verified image path", () => {
+    const path =
+      "pending/11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.jpg";
     const result = evaluateCreateDeedSubmission({
       deed: baseDeed({ evidenceRequirements: imageRequired }),
       existingSubmissions: [],
-      evidence: { text: "ok", imagePath: "fake/path.png" },
+      evidence: { text: "ok", imagePath: path },
+      imagePathVerified: true,
+      now,
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.evidence.imagePath, path);
+  });
+
+  it("image-required without image rejects", () => {
+    const result = evaluateCreateDeedSubmission({
+      deed: baseDeed({ evidenceRequirements: imageRequired }),
+      existingSubmissions: [],
+      evidence: { text: "ok" },
+      imagePathVerified: false,
       now,
     });
     assert.equal(result.ok, false);
-    if (!result.ok) assert.equal(result.code, "image_evidence_unavailable");
+    if (!result.ok) assert.equal(result.code, "invalid_evidence");
   });
 
-  it("rejects client-supplied imagePath even when image optional", () => {
+  it("image-disallowed with verified path rejects", () => {
+    const result = evaluateCreateDeedSubmission({
+      deed: baseDeed({ evidenceRequirements: textRequired }),
+      existingSubmissions: [],
+      evidence: {
+        text: "ok",
+        imagePath:
+          "pending/11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.jpg",
+      },
+      imagePathVerified: true,
+      now,
+    });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, "invalid_evidence");
+  });
+
+  it("combined text+image validates", () => {
+    const result = evaluateCreateDeedSubmission({
+      deed: baseDeed({
+        evidenceRequirements: {
+          text: { allowed: true, required: true },
+          url: { allowed: false, required: false },
+          image: { allowed: true, required: true },
+          other: { allowed: false, required: false },
+        },
+      }),
+      existingSubmissions: [],
+      evidence: {
+        text: "notes",
+        imagePath:
+          "pending/11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.png",
+      },
+      imagePathVerified: true,
+      now,
+    });
+    assert.equal(result.ok, true);
+  });
+
+  it("rejects unverified client imagePath", () => {
     const result = evaluateCreateDeedSubmission({
       deed: baseDeed({
         evidenceRequirements: {
@@ -154,10 +208,21 @@ describe("evaluateCreateDeedSubmission", () => {
       }),
       existingSubmissions: [],
       evidence: { text: "ok", imagePath: "uploads/x.png" },
+      imagePathVerified: false,
       now,
     });
     assert.equal(result.ok, false);
-    if (!result.ok) assert.equal(result.code, "image_evidence_unavailable");
+    if (!result.ok) assert.equal(result.code, "invalid_image_ref");
+  });
+
+  it("rejects imagePath key on body schema (use imageRef)", () => {
+    assert.equal(
+      createDeedSubmissionBodySchema.safeParse({
+        evidenceText: "x",
+        imagePath: "pending/a/b/c.jpg",
+      }).success,
+      false,
+    );
   });
 
   it("Greenwood Deed fails closed", () => {
@@ -309,6 +374,16 @@ describe("createDeedSubmissionBodySchema", () => {
       false,
     );
   });
+
+  it("accepts imageRef field", () => {
+    assert.equal(
+      createDeedSubmissionBodySchema.safeParse({
+        evidenceText: "x",
+        imageRef: "pending/a/b/c.jpg",
+      }).success,
+      true,
+    );
+  });
 });
 
 describe("toSafeDeedSubmission", () => {
@@ -352,6 +427,79 @@ describe("ownDeedSubmissionFilters", () => {
     });
     assert.throws(() =>
       ownDeedSubmissionFilters("", "11111111-1111-4111-8111-111111111111"),
+    );
+  });
+});
+
+describe("evaluateDeedUploadEligibility", () => {
+  it("allows eligible Road image Deed", () => {
+    const result = evaluateDeedUploadEligibility({
+      deed: baseDeed({
+        evidenceRequirements: {
+          text: { allowed: true, required: true },
+          url: { allowed: false, required: false },
+          image: { allowed: true, required: true },
+          other: { allowed: false, required: false },
+        },
+      }),
+      existingSubmissions: [],
+      now,
+    });
+    assert.equal(result.ok, true);
+  });
+
+  it("rejects Greenwood/Common and closed Deeds", () => {
+    assert.equal(
+      evaluateDeedUploadEligibility({
+        deed: baseDeed({
+          accessScope: "greenwood",
+          evidenceRequirements: imageRequired,
+        }),
+        existingSubmissions: [],
+        now,
+      }).ok,
+      false,
+    );
+    assert.equal(
+      evaluateDeedUploadEligibility({
+        deed: baseDeed({
+          accessScope: "common",
+          evidenceRequirements: imageRequired,
+        }),
+        existingSubmissions: [],
+        now,
+      }).ok,
+      false,
+    );
+    assert.equal(
+      evaluateDeedUploadEligibility({
+        deed: baseDeed({
+          status: "closed",
+          evidenceRequirements: imageRequired,
+        }),
+        existingSubmissions: [],
+        now,
+      }).ok,
+      false,
+    );
+  });
+
+  it("rejects when image not allowed or pending exists", () => {
+    assert.equal(
+      evaluateDeedUploadEligibility({
+        deed: baseDeed({ evidenceRequirements: textRequired }),
+        existingSubmissions: [],
+        now,
+      }).ok,
+      false,
+    );
+    assert.equal(
+      evaluateDeedUploadEligibility({
+        deed: baseDeed({ evidenceRequirements: imageRequired }),
+        existingSubmissions: [{ status: "pending" }],
+        now,
+      }).ok,
+      false,
     );
   });
 });

@@ -20,6 +20,16 @@ export function deedSubmissionErrorCopy(code: string): string {
       return "this work is not yet open on the road.";
     case "image_evidence_unavailable":
       return "this deed asks for proof the board cannot yet receive.";
+    case "invalid_image_ref":
+      return "that image could not be accepted.";
+    case "unsupported_mime":
+      return "that file type is not taken.";
+    case "file_too_large":
+      return "that image is too large.";
+    case "empty_file":
+      return "no image was given.";
+    case "mime_mismatch":
+      return "that image could not be verified.";
     case "deed_not_found":
       return "this notice could not be found.";
     case "not_registered":

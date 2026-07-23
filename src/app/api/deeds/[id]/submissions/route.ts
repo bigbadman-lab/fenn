@@ -60,8 +60,8 @@ export async function POST(request: Request, context: RouteContext) {
         text: parsed.data.evidenceText,
         url: parsed.data.evidenceUrl,
         other: parsed.data.evidenceOther,
-        imagePath: null,
       },
+      imageRef: parsed.data.imageRef,
     });
 
     return NextResponse.json({ ok: true, submission }, { status: 201 });

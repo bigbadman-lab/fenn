@@ -41,12 +41,16 @@ export function ownDeedSubmissionFilters(
   return { profile_id, deed_id };
 }
 
-/** Strict API body — rejects profileId, status, LEAF, imagePath, deed config. */
+/**
+ * Strict API body.
+ * Accepts imageRef (server-issued upload reference) — never raw imagePath.
+ */
 export const createDeedSubmissionBodySchema = z
   .object({
     evidenceText: z.string().optional().nullable(),
     evidenceUrl: z.string().optional().nullable(),
     evidenceOther: z.string().optional().nullable(),
+    imageRef: z.string().optional().nullable(),
   })
   .strict();
 
@@ -70,13 +74,75 @@ export type EvaluateCreateDeedSubmissionResult =
     };
 
 /**
+ * Eligibility for uploading image evidence (before final submission).
+ * Does not validate evidence payload contents.
+ */
+export function evaluateDeedUploadEligibility(input: {
+  deed: SafeDeed | null;
+  existingSubmissions: ExistingSubmissionSummary[];
+  now?: Date;
+}):
+  | { ok: true }
+  | { ok: false; code: DeedSubmissionErrorCode } {
+  const now = input.now ?? new Date();
+  const { deed } = input;
+
+  if (!deed || !deed.isPublic) {
+    return { ok: false, code: "deed_not_found" };
+  }
+
+  const open = isDeedOpenForSubmission(deed, now);
+  if (!open.open) {
+    return { ok: false, code: "deed_not_open" };
+  }
+
+  const access = evaluateStage6AccessScope(deed.accessScope);
+  if (!access.allowed) {
+    return {
+      ok: false,
+      code: access.reason ?? "greenwood_not_available_yet",
+    };
+  }
+
+  if (deed.evidenceRequirementsInvalid) {
+    return { ok: false, code: "invalid_requirements" };
+  }
+
+  if (!deed.evidenceRequirements.image.allowed) {
+    return { ok: false, code: "invalid_evidence" };
+  }
+
+  const hasPending = input.existingSubmissions.some((s) => s.status === "pending");
+  const hasApproved = input.existingSubmissions.some(
+    (s) => s.status === "approved",
+  );
+  const repeat = canProfileSubmitDeed({
+    isRepeatable: deed.isRepeatable,
+    hasPendingSubmission: hasPending,
+    hasApprovedSubmission: hasApproved,
+  });
+  if (!repeat.allowed) {
+    if (repeat.reason === "pending_exists") {
+      return { ok: false, code: "submission_already_pending" };
+    }
+    return { ok: false, code: "non_repeatable_complete" };
+  }
+
+  return { ok: true };
+}
+
+/**
  * Pure gate for creating a pending submission.
- * Callers supply the canonical Deed + the caller's existing submissions.
+ *
+ * `evidence.imagePath` must already be a server-verified storage path
+ * (or null). Callers must never pass a raw client path.
  */
 export function evaluateCreateDeedSubmission(input: {
   deed: SafeDeed | null;
   existingSubmissions: ExistingSubmissionSummary[];
   evidence: DeedSubmissionEvidenceInput;
+  /** When true, imagePath was verified by the server upload resolver. */
+  imagePathVerified?: boolean;
   now?: Date;
 }): EvaluateCreateDeedSubmissionResult {
   const now = input.now ?? new Date();
@@ -86,7 +152,6 @@ export function evaluateCreateDeedSubmission(input: {
     return { ok: false, code: "deed_not_found" };
   }
 
-  // Public board submissions only — do not trust private/admin drafts.
   if (!deed.isPublic) {
     return { ok: false, code: "deed_not_found" };
   }
@@ -108,14 +173,14 @@ export function evaluateCreateDeedSubmission(input: {
     return { ok: false, code: "invalid_requirements" };
   }
 
-  // Stage 6.3: Storage does not exist — required image fails closed.
-  if (deed.evidenceRequirements.image.required) {
-    return { ok: false, code: "image_evidence_unavailable" };
-  }
+  const rawImage =
+    input.evidence.imagePath != null
+      ? String(input.evidence.imagePath).trim()
+      : "";
+  const hasImage = rawImage.length > 0;
 
-  // Never accept client-supplied image paths in this stage.
-  if (input.evidence.imagePath != null && String(input.evidence.imagePath).trim()) {
-    return { ok: false, code: "image_evidence_unavailable" };
+  if (hasImage && !input.imagePathVerified) {
+    return { ok: false, code: "invalid_image_ref" };
   }
 
   const hasPending = input.existingSubmissions.some((s) => s.status === "pending");
@@ -134,16 +199,14 @@ export function evaluateCreateDeedSubmission(input: {
     return { ok: false, code: "non_repeatable_complete" };
   }
 
-  const evidenceWithoutImage: DeedSubmissionEvidenceInput = {
-    text: input.evidence.text,
-    url: input.evidence.url,
-    other: input.evidence.other,
-    imagePath: null,
-  };
-
   const validated = validateSubmissionEvidence(
     deed.evidenceRequirements,
-    evidenceWithoutImage,
+    {
+      text: input.evidence.text,
+      url: input.evidence.url,
+      other: input.evidence.other,
+      imagePath: hasImage ? rawImage : null,
+    },
     { requirementsValid: true },
   );
 

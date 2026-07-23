@@ -133,6 +133,7 @@ export type DeedSubmissionErrorCode =
   | "greenwood_not_available_yet"
   | "common_not_available_yet"
   | "image_evidence_unavailable"
+  | "invalid_image_ref"
   | "invalid_evidence"
   | "invalid_requirements"
   | "submission_already_pending"

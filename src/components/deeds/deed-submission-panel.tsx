@@ -70,6 +70,7 @@ export function DeedSubmissionPanel({
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [other, setOther] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -138,9 +139,8 @@ export function DeedSubmissionPanel({
     isOpenForSubmission &&
     accessScope === "road" &&
     !evidenceRequirementsInvalid &&
-    !evidenceRequirements.image.required &&
     !pending &&
-    !( !isRepeatable && latestApproved );
+    !(!isRepeatable && latestApproved);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -156,6 +156,38 @@ export function DeedSubmissionPanel({
         return;
       }
 
+      let imageRef: string | null = null;
+      if (evidenceRequirements.image.allowed) {
+        if (evidenceRequirements.image.required && !imageFile) {
+          setFormError(deedSubmissionErrorCopy("invalid_evidence"));
+          return;
+        }
+        if (imageFile) {
+          const formData = new FormData();
+          formData.append("file", imageFile);
+          const uploadResponse = await fetch(
+            `/api/deeds/${deedId}/evidence/image`,
+            {
+              method: "POST",
+              headers,
+              body: formData,
+            },
+          );
+          const uploadData = (await uploadResponse.json()) as {
+            ok?: boolean;
+            imageRef?: string;
+            code?: string;
+          };
+          if (!uploadResponse.ok || !uploadData.imageRef) {
+            setFormError(
+              deedSubmissionErrorCopy(uploadData.code ?? "internal_error"),
+            );
+            return;
+          }
+          imageRef = uploadData.imageRef;
+        }
+      }
+
       const response = await fetch(`/api/deeds/${deedId}/submissions`, {
         method: "POST",
         headers: {
@@ -166,6 +198,7 @@ export function DeedSubmissionPanel({
           evidenceText: text,
           evidenceUrl: url,
           evidenceOther: other,
+          imageRef,
         }),
       });
 
@@ -178,6 +211,7 @@ export function DeedSubmissionPanel({
       setText("");
       setUrl("");
       setOther("");
+      setImageFile(null);
       setLoadedSubmissions((prev) => {
         const next = prev ? [...prev] : [];
         return [
@@ -254,10 +288,6 @@ export function DeedSubmissionPanel({
         <p>this work is not yet open on the road.</p>
       ) : null}
 
-      {accessScope === "road" && evidenceRequirements.image.required ? (
-        <p>this deed asks for proof the board cannot yet receive.</p>
-      ) : null}
-
       {accessScope === "road" && evidenceRequirementsInvalid ? (
         <p>this notice cannot take proof yet.</p>
       ) : null}
@@ -276,6 +306,9 @@ export function DeedSubmissionPanel({
               {evidenceSnippet(pending)}
             </p>
           ) : null}
+          {pending.hasImageEvidence ? (
+            <p className="muted">IMAGE · proof attached.</p>
+          ) : null}
         </div>
       ) : null}
 
@@ -283,8 +316,12 @@ export function DeedSubmissionPanel({
         <div className="deed-proof__state">
           <p>DEED COMPLETE.</p>
           <p className="muted">the board remembers.</p>
-          {latestApproved.leafAwarded != null ? (
-            <p>{latestApproved.leafAwarded} LEAF</p>
+          {latestApproved.leafAwarded != null &&
+          latestApproved.leafAwarded > 0 ? (
+            <p>+{latestApproved.leafAwarded} LEAF</p>
+          ) : null}
+          {latestApproved.hasImageEvidence ? (
+            <p className="muted">IMAGE · proof attached.</p>
           ) : null}
         </div>
       ) : null}
@@ -361,11 +398,29 @@ export function DeedSubmissionPanel({
             </label>
           ) : null}
 
-          {evidenceRequirements.image.allowed &&
-          !evidenceRequirements.image.required ? (
-            <p className="muted deed-proof-form__aside">
-              image proof is not yet received by the board.
-            </p>
+          {evidenceRequirements.image.allowed ? (
+            <label className="deed-proof-field">
+              <span className="deed-proof-field__label">
+                IMAGE /{" "}
+                {evidenceRequirements.image.required ? "REQUIRED" : "OPTIONAL"}
+              </span>
+              <input
+                className="deed-proof-field__control"
+                type="file"
+                name="evidenceImage"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={submitting}
+                required={evidenceRequirements.image.required}
+                onChange={(e) => {
+                  const next = e.target.files?.[0] ?? null;
+                  setImageFile(next);
+                }}
+              />
+              <span className="muted deed-proof-form__aside">
+                jpg / png / webp · 5mb max
+                {imageFile ? ` · ${imageFile.name}` : ""}
+              </span>
+            </label>
           ) : null}
 
           {formError ? <p className="deed-proof__error">{formError}</p> : null}

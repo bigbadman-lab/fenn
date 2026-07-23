@@ -2830,6 +2830,70 @@ a.fenn-map__link:focus-visible {
   text-underline-offset: 0.16em;
 }
 
+.admin-deeds {
+  max-width: 42rem;
+}
+
+.admin-deeds__header {
+  margin-bottom: 1.25rem;
+}
+
+.admin-deeds__eyebrow {
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.16em;
+  color: var(--color-hoard);
+}
+
+.admin-deeds__status {
+  margin: 0 0 1rem;
+  color: var(--color-hoard);
+}
+
+.admin-deeds__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.admin-deed-ticket {
+  padding: 0.95rem 0.9rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--color-hoard) 42%, var(--border));
+  border-left-style: dashed;
+}
+
+.admin-deed-ticket__meta {
+  margin: 0 0 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.admin-deed-ticket__block {
+  margin: 0 0 0.85rem;
+}
+
+.admin-deed-ticket__body {
+  margin: 0.35rem 0 0;
+  white-space: pre-wrap;
+}
+
+.admin-deed-ticket__actions {
+  margin: 0.75rem 0;
+}
+
+.admin-deed-ticket__reject {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed color-mix(in srgb, var(--color-hoard) 30%, transparent);
+}
+
+input[type="file"].deed-proof-field__control {
+  padding: 0.45rem 0.35rem;
+}
+
 @media (max-width: 640px) {
   .deed-notice {
     grid-template-columns: 1fr;

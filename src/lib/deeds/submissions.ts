@@ -17,6 +17,10 @@ import type {
   SafeDeed,
   SafeDeedSubmission,
 } from "@/lib/deeds/types";
+import {
+  DeedImageError,
+  resolveVerifiedImagePath,
+} from "@/lib/deeds/image-upload";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const DEED_SELECT =
@@ -134,6 +138,8 @@ export type CreateDeedSubmissionInput = {
   profileId: string;
   deedId: string;
   evidence: DeedSubmissionEvidenceInput;
+  /** Server-issued pending upload path; never a raw client storage guess. */
+  imageRef?: string | null;
   now?: Date;
 };
 
@@ -149,10 +155,46 @@ export async function createDeedSubmission(
   const deed = await loadDeedById(admin, deedId);
   const existing = await getMySubmissionsForDeed(input.profileId, deedId, admin);
 
+  let verifiedImagePath: string | null = null;
+  let imagePathVerified = false;
+  const imageRef =
+    input.imageRef != null ? String(input.imageRef).trim() : "";
+
+  if (imageRef.length > 0) {
+    try {
+      verifiedImagePath = await resolveVerifiedImagePath({
+        profileId: input.profileId,
+        deedId,
+        imageRef,
+      });
+      imagePathVerified = true;
+    } catch (error) {
+      if (error instanceof DeedImageError) {
+        throw new DeedSubmissionError(
+          error.code === "invalid_image_ref" ||
+            error.code === "image_not_found" ||
+            error.code === "image_already_used"
+            ? "invalid_image_ref"
+            : "write_failed",
+          error.message,
+          error.status,
+        );
+      }
+      throw error;
+    }
+  }
+
+  // Reject accidental raw imagePath on the evidence object unless verified.
   const gate = evaluateCreateDeedSubmission({
     deed,
     existingSubmissions: existing.map((s) => ({ status: s.status })),
-    evidence: input.evidence,
+    evidence: {
+      text: input.evidence.text,
+      url: input.evidence.url,
+      other: input.evidence.other,
+      imagePath: verifiedImagePath,
+    },
+    imagePathVerified,
     now: input.now,
   });
 
@@ -185,14 +227,13 @@ export async function createDeedSubmission(
       status: "pending",
       evidence_text: evidence.text,
       evidence_url: evidence.url,
-      evidence_image_path: null,
+      evidence_image_path: evidence.imagePath,
       evidence_other: evidence.other,
     })
     .select(SUBMISSION_SELECT)
     .single();
 
   if (error) {
-    // Partial unique index: one pending per (deed_id, profile_id)
     if (error.code === "23505") {
       throw new DeedSubmissionError(
         "submission_already_pending",
@@ -209,7 +250,6 @@ export async function createDeedSubmission(
 
   const submission = toSafeDeedSubmission(data as DeedSubmissionRow);
   if (submission.status !== "pending") {
-    // Defensive — insert always forces pending; never trust alternate status.
     throw new DeedSubmissionError(
       "write_failed",
       "Unexpected submission status",
@@ -232,6 +272,8 @@ function messageForCode(code: DeedSubmissionErrorCode): string {
       return "This work is not yet open on the road";
     case "image_evidence_unavailable":
       return "This deed asks for proof the board cannot yet receive";
+    case "invalid_image_ref":
+      return "Image reference is invalid";
     case "invalid_evidence":
       return "The proof does not meet the notice";
     case "invalid_requirements":
