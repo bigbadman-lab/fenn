@@ -19,7 +19,8 @@ import {
   loadCampHistoryForModel,
   MESSAGE_SELECT,
 } from "@/lib/camp/conversation";
-import { createMemoryCandidateFromCampMessage } from "@/lib/camp/memory-candidate";
+// Memory candidate create+review is loaded dynamically in defaultApplyMemoryCandidate
+// so Camp persistence tests can assert create path without coupling compile graphs.
 import { resolveConversationalCampCharacter } from "@/lib/camp/resolve-character";
 import {
   getOrCreateCampSession,
@@ -342,7 +343,12 @@ async function defaultApplyMemoryCandidate(input: {
   messageId: string;
   admin: SupabaseClient;
 }): Promise<unknown> {
-  return createMemoryCandidateFromCampMessage({
+  // Stage 7.5 create + Stage 11.3 best-effort autonomous review.
+  // Review failures leave the candidate pending and never fail Camp.
+  const { createAndReviewMemoryCandidateFromCampMessage } = await import(
+    "@/lib/memory/process"
+  );
+  return createAndReviewMemoryCandidateFromCampMessage({
     messageId: input.messageId,
     admin: input.admin,
   });

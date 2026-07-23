@@ -1,0 +1,16 @@
+-- FENN Stage 11.2 — Canon sync EXAMPLE (non-migration)
+--
+-- Preferred ops path:
+--   npm run canon:sync
+--
+-- That runs scripts/sync-fenn-canon.ts → syncFennCanon() with service-role.
+-- Do NOT insert Canon rows by hand unless debugging.
+-- Do NOT apply this file as a migration.
+-- Do NOT sync Canon on ordinary page loads.
+--
+-- After sync, Canon lives in:
+--   public.fenn_memories WHERE layer = 'canon' AND is_active = true
+-- Identity:
+--   metadata->>'canon_key'
+-- Actor:
+--   approved_by_actor_id = 'system:canon-sync'

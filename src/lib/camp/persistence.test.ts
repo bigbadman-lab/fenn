@@ -161,7 +161,7 @@ describe("camp persistence safety (source)", () => {
     assert.match(source, /detectCampRepetition/);
     assert.match(source, /applyReward/);
     assert.match(source, /applyMemoryCandidate/);
-    assert.match(source, /createMemoryCandidateFromCampMessage/);
+    assert.match(source, /createAndReviewMemoryCandidateFromCampMessage/);
     assert.match(source, /reward_granted:\s*0/);
     assert.match(source, /leaf_ledger_id:\s*null/);
   });

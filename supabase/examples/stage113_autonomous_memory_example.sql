@@ -1,0 +1,15 @@
+-- FENN Stage 11.3 — Autonomous memory review EXAMPLE (non-migration)
+--
+-- Preferred ops path for pending backlog:
+--   npm run memory:process-pending
+--
+-- Inline path (automatic):
+--   Camp turn → createMemoryCandidateFromCampMessage
+--            → reviewAndResolveMemoryCandidate (best-effort)
+--
+-- Auto-approved memories are always:
+--   layer = greenwood_memory
+--   visibility = camp
+--
+-- Do NOT apply this file as a migration.
+-- Do NOT expose review RPCs to browser roles.

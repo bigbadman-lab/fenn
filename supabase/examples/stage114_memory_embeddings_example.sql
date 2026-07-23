@@ -1,0 +1,15 @@
+-- FENN Stage 11.4 — Memory indexing EXAMPLE (non-migration)
+--
+-- Preferred ops path:
+--   npm run memory:index
+--   npm run memory:index -- --force
+--
+-- Flow:
+--   active fenn_memories (canon | greenwood_memory)
+--     → deterministic chunking
+--     → OpenAI text-embedding-3-small (1536)
+--     → replace_fenn_memory_chunks (atomic)
+--
+-- Canon sync and Camp memory approval succeed independently of indexing.
+-- Do NOT apply this file as a migration.
+-- Do NOT expose fenn_memory_chunks to browser roles.
