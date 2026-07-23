@@ -66,14 +66,14 @@ describe("viewFromGreenwoodStatus", () => {
     assert.equal(mapped.standing?.remainingLeaf, 0);
   });
 
-  it("maps member from frozen snapshot without threshold re-check", () => {
+  it("maps returning member straight to interior without admission ritual", () => {
     const mapped = viewFromGreenwoodStatus({
       state: "member",
       greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
       thresholdAtEntry: 30,
       lifetimeLeafAtEntry: 34,
     });
-    assert.equal(mapped.view, "member");
+    assert.equal(mapped.view, "interior");
     assert.deepEqual(mapped.member, {
       greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
       thresholdAtEntry: 30,
@@ -94,14 +94,15 @@ describe("viewFromAdmissionResult", () => {
     assert.equal(mapped.member?.lifetimeLeafAtEntry, 31);
   });
 
-  it("treats already_member as success, not error", () => {
+  it("treats already_member as interior success, not error", () => {
     const mapped = viewFromAdmissionResult({
       status: "already_member",
       greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
       thresholdAtEntry: 30,
       lifetimeLeafAtEntry: 30,
     });
-    assert.equal(mapped.view, "member");
+    assert.equal(mapped.view, "interior");
+    assert.equal(mapped.member?.lifetimeLeafAtEntry, 30);
   });
 
   it("maps not_eligible back to ineligible with server values", () => {
@@ -145,7 +146,9 @@ describe("greenwood gate source safety", () => {
     assert.match(gateway, /\/#outlaw-register/);
     assert.doesNotMatch(gateway, /leafLifetimeEarned\s*>=\s*30/);
     assert.doesNotMatch(gateway, /threshold\s*===\s*30/);
+    assert.match(gateway, /GreenwoodMember/);
     assert.doesNotMatch(gateway, /GreenwoodGateHoldingMessage/);
+    assert.doesNotMatch(gateway, /GreenwoodGateInterior/);
   });
 
   it("gate UI shows standing and closed wood for ineligible", () => {

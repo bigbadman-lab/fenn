@@ -27,4 +27,9 @@ export {
   viewFromGreenwoodStatus,
 } from "@/lib/greenwood/gate-view";
 
+export {
+  GREENWOOD_MEMBER_PATHS,
+  memberInteriorCopy,
+} from "@/lib/greenwood/member-paths";
+
 // Server-only status / admission: import modules directly from trusted server code.

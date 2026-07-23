@@ -63,16 +63,17 @@ export function memberSnapshotFromStatus(
 
 /**
  * Map GET /api/greenwood/status payload into a gate view + data.
+ * Returning members go straight to the interior (no admission ritual).
  * Does not invent eligibility — server state is authoritative.
  */
 export function viewFromGreenwoodStatus(status: GreenwoodStatus): {
-  view: "ineligible" | "eligible" | "member";
+  view: "ineligible" | "eligible" | "member" | "interior";
   standing?: GreenwoodStandingView;
   member?: GreenwoodMemberSnapshotView;
 } {
   if (status.state === "member") {
     return {
-      view: "member",
+      view: "interior",
       member: memberSnapshotFromStatus(status),
     };
   }
@@ -90,16 +91,28 @@ export function viewFromGreenwoodStatus(status: GreenwoodStatus): {
 
 /**
  * Map POST /api/greenwood/enter domain result.
- * already_member is success. not_eligible returns to refusal with server numbers.
+ * admitted → recognition (member). already_member → interior.
+ * not_eligible returns to refusal with server numbers.
  */
 export function viewFromAdmissionResult(result: GreenwoodAdmissionResult): {
-  view: "member" | "ineligible";
+  view: "member" | "interior" | "ineligible";
   standing?: GreenwoodStandingView;
   member?: GreenwoodMemberSnapshotView;
 } {
-  if (result.status === "admitted" || result.status === "already_member") {
+  if (result.status === "admitted") {
     return {
       view: "member",
+      member: {
+        greenwoodEnteredAt: result.greenwoodEnteredAt,
+        thresholdAtEntry: result.thresholdAtEntry,
+        lifetimeLeafAtEntry: result.lifetimeLeafAtEntry,
+      },
+    };
+  }
+
+  if (result.status === "already_member") {
+    return {
+      view: "interior",
       member: {
         greenwoodEnteredAt: result.greenwoodEnteredAt,
         thresholdAtEntry: result.thresholdAtEntry,

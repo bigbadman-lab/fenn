@@ -264,31 +264,6 @@ export function GreenwoodGateMember({
   );
 }
 
-/** Temporary Stage 8.3 interior — Stage 8.4 replaces this. */
-export function GreenwoodGateInterior({ outlawLabel }: { outlawLabel: string }) {
-  return (
-    <article
-      className="place greenwood-gate greenwood-gate--admitted"
-      aria-live="polite"
-    >
-      <AsciiPageTitle
-        title="THE GREENWOOD"
-        mark="GREENWOOD"
-        accent="greenwood"
-        subtitle={
-          <>
-            <p>{outlawLabel}</p>
-            <p>you are inside.</p>
-          </>
-        }
-      />
-      <div className="greenwood-gate__body">
-        <p>the deeper paths are still being cut.</p>
-      </div>
-    </article>
-  );
-}
-
 type ErrorProps = {
   onRetry: () => void;
   retryPending?: boolean;

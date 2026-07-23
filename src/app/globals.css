@@ -2358,6 +2358,82 @@ a.fenn-map__link:focus-visible {
   letter-spacing: 0.03em;
 }
 
+.greenwood-member__header {
+  margin-bottom: 1.25rem;
+}
+
+.greenwood-member__outlaw {
+  margin-top: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.greenwood-member__body {
+  max-width: 32rem;
+}
+
+.greenwood-member__body p {
+  margin-bottom: 0.4rem;
+}
+
+.greenwood-member__entered {
+  margin-top: 0.35rem;
+  font-size: 0.88rem;
+}
+
+.greenwood-member__rule {
+  margin: 1.5rem 0;
+  border: 0;
+  border-top: 1px solid
+    color-mix(in srgb, var(--color-greenwood) 55%, var(--border));
+}
+
+.greenwood-member__section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.92rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-greenwood) 40%, var(--color-bone));
+}
+
+.greenwood-member__path-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.greenwood-member__path {
+  margin-bottom: 1rem;
+}
+
+.greenwood-member__path:last-child {
+  margin-bottom: 0;
+}
+
+.greenwood-member__path-link {
+  color: var(--color-leaf);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.greenwood-member__path-link:hover {
+  color: var(--color-bone);
+}
+
+.greenwood-member__path-link:focus-visible {
+  outline: 1px solid var(--color-leaf);
+  outline-offset: 3px;
+}
+
+.greenwood-member__path-note {
+  margin: 0.2rem 0 0;
+  font-size: 0.88rem;
+}
+
+.greenwood-member__notice,
+.greenwood-member__fire {
+  max-width: 28rem;
+}
+
 @media (max-width: 40rem) {
   body {
     font-size: 0.9rem;

@@ -10,11 +10,11 @@ import {
   GreenwoodGateEligible,
   GreenwoodGateEnterError,
   GreenwoodGateIneligible,
-  GreenwoodGateInterior,
   GreenwoodGateListening,
   GreenwoodGateMember,
   GreenwoodGateStatusError,
 } from "@/components/greenwood/greenwood-gate";
+import { GreenwoodMember } from "@/components/greenwood/greenwood-member";
 import {
   fetchGreenwoodStatus,
   postGreenwoodEnter,
@@ -62,6 +62,7 @@ const INITIAL_REGISTERED: RegisteredGateState = {
 
 type RegisteredGreenwoodGateProps = {
   outlawLabel: string;
+  alias: string | null;
   getAuthHeaders: () => Promise<HeadersInit | null>;
 };
 
@@ -71,6 +72,7 @@ type RegisteredGreenwoodGateProps = {
  */
 function RegisteredGreenwoodGate({
   outlawLabel,
+  alias,
   getAuthHeaders,
 }: RegisteredGreenwoodGateProps) {
   const [registeredGate, setRegisteredGate] =
@@ -244,7 +246,16 @@ function RegisteredGreenwoodGate({
         />
       );
     case "interior":
-      return <GreenwoodGateInterior outlawLabel={outlawLabel} />;
+      if (!registeredGate.member) {
+        return <GreenwoodGateListening />;
+      }
+      return (
+        <GreenwoodMember
+          outlawLabel={outlawLabel}
+          alias={alias}
+          member={registeredGate.member}
+        />
+      );
     default:
       return <GreenwoodGateListening />;
   }
@@ -255,7 +266,7 @@ type GreenwoodGatewaySessionProps = {
 };
 
 /**
- * Stage 8.3 Greenwood gateway: crossing → public gate → truthful status/admission.
+ * Stage 8.4 Greenwood gateway: crossing → gate → admission → member interior.
  * Crossing is unchanged. Eligibility comes only from Stage 8.2 APIs.
  */
 function GreenwoodGatewaySession({
@@ -327,6 +338,7 @@ function GreenwoodGatewaySession({
       <RegisteredGreenwoodGate
         key={profile.id}
         outlawLabel={`OUTLAW ${formatOutlawNumber(profile.outlawNumber)}`}
+        alias={profile.alias}
         getAuthHeaders={getAuthHeaders}
       />
     );
