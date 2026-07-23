@@ -8,9 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "tsx --conditions=react-server --test src/lib/leaf/**/*.test.ts src/lib/deeds/**/*.test.ts src/lib/admin/**/*.test.ts src/lib/camp/**/*.test.ts src/lib/greenwood/**/*.test.ts src/lib/treasury/**/*.test.ts src/lib/commons/**/*.test.ts src/lib/wall/**/*.test.ts src/lib/canon/**/*.test.ts src/lib/memory/**/*.test.ts",
-    "canon:sync": "tsx --conditions=react-server --env-file=.env scripts/sync-fenn-canon.ts",
-    "memory:process-pending": "tsx --conditions=react-server --env-file=.env scripts/process-pending-memory.ts",
-    "memory:index": "tsx --conditions=react-server --env-file=.env scripts/index-fenn-memory.ts"
+    "canon:sync": "tsx --conditions=react-server --env-file=.env.local scripts/sync-fenn-canon.ts",
+    "memory:process-pending": "tsx --conditions=react-server --env-file=.env.local scripts/process-pending-memory.ts",
+    "memory:index": "tsx --conditions=react-server --env-file=.env.local scripts/index-fenn-memory.ts",
+    "memory:retrieve": "tsx --conditions=react-server --env-file=.env.local scripts/retrieve-fenn-knowledge.ts"
   },
   "dependencies": {
     "@privy-io/node": "^0.27.0",

@@ -105,10 +105,21 @@ export async function embedFennTexts(
 ): Promise<number[][]> {
   if (texts.length === 0) return [];
   const caller = callEmbed ?? defaultEmbeddingCaller;
-  return caller({
+  const vectors = await caller({
     model: FENN_EMBEDDING_MODEL,
     texts,
   });
+  if (vectors.length !== texts.length) {
+    throw new MemoryIndexError(
+      "memory_embed_failed",
+      "Embedding response count mismatch",
+      502,
+    );
+  }
+  for (const vector of vectors) {
+    assertDimension(vector);
+  }
+  return vectors;
 }
 
 export function formatEmbeddingForPg(vector: number[]): string {
