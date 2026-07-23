@@ -1856,10 +1856,49 @@ a.fenn-map__link:focus-visible {
   padding: 0.95rem 0.85rem 1.05rem;
 }
 
+.commons-section__lede {
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.02em;
+}
+
+.commons-section__aside {
+  margin: 0 0 0.95rem;
+  font-size: 0.88rem;
+}
+
 .commons-empty {
   margin: 0;
   color: var(--muted);
   letter-spacing: 0.02em;
+}
+
+.commons-empty--spaced {
+  margin-top: 0.65rem;
+}
+
+.commons-wallet {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+}
+
+.commons-wallet__label {
+  color: var(--color-hoard);
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+  text-transform: lowercase;
+}
+
+.commons-wallet__address {
+  font-family: inherit;
+  font-size: 0.88rem;
+  word-break: break-all;
+}
+
+.commons-observed {
+  margin: 0.75rem 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
 }
 
 .commons-table {
@@ -1867,6 +1906,7 @@ a.fenn-map__link:focus-visible {
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 0.85rem;
+  margin-top: 0.35rem;
 }
 
 .commons-table th,
@@ -1887,11 +1927,134 @@ a.fenn-map__link:focus-visible {
     color-mix(in srgb, var(--color-hoard) 40%, var(--border));
 }
 
+.commons-table__asset {
+  color: var(--color-bone);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.commons-table__symbol {
+  display: block;
+}
+
+.commons-table__name {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  font-weight: 400;
+  text-transform: none;
+}
+
+.commons-table__amount {
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.commons-table__amount--muted {
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
 .commons-table__empty {
   color: var(--muted);
   padding-top: 0.75rem;
   padding-bottom: 0.35rem;
   border-bottom: none;
+  letter-spacing: 0.02em;
+}
+
+.commons-arrivals {
+  margin-top: 1.25rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid
+    color-mix(in srgb, var(--color-hoard) 28%, var(--border));
+}
+
+.commons-arrivals__label {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--color-hoard);
+  font-weight: 400;
+}
+
+.commons-arrivals__note {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+}
+
+.commons-arrivals__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.commons-arrivals__item {
+  margin: 0 0 0.75rem;
+}
+
+.commons-arrivals__item:last-child {
+  margin-bottom: 0;
+}
+
+.commons-arrivals__line {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.commons-arrivals__amount {
+  letter-spacing: 0.02em;
+}
+
+.commons-arrivals__purpose,
+.commons-arrivals__tx {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+}
+
+.commons-arrivals__tx code {
+  font-family: inherit;
+  word-break: break-all;
+}
+
+.commons-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.commons-history__item {
+  margin: 0 0 0.95rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-bone) 12%, transparent);
+}
+
+.commons-history__item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.commons-history__date {
+  display: block;
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.commons-history__delta {
+  margin: 0 0 0.2rem;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.commons-history__reason {
+  margin: 0;
+  font-size: 0.88rem;
   letter-spacing: 0.02em;
 }
 
@@ -2599,9 +2762,9 @@ a.fenn-map__link:focus-visible {
     font-size: 0.78rem;
   }
 
-  .commons-table th:nth-child(3),
-  .commons-table th:nth-child(4) {
-    display: none;
+  .commons-history__delta,
+  .commons-table__amount {
+    font-size: 0.78rem;
   }
 
   .ledger-table {

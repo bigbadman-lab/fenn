@@ -1,17 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CommonsCommitments } from "@/components/commons/commons-commitments";
+import { CommonsHistory } from "@/components/commons/commons-history";
+import { TreasuryReadout } from "@/components/commons/treasury-readout";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import { loadCommonsPageData } from "@/lib/commons/page-data";
 
 export const metadata: Metadata = {
   title: "The Commons",
 };
 
+export const dynamic = "force-dynamic";
+
 /**
- * Stage 5 — public Commons surface only.
- * No live commitments, allocations, or Treasury reads yet.
+ * Public Treasury + Commons surface.
+ * Holdings and commitments are separate facts — no available/remaining calc.
  */
-export default function CommonsPage() {
+export default async function CommonsPage() {
+  const { treasury, commons } = await loadCommonsPageData();
+
   return (
     <article className="place commons">
       <header className="commons__header">
@@ -40,54 +48,30 @@ export default function CommonsPage() {
         />
       </header>
 
-      <section className="commons-sheet" aria-label="commons accounts">
-        <div className="commons-block">
-          <h2 className="commons-block__label">AVAILABLE TO CIRCULATE</h2>
-          <div className="commons-block__body">
-            <p className="commons-empty">nothing committed.</p>
-          </div>
-        </div>
+      <div className="commons-sheet" aria-label="treasury and commons accounts">
+        <TreasuryReadout treasury={treasury} />
+        <CommonsCommitments commons={commons} />
+        <CommonsHistory commons={commons} />
 
-        <div className="commons-block">
-          <h2 className="commons-block__label">CURRENT COMMITMENTS</h2>
-          <div className="commons-block__body">
-            <table className="commons-table">
-              <caption className="visually-hidden">
-                Current Commons commitments by asset
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">ASSET</th>
-                  <th scope="col">AMOUNT</th>
-                  <th scope="col">COMMITTED</th>
-                  <th scope="col">REMAINING</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colSpan={4} className="commons-table__empty">
-                    none.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="commons-block">
-          <h2 className="commons-block__label">NEXT CIRCULATION</h2>
+        <section
+          className="commons-block"
+          aria-labelledby="next-circulation-heading"
+        >
+          <h2 id="next-circulation-heading" className="commons-block__label">
+            NEXT CIRCULATION
+          </h2>
           <div className="commons-block__body">
             <p className="commons-empty">not announced.</p>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <p className="commons__maxim" role="note">
         A HOARD IS A FAILURE OF CIRCULATION.
       </p>
 
       <nav className="commons__nav" aria-label="related">
-        <Link href="/ledger">[ inspect the ledger ]</Link>
+        <Link href="/ledger">[ OPEN THE LEDGER ]</Link>
       </nav>
     </article>
   );

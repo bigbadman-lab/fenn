@@ -47,7 +47,13 @@ const serverOnlySchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: requiredSecret,
   PRIVY_APP_SECRET: requiredSecret,
   OPENAI_API_KEY: optionalSecret,
+  /** Server-only Robinhood Chain JSON-RPC URL for Treasury balance reads (Stage 9+). */
   ROBINHOOD_CHAIN_RPC_URL: optionalSecret,
+  /**
+   * Bootstrap/ops aid for a Treasury wallet address.
+   * Canonical configured wallet is treasury_config.treasury_wallet_address (DB).
+   * This env value must not override a populated DB row.
+   */
   FENN_TREASURY_ADDRESS: optionalSecret,
   X_API_KEY: optionalSecret,
   X_API_SECRET: optionalSecret,

@@ -1,0 +1,76 @@
+-- FENN Stage 9 — Operator configuration EXAMPLE (non-migration)
+--
+-- This file is documentation / ops scaffolding only.
+-- Do NOT apply as a migration.
+-- Do NOT commit real production wallet or token addresses here.
+--
+-- Live Stage 9 balances require ALL of:
+--   1. ROBINHOOD_CHAIN_RPC_URL in server env (.env.local) — never NEXT_PUBLIC_*
+--   2. One row in public.treasury_config (canonical wallet)
+--   3. One or more tracked rows in public.treasury_assets (chain_id = 4663)
+--
+-- FENN_TREASURY_ADDRESS is bootstrap/ops aid only and must not override DB config
+-- once treasury_config is populated.
+--
+-- Replace every PLACEHOLDER_* value before running manually in a trusted SQL editor.
+
+-- ---------------------------------------------------------------------------
+-- 1) Canonical Treasury wallet (singleton)
+-- ---------------------------------------------------------------------------
+-- INSERT INTO public.treasury_config (treasury_wallet_address, notes, updated_by_actor_id)
+-- VALUES (
+--   '0xPLACEHOLDER_TREASURY_WALLET_LOWERCASE_40HEX',
+--   'ops bootstrap',
+--   'ops:manual'
+-- );
+--
+-- Address must already be lowercase 0x + 40 hex (is_normalized_evm_address).
+
+-- ---------------------------------------------------------------------------
+-- 2) Native ETH on Robinhood Chain (contract_address NULL)
+-- ---------------------------------------------------------------------------
+-- INSERT INTO public.treasury_assets (
+--   symbol, name, chain_id, contract_address, decimals, is_tracked, display_order
+-- ) VALUES (
+--   'ETH',
+--   'Ether',
+--   4663,
+--   NULL,
+--   18,
+--   true,
+--   0
+-- );
+
+-- ---------------------------------------------------------------------------
+-- 3) Optional ERC-20 tracked asset
+-- ---------------------------------------------------------------------------
+-- INSERT INTO public.treasury_assets (
+--   symbol, name, chain_id, contract_address, decimals, is_tracked, display_order
+-- ) VALUES (
+--   'TOKEN',
+--   'Example token',
+--   4663,
+--   '0xPLACEHOLDER_TOKEN_CONTRACT_LOWERCASE_40HEX',
+--   18,
+--   true,
+--   1
+-- );
+
+-- ---------------------------------------------------------------------------
+-- 4) Optional Commons commitment (declarative — not a chain balance)
+-- ---------------------------------------------------------------------------
+-- INSERT INTO public.commons_commitments (asset_symbol, amount, value_usd_manual, notes)
+-- VALUES (
+--   'ETH',
+--   0,
+--   NULL,
+--   'example known-zero commitment row'
+-- );
+
+-- ---------------------------------------------------------------------------
+-- Notes
+-- ---------------------------------------------------------------------------
+-- * Holdings on /commons always come from live Robinhood Chain reads.
+-- * Commons commitments are independent accounting facts.
+-- * Do not invent USD prices or sum assets into a fake Treasury total.
+-- * Circulations / Ledger remain Stage 10.
