@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test src/lib/leaf/**/*.test.ts src/lib/deeds/**/*.test.ts src/lib/admin/**/*.test.ts"
+    "test": "tsx --conditions=react-server --test src/lib/leaf/**/*.test.ts src/lib/deeds/**/*.test.ts src/lib/admin/**/*.test.ts src/lib/camp/**/*.test.ts"
   },
   "dependencies": {
     "@privy-io/node": "^0.27.0",
@@ -15,6 +15,7 @@
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.8",
     "next": "16.2.11",
+    "openai": "^6.48.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "server-only": "^0.0.1",
