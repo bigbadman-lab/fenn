@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
+import { parseAdminWalletAllowlist } from "@/lib/admin/config";
 import { publicEnv } from "@/lib/env/public";
 
 /**
@@ -24,6 +25,24 @@ const requiredSecret = z.preprocess(
   z.string().min(1, "required"),
 );
 
+/** Comma-separated EVM admin wallets. Empty/missing = no admins. Invalid entries fail loud. */
+const fennAdminWallets = z.preprocess(
+  (value) => (typeof value === "string" ? value : ""),
+  z.string().superRefine((value, ctx) => {
+    try {
+      parseAdminWalletAllowlist(value);
+    } catch (error) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Invalid FENN_ADMIN_WALLETS",
+      });
+    }
+  }),
+);
+
 const serverOnlySchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: requiredSecret,
   PRIVY_APP_SECRET: requiredSecret,
@@ -35,6 +54,7 @@ const serverOnlySchema = z.object({
   X_BEARER_TOKEN: optionalSecret,
   X_OAUTH_CLIENT_ID: optionalSecret,
   X_OAUTH_CLIENT_SECRET: optionalSecret,
+  FENN_ADMIN_WALLETS: fennAdminWallets,
 });
 
 export type ServerOnlyEnv = z.infer<typeof serverOnlySchema>;
@@ -51,6 +71,7 @@ function readServerOnlyEnv(): ServerOnlyEnv {
     X_BEARER_TOKEN: process.env.X_BEARER_TOKEN,
     X_OAUTH_CLIENT_ID: process.env.X_OAUTH_CLIENT_ID,
     X_OAUTH_CLIENT_SECRET: process.env.X_OAUTH_CLIENT_SECRET,
+    FENN_ADMIN_WALLETS: process.env.FENN_ADMIN_WALLETS,
   });
 
   if (!parsed.success) {

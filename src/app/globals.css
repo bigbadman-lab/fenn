@@ -2429,3 +2429,437 @@ a.fenn-map__link:focus-visible {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Stage 6.2 — Deeds board + notice detail                             */
+/* ------------------------------------------------------------------ */
+
+.deeds-place {
+  max-width: 42rem;
+}
+
+.deed-board__header {
+  margin-top: 0.35rem;
+}
+
+.deed-board__header-title {
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.16em;
+  color: var(--color-hoard);
+}
+
+.deed-board__header .muted {
+  margin: 0.15rem 0 0;
+}
+
+.deed-board {
+  margin-top: 1.75rem;
+}
+
+.deed-board__empty p {
+  margin: 0.2rem 0;
+}
+
+.deed-board__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.deed-notice {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  gap: 0.85rem 1rem;
+  padding: 0.95rem 0.9rem 1.05rem;
+  border: 1px solid color-mix(in srgb, var(--color-hoard) 42%, var(--border));
+  border-right-width: 2px;
+  border-bottom-style: dashed;
+  background: color-mix(in srgb, var(--color-hoard) 4%, var(--color-night));
+}
+
+.deed-notice::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: 2.4rem;
+  width: 1.6rem;
+  height: 2px;
+  background: var(--color-night);
+  pointer-events: none;
+}
+
+.deed-notice__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-top: 0.1rem;
+  border-right: 1px dashed color-mix(in srgb, var(--color-hoard) 35%, transparent);
+  padding-right: 0.65rem;
+}
+
+.deed-notice__index {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  color: var(--color-hoard);
+}
+
+.deed-notice__category {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--color-hoard) 70%, var(--color-bone));
+  writing-mode: horizontal-tb;
+  word-break: break-all;
+}
+
+.deed-notice__body {
+  min-width: 0;
+}
+
+.deed-notice__title {
+  margin: 0 0 0.55rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.deed-notice__title a {
+  color: var(--color-bone);
+  text-decoration: none;
+}
+
+.deed-notice__title a:hover,
+.deed-notice__title a:focus-visible {
+  color: var(--color-hoard);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.deed-notice__lore {
+  margin: 0 0 0.85rem;
+  max-width: 34rem;
+  color: color-mix(in srgb, var(--color-bone) 78%, var(--color-night));
+  white-space: pre-wrap;
+}
+
+.deed-notice__meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem 0.85rem;
+  margin: 0;
+}
+
+.deed-notice__meta > div {
+  min-width: 0;
+}
+
+.deed-notice__meta dt {
+  margin: 0 0 0.2rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: lowercase;
+  color: color-mix(in srgb, var(--color-hoard) 75%, var(--muted));
+}
+
+.deed-notice__meta dd {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-bone);
+  overflow-wrap: anywhere;
+}
+
+.deed-notice__closes {
+  margin: 0.75rem 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+
+.deed-notice__action {
+  margin: 0.9rem 0 0;
+}
+
+.deed-notice__examine {
+  color: var(--color-hoard);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+
+.deed-notice__examine:hover,
+.deed-notice__examine:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.deed-detail {
+  margin-top: 1.5rem;
+  padding: 1.1rem 1rem 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--color-hoard) 45%, var(--border));
+  border-top-width: 2px;
+  border-left-style: dashed;
+  max-width: 42rem;
+}
+
+.deed-detail__header {
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.95rem;
+  border-bottom: 1px dashed color-mix(in srgb, var(--color-hoard) 32%, transparent);
+}
+
+.deed-detail__eyebrow {
+  margin: 0 0 0.55rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  color: var(--color-hoard);
+}
+
+.deed-detail__title {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.05rem, 3.2vw, 1.35rem);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-bone);
+}
+
+.deed-detail__lore {
+  margin: 0;
+  max-width: 36rem;
+  white-space: pre-wrap;
+  color: color-mix(in srgb, var(--color-bone) 80%, var(--color-night));
+}
+
+.deed-detail__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+  margin: 0 0 1.1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-hoard) 28%, transparent);
+}
+
+.deed-detail__fact {
+  min-width: 0;
+  padding-right: 0.35rem;
+}
+
+.deed-detail__fact:nth-child(odd) {
+  border-right: 1px dashed color-mix(in srgb, var(--color-hoard) 28%, transparent);
+}
+
+.deed-detail__fact dt {
+  margin: 0 0 0.25rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  color: var(--color-hoard);
+}
+
+.deed-detail__fact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.deed-detail__aside {
+  margin: 0 0 1.15rem;
+  padding: 0.35rem 0 0.85rem;
+  border-bottom: 1px dashed color-mix(in srgb, var(--color-bone) 22%, transparent);
+}
+
+.deed-detail__aside p {
+  margin: 0.35rem 0;
+  font-size: 0.85rem;
+}
+
+.deed-detail__label {
+  letter-spacing: 0.1em;
+  font-size: 0.72rem;
+  color: color-mix(in srgb, var(--color-hoard) 80%, var(--muted));
+  text-transform: lowercase;
+}
+
+.deed-detail__section-title,
+.deed-proof__title {
+  margin: 0 0 0.65rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  color: var(--color-hoard);
+}
+
+.deed-detail__instructions {
+  margin-bottom: 1.25rem;
+}
+
+.deed-detail__instructions-body {
+  margin: 0;
+  white-space: pre-wrap;
+  max-width: 36rem;
+}
+
+.deed-proof {
+  margin: 0 0 1.25rem;
+  padding: 0.9rem 0.85rem;
+  border: 1px dashed color-mix(in srgb, var(--color-hoard) 40%, transparent);
+  border-right-style: solid;
+}
+
+.deed-proof p {
+  margin: 0.35rem 0;
+}
+
+.deed-proof__error {
+  color: color-mix(in srgb, #c47a6a 80%, var(--color-bone));
+}
+
+.deed-proof__state {
+  margin: 0.35rem 0 0.85rem;
+}
+
+.deed-proof__note {
+  margin-top: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border-left: 2px solid color-mix(in srgb, var(--color-hoard) 50%, transparent);
+}
+
+.deed-proof__note-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  color: var(--color-hoard);
+}
+
+.deed-proof-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+  margin-top: 0.55rem;
+}
+
+.deed-proof-form__aside {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.deed-proof-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.deed-proof-field__label {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  color: var(--color-hoard);
+}
+
+.deed-proof-field__control {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--color-hoard) 45%, var(--border));
+  border-radius: 0;
+  background: color-mix(in srgb, var(--color-night) 92%, var(--color-hoard));
+  color: var(--color-bone);
+  font: inherit;
+  resize: vertical;
+}
+
+.deed-proof-field__control:focus-visible {
+  outline: 1px solid var(--color-hoard);
+  outline-offset: 2px;
+}
+
+.deed-proof-form__actions {
+  margin: 0.15rem 0 0;
+}
+
+.deed-marks {
+  margin-top: 1.15rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed color-mix(in srgb, var(--color-hoard) 30%, transparent);
+}
+
+.deed-marks__title {
+  margin: 0 0 0.55rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  color: var(--color-hoard);
+}
+
+.deed-marks__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.deed-marks__list li {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.deed-marks__date {
+  color: color-mix(in srgb, var(--color-bone) 70%, var(--color-night));
+}
+
+.deed-marks__status {
+  letter-spacing: 0.08em;
+  color: var(--color-bone);
+}
+
+.deed-detail__nav {
+  margin-top: 0.35rem;
+}
+
+.deed-detail__nav a {
+  color: color-mix(in srgb, var(--color-hoard) 85%, var(--color-bone));
+  text-decoration: none;
+}
+
+.deed-detail__nav a:hover,
+.deed-detail__nav a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+@media (max-width: 640px) {
+  .deed-notice {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .deed-notice__rail {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.75rem;
+    border-right: none;
+    border-bottom: 1px dashed color-mix(in srgb, var(--color-hoard) 35%, transparent);
+    padding-right: 0;
+    padding-bottom: 0.55rem;
+  }
+
+  .deed-notice__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .deed-detail__facts {
+    grid-template-columns: 1fr;
+  }
+
+  .deed-detail__fact:nth-child(odd) {
+    border-right: none;
+  }
+
+  .deed-detail {
+    padding: 0.95rem 0.8rem 1.1rem;
+  }
+}
+
