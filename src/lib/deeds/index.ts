@@ -65,6 +65,13 @@ export { toSafeDeedSubmission } from "@/lib/deeds/submission-dto";
 
 export { deedSubmissionErrorCopy } from "@/lib/deeds/submission-errors";
 
+export {
+  mapDeedModerationRpcError,
+  DeedModerationRpcError,
+  type DeedModerationRpcErrorCode,
+} from "@/lib/deeds/moderation-rpc-errors";
+
 // Public read helpers live in `@/lib/deeds/queries` (server-only).
 // Write helpers live in `@/lib/deeds/submissions` (server-only).
+// Atomic moderation RPCs live in `@/lib/deeds/moderation-rpc` (server-only).
 // Do not re-export them here so pure domain helpers stay importable in tests.
