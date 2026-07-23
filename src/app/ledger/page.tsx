@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+
 export const metadata: Metadata = {
   title: "The Ledger",
 };
@@ -13,22 +15,30 @@ export default function LedgerPage() {
   return (
     <article className="place ledger">
       <header className="ledger__header">
-        <h1 className="place__title">THE LEDGER</h1>
-        <pre className="ascii ledger__mark" aria-hidden="true">{`      ____________  ____________
+        <AsciiPageTitle
+          title="THE LEDGER"
+          mark="LEDGER"
+          accent="ledger"
+          subtitle={
+            <>
+              <pre className="ascii ledger__mark" aria-hidden="true">{`      ____________  ____________
      /            \\/            \\
     |···· ··· ··· || ··· ··· ····|
     |-------------|--------------|
     |             ||             |
     |_____________||_____________|`}</pre>
-        <p className="ledger__lede">nothing that moves is forgotten.</p>
-        <p className="ledger__aside muted">
-          the crown hides its books.
-          <br />
-          the greenwood doesn&apos;t.
-        </p>
-        <p className="ledger__page-mark" aria-hidden="true">
-          PAGE 000
-        </p>
+              <p className="ledger__lede">nothing that moves is forgotten.</p>
+              <p className="ledger__aside muted">
+                the crown hides its books.
+                <br />
+                the greenwood doesn&apos;t.
+              </p>
+              <p className="ledger__page-mark" aria-hidden="true">
+                PAGE 000
+              </p>
+            </>
+          }
+        />
       </header>
 
       <section className="ledger-register" aria-labelledby="ledger-register-title">

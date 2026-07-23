@@ -4,12 +4,14 @@ import { HomeLoreInterrupt } from "@/components/home/home-lore-interrupt";
 import { HomeOutlawRegister } from "@/components/home/home-outlaw-register";
 import { HomePaths } from "@/components/home/home-paths";
 import { HomeWelcome } from "@/components/home/home-welcome";
+import { LoreTransmission } from "@/components/home/lore-transmission";
 
 export default function HomePage() {
   return (
     <div className="home">
       <HomeIdentity />
       <HomeWelcome />
+      <LoreTransmission />
       <HomeLoreInterrupt />
       <HomeOutlawRegister />
       <HomeGreenwoodTeaser />

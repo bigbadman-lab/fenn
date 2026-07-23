@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { BOOK_ENTRIES } from "@/content/book";
 
 export const metadata: Metadata = {
@@ -10,11 +11,19 @@ export const metadata: Metadata = {
 export default function BookPage() {
   return (
     <article className="place book">
-      <h1 className="place__title">THE BOOK</h1>
-      <div className="place__body">
-        <p className="muted">pages accumulate slowly.</p>
-        <p className="muted">not everything here explains itself.</p>
+      <AsciiPageTitle
+        title="THE BOOK"
+        mark="BOOK"
+        accent="book"
+        subtitle={
+          <>
+            <p className="muted">pages accumulate slowly.</p>
+            <p className="muted">not everything here explains itself.</p>
+          </>
+        }
+      />
 
+      <div className="place__body">
         <nav className="book-index" aria-label="book entries">
           <ul>
             {BOOK_ENTRIES.map((entry) => (

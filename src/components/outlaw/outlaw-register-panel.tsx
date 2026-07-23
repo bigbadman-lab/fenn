@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState, type ReactNode } from "react";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
+import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import {
   CONTRIBUTION_TYPES,
   GREENWOOD_TERMS_VERSION,
@@ -130,7 +131,11 @@ export function OutlawRegisterPanel({
     return (
       <article className="place">
         {title ? (
-          <h1 className="place__title">THE OUTLAW REGISTER</h1>
+          <AsciiPageTitle
+            title="THE OUTLAW REGISTER"
+            mark="REGISTER"
+            accent="outlaw"
+          />
         ) : null}
         <div className="place__body">{body}</div>
       </article>
@@ -153,7 +158,7 @@ export function OutlawRegisterPanel({
         <p>the path asks for a wallet before a name.</p>
         <p>
           <button type="button" className="btn-text" onClick={() => login()}>
-            [ connect ]
+            [ enter ]
           </button>
         </p>
       </>,

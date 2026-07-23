@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+
 export const metadata: Metadata = {
   title: "The Commons",
 };
@@ -13,21 +15,29 @@ export default function CommonsPage() {
   return (
     <article className="place commons">
       <header className="commons__header">
-        <h1 className="place__title">THE COMMONS</h1>
-        <pre className="ascii commons__mark" aria-hidden="true">{`          |
+        <AsciiPageTitle
+          title="THE COMMONS"
+          mark="COMMONS"
+          accent="commons"
+          subtitle={
+            <>
+              <pre className="ascii commons__mark" aria-hidden="true">{`          |
       ----+----
      /    |    \\
     v     v     v`}</pre>
-        <p className="commons__lede">
-          what reaches here
-          <br />
-          was committed to move.
-        </p>
-        <p className="commons__aside muted">
-          the treasury is where things arrive.
-          <br />
-          the commons is what fenn has committed to move.
-        </p>
+              <p className="commons__lede">
+                what reaches here
+                <br />
+                was committed to move.
+              </p>
+              <p className="commons__aside muted">
+                the treasury is where things arrive.
+                <br />
+                the commons is what fenn has committed to move.
+              </p>
+            </>
+          }
+        />
       </header>
 
       <section className="commons-sheet" aria-label="commons accounts">

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ShellAuthControls } from "@/components/shell/shell-auth-controls";
 import { ShellReturn } from "@/components/shell/shell-return";
 import { SiteFooter } from "@/components/shell/site-footer";
-import { SiteNav } from "@/components/shell/site-nav";
 
 type ApplicationShellProps = {
   children: React.ReactNode;
@@ -27,7 +26,6 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
           </p>
         </header>
 
-        <SiteNav />
         <ShellReturn />
 
         <main className="shell__main">{children}</main>

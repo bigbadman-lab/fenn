@@ -13,6 +13,9 @@ export function HomeGreenwoodTeaser() {
         <p>the path continues beyond this point.</p>
         <p>the wood has not opened this gate yet.</p>
         <p>access is earned.</p>
+        <p className="home-greenwood__whisper muted">
+          a door everyone can open isn&apos;t much of a door.
+        </p>
         <p>
           <Link href="/greenwood?crossing=1">[ go to the greenwood ]</Link>
         </p>

@@ -262,7 +262,7 @@ keep walking keep walking keep walking
     variant: "final",
     motion: "none",
     accent: "none",
-    holdMs: 300,
+    holdMs: 2000,
     text: `
 
 
@@ -275,7 +275,7 @@ THE ROAD ENDS HERE.
   },
 ] as const;
 
-/** Sum of holdMs ≈ 2.9s */
+/** Sum of holdMs ≈ 4.5s (final frame holds 2000ms motionless). */
 export const GREENWOOD_CROSSING_REDUCED_MS = 700;
 
 export const GREENWOOD_GATE_ASCII = `                         /\\

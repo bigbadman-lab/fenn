@@ -1,6 +1,7 @@
 "use client";
 
 import { GREENWOOD_GATE_ASCII } from "@/components/greenwood/greenwood-frames";
+import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 
 type GreenwoodGateProps = {
   enterDisabled: boolean;
@@ -16,15 +17,23 @@ export function GreenwoodGate({
   return (
     <article className="place greenwood-gate">
       <header className="greenwood-gate__header">
-        <h1 className="place__title">THE GREENWOOD</h1>
+        <AsciiPageTitle
+          title="THE GREENWOOD"
+          mark="GREENWOOD"
+          accent="greenwood"
+          subtitle={
+            <>
+              <p>the road was free.</p>
+              <p>this part was not.</p>
+            </>
+          }
+        />
         <pre className="ascii greenwood-gate__mark" aria-hidden="true">
           {GREENWOOD_GATE_ASCII}
         </pre>
       </header>
 
       <div className="greenwood-gate__body">
-        <p>the road was free.</p>
-        <p>this part was not.</p>
         <p className="greenwood-gate__pause">something moves beyond the trees.</p>
         <p>the wood is open.</p>
         <p>are you?</p>
@@ -77,10 +86,18 @@ export function GreenwoodGateHoldingMessage({
       className="place greenwood-gate greenwood-gate--holding"
       aria-live="polite"
     >
-      <h1 className="place__title">THE GATE IS NOT YET LISTENING.</h1>
+      <AsciiPageTitle
+        title="THE GATE IS NOT YET LISTENING."
+        mark="GREENWOOD"
+        accent="greenwood"
+        subtitle={
+          <>
+            <p>the wood knows who you are.</p>
+            <p>the crossing has not begun.</p>
+          </>
+        }
+      />
       <div className="greenwood-gate__body">
-        <p>the wood knows who you are.</p>
-        <p>the crossing has not begun.</p>
         <p className="greenwood-gate__enter">
           <button type="button" className="btn-text" onClick={onReturn}>
             [ return ]

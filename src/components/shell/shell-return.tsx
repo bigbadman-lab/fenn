@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-/** Inner pages only — homepage shows SiteNav instead. */
+/** Inner pages only — homepage navigation lives in the world map. */
 export function ShellReturn() {
   const pathname = usePathname();
 
