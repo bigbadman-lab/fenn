@@ -1716,6 +1716,13 @@ a.fenn-map__link:focus-visible {
   color: #e08a3c;
 }
 
+.camp-talk__reward {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: var(--color-leaf);
+}
+
 .camp-talk__body {
   margin: 0;
   white-space: pre-wrap;

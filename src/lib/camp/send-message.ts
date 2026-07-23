@@ -3,8 +3,12 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CAMP_HISTORY_MESSAGE_LIMIT } from "@/lib/camp/config";
-import type { CampMessageRow, SafeCampMessage } from "@/lib/camp/dto";
-import { toSafeCampMessage } from "@/lib/camp/dto";
+import type {
+  CampMessageRow,
+  SafeCampMessage,
+  SafeCampReward,
+} from "@/lib/camp/dto";
+import { toSafeCampMessage, toSafeCampReward } from "@/lib/camp/dto";
 import { CampAiError } from "@/lib/camp/errors";
 import {
   campRequestHashes,
@@ -21,10 +25,19 @@ import {
   refreshCampSessionCounters,
 } from "@/lib/camp/sessions";
 import { validateCampUserMessage } from "@/lib/camp/history";
+import { normalizeCampEvaluation } from "@/lib/camp/normalize-evaluation";
+import {
+  applyCampMessageReward,
+  type ApplyCampMessageRewardResult,
+} from "@/lib/camp/reward";
 import {
   runCampCharacterTurn,
   type CampModelCaller,
 } from "@/lib/camp/runtime";
+import {
+  detectCampRepetition,
+  detectCampRewardGaming,
+} from "@/lib/camp/signals";
 import type { CampContributionEvaluation } from "@/lib/camp/types";
 
 async function defaultAdmin(): Promise<SupabaseClient> {
@@ -35,12 +48,20 @@ async function defaultAdmin(): Promise<SupabaseClient> {
 export type SendCampMessageResult = {
   userMessage: SafeCampMessage;
   assistantMessage: SafeCampMessage;
+  reward: SafeCampReward;
+  rewardUnavailable: boolean;
   reused: boolean;
 };
 
+export type CampRewardApplicator = (input: {
+  messageId: string;
+  admin: SupabaseClient;
+}) => Promise<ApplyCampMessageRewardResult>;
+
 /**
- * Persist user turn + assistant reply with request idempotency.
- * No LEAF awards. No memory_candidates table inserts.
+ * Persist user turn + assistant reply with request idempotency, then apply
+ * server-controlled Camp LEAF reward (caps/cooldown via RPC).
+ * No memory_candidates inserts. Conversation survives reward failures.
  */
 export async function sendCampMessage(input: {
   profileId: string;
@@ -50,8 +71,10 @@ export async function sendCampMessage(input: {
   clientMessageId: string;
   admin?: SupabaseClient;
   callModel?: CampModelCaller;
+  applyReward?: CampRewardApplicator;
 }): Promise<SendCampMessageResult> {
   const admin = input.admin ?? (await defaultAdmin());
+  const applyReward = input.applyReward ?? defaultApplyReward;
 
   if (!isCampClientMessageId(input.clientMessageId)) {
     throw new CampAiError(
@@ -93,7 +116,7 @@ export async function sendCampMessage(input: {
 
   if (existingUser && existingAssistant) {
     const userSafe = toSafeCampMessage(existingUser);
-    const assistantSafe = toSafeCampMessage(existingAssistant);
+    let assistantSafe = toSafeCampMessage(existingAssistant);
     if (!userSafe || !assistantSafe) {
       throw new CampAiError(
         "camp_write_failed",
@@ -101,9 +124,34 @@ export async function sendCampMessage(input: {
         500,
       );
     }
+
+    // Idempotent replay: ensure reward decision exists without double-grant.
+    let rewardUnavailable = false;
+    let granted = Number(existingAssistant.reward_granted ?? 0);
+    const alreadyFinalized = hasFinalizedRewardPolicy(
+      existingAssistant.moderation_flags,
+    );
+    if (!alreadyFinalized && granted === 0) {
+      try {
+        const rewardResult = await applyReward({
+          messageId: existingAssistant.id,
+          admin,
+        });
+        granted = rewardResult.actualGrant;
+        assistantSafe = {
+          ...assistantSafe,
+          ...(granted > 0 ? { rewardGranted: granted } : {}),
+        };
+      } catch {
+        rewardUnavailable = true;
+      }
+    }
+
     return {
       userMessage: userSafe,
       assistantMessage: assistantSafe,
+      reward: toSafeCampReward(granted),
+      rewardUnavailable,
       reused: true,
     };
   }
@@ -139,10 +187,6 @@ export async function sendCampMessage(input: {
 
   // runCampCharacterTurn appends userMessage again — pass prior turns only.
   const prior = historyIncludingUser.slice(0, -1);
-  const last = historyIncludingUser[historyIncludingUser.length - 1];
-  if (!last || last.role !== "user" || last.content !== userContent) {
-    // Defensive: still call with prior + explicit user message content.
-  }
 
   let turn;
   try {
@@ -164,18 +208,65 @@ export async function sendCampMessage(input: {
     );
   }
 
-  const assistantRow = await insertAssistantMessage({
+  const priorUserMessages = prior
+    .filter((m) => m.role === "user")
+    .map((m) => m.content);
+  const repetition = detectCampRepetition({
+    userMessage: userContent,
+    priorUserMessages,
+  });
+  const rewardGaming = detectCampRewardGaming(userContent);
+  const normalized = normalizeCampEvaluation({
+    raw: turn.evaluation,
+    signals: {
+      repeatedContent: repetition.repeatedContent,
+      repetitionSimilarity: repetition.similarity,
+      rewardGaming,
+    },
+  });
+
+  let assistantRow = await insertAssistantMessage({
     admin,
     sessionId: session.id,
     profileId: input.profileId,
     characterId: character.row.id,
     content: turn.reply,
     clientMessageHash: assistantHash,
-    evaluation: turn.evaluation,
+    evaluation: normalized.evaluation,
     promptVersion: turn.promptVersion,
+    moderationFlags: {
+      promptVersion: turn.promptVersion,
+      evaluationReason: normalized.evaluation.reason,
+      repeatedContent: normalized.signals.repeatedContent,
+      repetitionSimilarity: normalized.signals.repetitionSimilarity,
+      rewardGaming: normalized.signals.rewardGaming,
+      normalizedByServer: true,
+      originalRecommendation: normalized.originalRecommendation,
+      finalRecommendation: normalized.finalRecommendation,
+      originalMemoryCandidate: normalized.originalMemoryCandidate,
+      finalMemoryCandidate: normalized.finalMemoryCandidate,
+    },
   });
 
   await refreshCampSessionCounters(session.id, admin);
+
+  let rewardUnavailable = false;
+  let granted = 0;
+  try {
+    const rewardResult = await applyReward({
+      messageId: assistantRow.id,
+      admin,
+    });
+    granted = rewardResult.actualGrant;
+    // Refresh row fields for SafeCampMessage mapping when store updated.
+    assistantRow = {
+      ...assistantRow,
+      reward_granted: granted,
+      leaf_ledger_id: rewardResult.ledgerId,
+    };
+  } catch {
+    rewardUnavailable = true;
+  }
 
   const userSafe = toSafeCampMessage(userRow);
   const assistantSafe = toSafeCampMessage(assistantRow);
@@ -190,8 +281,31 @@ export async function sendCampMessage(input: {
   return {
     userMessage: userSafe,
     assistantMessage: assistantSafe,
+    reward: toSafeCampReward(granted),
+    rewardUnavailable,
     reused: Boolean(existingUser),
   };
+}
+
+async function defaultApplyReward(input: {
+  messageId: string;
+  admin: SupabaseClient;
+}): Promise<ApplyCampMessageRewardResult> {
+  return applyCampMessageReward({
+    messageId: input.messageId,
+    admin: input.admin,
+  });
+}
+
+function hasFinalizedRewardPolicy(
+  flags: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!flags || typeof flags !== "object") return false;
+  const policy = flags.rewardPolicy;
+  if (!policy || typeof policy !== "object" || Array.isArray(policy)) {
+    return false;
+  }
+  return "actual" in (policy as Record<string, unknown>);
 }
 
 async function insertUserMessage(input: {
@@ -247,6 +361,7 @@ async function insertAssistantMessage(input: {
   clientMessageHash: string;
   evaluation: CampContributionEvaluation;
   promptVersion: string;
+  moderationFlags: Record<string, unknown>;
 }): Promise<CampMessageRow> {
   const { data, error } = await input.admin
     .from("camp_messages")
@@ -265,10 +380,7 @@ async function insertAssistantMessage(input: {
       spam_probability: input.evaluation.spamProbability,
       memory_candidate_flag: input.evaluation.memoryCandidate,
       leaf_ledger_id: null,
-      moderation_flags: {
-        evaluationReason: input.evaluation.reason,
-        promptVersion: input.promptVersion,
-      },
+      moderation_flags: input.moderationFlags,
     })
     .select(MESSAGE_SELECT)
     .single();

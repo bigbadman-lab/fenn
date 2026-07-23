@@ -12,7 +12,8 @@ export type CampAiErrorCode =
   | "camp_not_registered"
   | "camp_session_closed"
   | "camp_request_conflict"
-  | "camp_write_failed";
+  | "camp_write_failed"
+  | "camp_reward_failed";
 
 export class CampAiError extends Error {
   code: CampAiErrorCode;

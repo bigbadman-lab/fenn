@@ -30,3 +30,15 @@ export const CAMP_REWARD_RECOMMENDATION_MAX = 3;
 /** Spec-aligned integer scales for contribution dimensions. */
 export const CAMP_SCORE_MIN = 0;
 export const CAMP_SCORE_MAX = 3;
+
+/** Prior USER messages compared for repetition (same character session). */
+export const CAMP_REPETITION_LOOKBACK = 10;
+
+/**
+ * Jaccard token similarity at/above this forces reward recommendation 0.
+ * Exact normalized match always counts as repetition.
+ */
+export const CAMP_REPETITION_SIMILARITY_THRESHOLD = 0.9;
+
+/** Minimum spamProbability when repetition or farming is detected. */
+export const CAMP_SPAM_FLOOR_ON_SIGNAL = 0.8;

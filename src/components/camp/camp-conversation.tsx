@@ -35,6 +35,8 @@ type SendResponse = {
   ok?: boolean;
   userMessage?: SafeCampMessage;
   assistantMessage?: SafeCampMessage;
+  reward?: { granted?: number };
+  rewardUnavailable?: boolean;
   code?: string;
   error?: string;
 };
@@ -64,6 +66,7 @@ export function CampConversation({
     profileResolved,
     login,
     getAuthHeaders,
+    refreshMe,
   } = useFennAuth();
 
   const [messages, setMessages] = useState<SafeCampMessage[] | null>(null);
@@ -149,6 +152,17 @@ export function CampConversation({
         return;
       }
 
+      const granted = Math.max(
+        0,
+        Number(
+          data.assistantMessage.rewardGranted ?? data.reward?.granted ?? 0,
+        ),
+      );
+      const assistantWithReward: SafeCampMessage = {
+        ...data.assistantMessage,
+        ...(granted > 0 ? { rewardGranted: granted } : {}),
+      };
+
       setMessages((prev) => {
         const next = prev ? [...prev] : [];
         const withoutDupes = next.filter(
@@ -156,10 +170,13 @@ export function CampConversation({
             m.id !== data.userMessage!.id &&
             m.id !== data.assistantMessage!.id,
         );
-        return [...withoutDupes, data.userMessage!, data.assistantMessage!];
+        return [...withoutDupes, data.userMessage!, assistantWithReward];
       });
       setDraft("");
       setPendingClientMessageId(null);
+      if (granted > 0) {
+        void refreshMe({ quiet: true });
+      }
     } catch {
       setError(campErrorCopy("camp_ai_invalid_response"));
     } finally {
@@ -257,6 +274,14 @@ export function CampConversation({
                 {message.role === "assistant" ? characterName : outlawLabel}
               </p>
               <p className="camp-talk__body">{message.content}</p>
+              {message.role === "assistant" &&
+              message.rewardGranted &&
+              message.rewardGranted > 0 ? (
+                <p className="camp-talk__reward">
+                  +{message.rewardGranted}{" "}
+                  <span className="camp-leaf">LEAF</span>
+                </p>
+              ) : null}
             </div>
           ))
         )}

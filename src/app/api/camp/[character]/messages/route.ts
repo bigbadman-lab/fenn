@@ -95,6 +95,8 @@ export async function POST(request: Request, context: RouteContext) {
         ok: true,
         userMessage: result.userMessage,
         assistantMessage: result.assistantMessage,
+        reward: result.reward,
+        rewardUnavailable: result.rewardUnavailable,
         reused: result.reused,
       },
       { status: result.reused ? 200 : 201 },

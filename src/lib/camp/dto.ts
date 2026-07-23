@@ -6,12 +6,19 @@ export type SafeCampCharacter = {
   displayName: string;
 };
 
-/** Client-safe conversation message — no evaluation / ledger fields. */
+/** Client-safe conversation message — no evaluation / private policy fields. */
 export type SafeCampMessage = {
   id: string;
   role: CampConversationRole;
   content: string;
   createdAt: string;
+  /** Actual LEAF granted on this turn. Omitted when 0. */
+  rewardGranted?: number;
+};
+
+/** Actual Camp reward outcome only — never recommendations or scores. */
+export type SafeCampReward = {
+  granted: number;
 };
 
 export type SafeCampConversation = {
@@ -64,10 +71,19 @@ export type CampCharacterRow = {
 
 export function toSafeCampMessage(row: CampMessageRow): SafeCampMessage | null {
   if (row.role !== "user" && row.role !== "assistant") return null;
-  return {
+  const granted = Number(row.reward_granted ?? 0);
+  const message: SafeCampMessage = {
     id: row.id,
     role: row.role,
     content: row.content,
     createdAt: row.created_at,
   };
+  if (row.role === "assistant" && granted > 0) {
+    message.rewardGranted = granted;
+  }
+  return message;
+}
+
+export function toSafeCampReward(granted: number): SafeCampReward {
+  return { granted: Math.max(0, Math.trunc(granted) || 0) };
 }
