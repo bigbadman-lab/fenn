@@ -14,7 +14,7 @@ export function deedSubmissionErrorCopy(code: string): string {
       return "the proof does not meet the notice.";
     case "invalid_requirements":
       return "this notice cannot take proof yet.";
-    case "greenwood_not_available_yet":
+    case "greenwood_membership_required":
       return "this work begins beyond the gate.";
     case "common_not_available_yet":
       return "this work is not yet open on the road.";

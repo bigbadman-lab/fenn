@@ -70,6 +70,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "I did the work" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, true);
     if (result.ok) {
@@ -84,6 +85,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "x" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.deepEqual(result, { ok: false, code: "deed_not_found" });
   });
@@ -94,6 +96,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "x" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "deed_not_found");
@@ -105,6 +108,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "   " },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "invalid_evidence");
@@ -116,6 +120,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "ok", url: "https://example.com" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "invalid_evidence");
@@ -127,6 +132,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "ok", url: "javascript:alert(1)" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "invalid_evidence");
@@ -141,6 +147,7 @@ describe("evaluateCreateDeedSubmission", () => {
       evidence: { text: "ok", imagePath: path },
       imagePathVerified: true,
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, true);
     if (result.ok) assert.equal(result.evidence.imagePath, path);
@@ -153,6 +160,7 @@ describe("evaluateCreateDeedSubmission", () => {
       evidence: { text: "ok" },
       imagePathVerified: false,
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "invalid_evidence");
@@ -169,6 +177,7 @@ describe("evaluateCreateDeedSubmission", () => {
       },
       imagePathVerified: true,
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "invalid_evidence");
@@ -192,6 +201,7 @@ describe("evaluateCreateDeedSubmission", () => {
       },
       imagePathVerified: true,
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, true);
   });
@@ -210,6 +220,7 @@ describe("evaluateCreateDeedSubmission", () => {
       evidence: { text: "ok", imagePath: "uploads/x.png" },
       imagePathVerified: false,
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "invalid_image_ref");
@@ -225,15 +236,40 @@ describe("evaluateCreateDeedSubmission", () => {
     );
   });
 
-  it("Greenwood Deed fails closed", () => {
+  it("Greenwood Deed blocks non-members", () => {
     const result = evaluateCreateDeedSubmission({
       deed: baseDeed({ accessScope: "greenwood" }),
       existingSubmissions: [],
       evidence: { text: "ok" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
-    if (!result.ok) assert.equal(result.code, "greenwood_not_available_yet");
+    if (!result.ok) assert.equal(result.code, "greenwood_membership_required");
+  });
+
+  it("Greenwood Deed allows permanent members", () => {
+    const result = evaluateCreateDeedSubmission({
+      deed: baseDeed({ accessScope: "greenwood" }),
+      existingSubmissions: [],
+      evidence: { text: "ok" },
+      now,
+      greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
+    });
+    assert.equal(result.ok, true);
+  });
+
+  it("Greenwood Deed blocks eligible-but-not-admitted (null membership)", () => {
+    // Standing/eligibility is irrelevant — only greenwood_entered_at matters.
+    const result = evaluateCreateDeedSubmission({
+      deed: baseDeed({ accessScope: "greenwood" }),
+      existingSubmissions: [],
+      evidence: { text: "ok" },
+      now,
+      greenwoodEnteredAt: null,
+    });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, "greenwood_membership_required");
   });
 
   it("Common Deed fails closed", () => {
@@ -242,6 +278,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "ok" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "common_not_available_yet");
@@ -253,6 +290,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "ok" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "deed_not_open");
@@ -264,6 +302,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "ok" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "deed_not_open");
@@ -275,6 +314,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "ok" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "deed_not_open");
@@ -286,6 +326,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [],
       evidence: { text: "ok" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "deed_not_open");
@@ -297,6 +338,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [{ status: "pending" }],
       evidence: { text: "ok" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "submission_already_pending");
@@ -308,6 +350,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [{ status: "approved" }],
       evidence: { text: "ok" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "non_repeatable_complete");
@@ -319,6 +362,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [{ status: "rejected" }],
       evidence: { text: "try again" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, true);
   });
@@ -329,6 +373,7 @@ describe("evaluateCreateDeedSubmission", () => {
       existingSubmissions: [{ status: "approved" }],
       evidence: { text: "again" },
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, true);
   });
@@ -344,7 +389,7 @@ describe("createDeedSubmissionBodySchema", () => {
     assert.equal(parsed.success, true);
   });
 
-  it("rejects profileId, status, LEAF, imagePath", () => {
+  it("rejects profileId, status, LEAF, imagePath, greenwoodEnteredAt", () => {
     assert.equal(
       createDeedSubmissionBodySchema.safeParse({
         evidenceText: "x",
@@ -370,6 +415,13 @@ describe("createDeedSubmissionBodySchema", () => {
       createDeedSubmissionBodySchema.safeParse({
         evidenceText: "x",
         imagePath: "x.png",
+      }).success,
+      false,
+    );
+    assert.equal(
+      createDeedSubmissionBodySchema.safeParse({
+        evidenceText: "x",
+        greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
       }).success,
       false,
     );
@@ -444,11 +496,12 @@ describe("evaluateDeedUploadEligibility", () => {
       }),
       existingSubmissions: [],
       now,
+      greenwoodEnteredAt: null,
     });
     assert.equal(result.ok, true);
   });
 
-  it("rejects Greenwood/Common and closed Deeds", () => {
+  it("rejects Greenwood non-members; allows members; rejects Common", () => {
     assert.equal(
       evaluateDeedUploadEligibility({
         deed: baseDeed({
@@ -457,8 +510,21 @@ describe("evaluateDeedUploadEligibility", () => {
         }),
         existingSubmissions: [],
         now,
+      greenwoodEnteredAt: null,
       }).ok,
       false,
+    );
+    assert.equal(
+      evaluateDeedUploadEligibility({
+        deed: baseDeed({
+          accessScope: "greenwood",
+          evidenceRequirements: imageRequired,
+        }),
+        existingSubmissions: [],
+        now,
+      greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
+      }).ok,
+      true,
     );
     assert.equal(
       evaluateDeedUploadEligibility({
@@ -468,6 +534,7 @@ describe("evaluateDeedUploadEligibility", () => {
         }),
         existingSubmissions: [],
         now,
+      greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
       }).ok,
       false,
     );
@@ -479,6 +546,7 @@ describe("evaluateDeedUploadEligibility", () => {
         }),
         existingSubmissions: [],
         now,
+      greenwoodEnteredAt: null,
       }).ok,
       false,
     );
@@ -490,7 +558,8 @@ describe("evaluateDeedUploadEligibility", () => {
         deed: baseDeed({ evidenceRequirements: textRequired }),
         existingSubmissions: [],
         now,
-      }).ok,
+      greenwoodEnteredAt: null,
+    }).ok,
       false,
     );
     assert.equal(
@@ -498,7 +567,8 @@ describe("evaluateDeedUploadEligibility", () => {
         deed: baseDeed({ evidenceRequirements: imageRequired }),
         existingSubmissions: [{ status: "pending" }],
         now,
-      }).ok,
+      greenwoodEnteredAt: null,
+    }).ok,
       false,
     );
   });

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { validateSubmissionEvidence } from "@/lib/deeds/evidence";
 import {
   canProfileSubmitDeed,
-  evaluateStage6AccessScope,
+  evaluateDeedAccessScope,
   isDeedOpenForSubmission,
 } from "@/lib/deeds/rules";
 import type {
@@ -80,6 +80,8 @@ export type EvaluateCreateDeedSubmissionResult =
 export function evaluateDeedUploadEligibility(input: {
   deed: SafeDeed | null;
   existingSubmissions: ExistingSubmissionSummary[];
+  /** Permanent Greenwood membership from verified profile — never client-claimed. */
+  greenwoodEnteredAt: string | null;
   now?: Date;
 }):
   | { ok: true }
@@ -96,11 +98,13 @@ export function evaluateDeedUploadEligibility(input: {
     return { ok: false, code: "deed_not_open" };
   }
 
-  const access = evaluateStage6AccessScope(deed.accessScope);
+  const access = evaluateDeedAccessScope(deed.accessScope, {
+    greenwoodEnteredAt: input.greenwoodEnteredAt,
+  });
   if (!access.allowed) {
     return {
       ok: false,
-      code: access.reason ?? "greenwood_not_available_yet",
+      code: access.reason ?? "greenwood_membership_required",
     };
   }
 
@@ -141,6 +145,8 @@ export function evaluateCreateDeedSubmission(input: {
   deed: SafeDeed | null;
   existingSubmissions: ExistingSubmissionSummary[];
   evidence: DeedSubmissionEvidenceInput;
+  /** Permanent Greenwood membership from verified profile — never client-claimed. */
+  greenwoodEnteredAt: string | null;
   /** When true, imagePath was verified by the server upload resolver. */
   imagePathVerified?: boolean;
   now?: Date;
@@ -161,11 +167,13 @@ export function evaluateCreateDeedSubmission(input: {
     return { ok: false, code: "deed_not_open" };
   }
 
-  const access = evaluateStage6AccessScope(deed.accessScope);
+  const access = evaluateDeedAccessScope(deed.accessScope, {
+    greenwoodEnteredAt: input.greenwoodEnteredAt,
+  });
   if (!access.allowed) {
     return {
       ok: false,
-      code: access.reason ?? "greenwood_not_available_yet",
+      code: access.reason ?? "greenwood_membership_required",
     };
   }
 

@@ -130,7 +130,7 @@ export type DeedSubmissionRow = {
 export type DeedSubmissionErrorCode =
   | "deed_not_found"
   | "deed_not_open"
-  | "greenwood_not_available_yet"
+  | "greenwood_membership_required"
   | "common_not_available_yet"
   | "image_evidence_unavailable"
   | "invalid_image_ref"

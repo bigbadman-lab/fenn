@@ -56,6 +56,7 @@ export async function POST(request: Request, context: RouteContext) {
     const submission = await createDeedSubmission({
       profileId: profile.id,
       deedId,
+      greenwoodEnteredAt: profile.greenwood_entered_at,
       evidence: {
         text: parsed.data.evidenceText,
         url: parsed.data.evidenceUrl,

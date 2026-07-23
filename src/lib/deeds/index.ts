@@ -34,7 +34,7 @@ export {
 export {
   canProfileSubmitDeed,
   canTransitionSubmissionStatus,
-  evaluateStage6AccessScope,
+  evaluateDeedAccessScope,
   isDeedOpenForSubmission,
   isDeedPubliclyListable,
   mapDbReward,

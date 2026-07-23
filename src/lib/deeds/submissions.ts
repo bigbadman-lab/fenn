@@ -138,6 +138,8 @@ export type CreateDeedSubmissionInput = {
   profileId: string;
   deedId: string;
   evidence: DeedSubmissionEvidenceInput;
+  /** Permanent membership from verified profile — never request body. */
+  greenwoodEnteredAt: string | null;
   /** Server-issued pending upload path; never a raw client storage guess. */
   imageRef?: string | null;
   now?: Date;
@@ -194,6 +196,7 @@ export async function createDeedSubmission(
       other: input.evidence.other,
       imagePath: verifiedImagePath,
     },
+    greenwoodEnteredAt: input.greenwoodEnteredAt,
     imagePathVerified,
     now: input.now,
   });
@@ -202,7 +205,7 @@ export async function createDeedSubmission(
     const status =
       gate.code === "deed_not_found"
         ? 404
-        : gate.code === "greenwood_not_available_yet" ||
+        : gate.code === "greenwood_membership_required" ||
             gate.code === "common_not_available_yet" ||
             gate.code === "submission_already_pending" ||
             gate.code === "non_repeatable_complete"
@@ -266,7 +269,7 @@ function messageForCode(code: DeedSubmissionErrorCode): string {
       return "Deed not found";
     case "deed_not_open":
       return "This work is no longer being taken";
-    case "greenwood_not_available_yet":
+    case "greenwood_membership_required":
       return "This work begins beyond the gate";
     case "common_not_available_yet":
       return "This work is not yet open on the road";

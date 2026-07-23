@@ -250,16 +250,22 @@ export function isDeedOpenForSubmission(
 }
 
 /**
- * Stage 6.3 submission access: Road only.
- * Greenwood membership is Stage 8; Common mechanics are not Stage-6-ready.
- * Do not invent eligibility.
+ * Deed access by scope.
+ * Greenwood: permanent membership only (`greenwood_entered_at` set).
+ * Eligibility without admission is not enough. Common remains deferred.
  */
-export function evaluateStage6AccessScope(scope: DeedAccessScope): {
+export function evaluateDeedAccessScope(
+  scope: DeedAccessScope,
+  membership: { greenwoodEnteredAt: string | null },
+): {
   allowed: boolean;
-  reason?: "greenwood_not_available_yet" | "common_not_available_yet";
+  reason?: "greenwood_membership_required" | "common_not_available_yet";
 } {
   if (scope === "greenwood") {
-    return { allowed: false, reason: "greenwood_not_available_yet" };
+    if (membership.greenwoodEnteredAt != null) {
+      return { allowed: true };
+    }
+    return { allowed: false, reason: "greenwood_membership_required" };
   }
   if (scope === "common") {
     return { allowed: false, reason: "common_not_available_yet" };

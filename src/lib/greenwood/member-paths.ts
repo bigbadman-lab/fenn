@@ -30,7 +30,7 @@ export const GREENWOOD_MEMBER_PATHS = [
   {
     href: "/commons",
     label: "THE COMMONS",
-    note: "what has been committed to move.",
+    note: "accounts of what may move.",
   },
 ] as const;
 

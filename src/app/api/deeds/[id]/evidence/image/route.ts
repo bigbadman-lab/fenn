@@ -71,6 +71,7 @@ export async function POST(request: Request, context: RouteContext) {
     const eligibility = evaluateDeedUploadEligibility({
       deed,
       existingSubmissions: existing.map((s) => ({ status: s.status })),
+      greenwoodEnteredAt: profile.greenwood_entered_at,
     });
 
     if (!eligibility.ok) {
