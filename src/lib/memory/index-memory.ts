@@ -171,7 +171,10 @@ export async function indexFennMemory(input: {
   // Optimistic consistency: parent must not have changed during embed.
   const fresh = await loadIndexableMemory(memory.id, admin);
   if (!fresh || !fresh.is_active) {
-    return { status: "skipped", memoryId: memory.id, reason: "inactive" };
+    // Mid-flight deactivation — clear any leftover index so inactive rows
+    // never retain usable retrieval state.
+    await clearChunks(memory.id, admin);
+    return { status: "cleared", memoryId: memory.id };
   }
   const freshFingerprint = memoryIndexFingerprint({
     title: fresh.title,

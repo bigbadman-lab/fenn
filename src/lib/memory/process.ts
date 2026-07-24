@@ -81,7 +81,13 @@ async function findActiveDuplicateMemory(
     .eq("is_active", true)
     .limit(100);
 
-  if (error) return false;
+  if (error) {
+    throw new MemoryReviewError(
+      "memory_review_failed",
+      "Failed to check for duplicate memory",
+      500,
+    );
+  }
   for (const row of data ?? []) {
     const content = (row as { content?: string }).content ?? "";
     if (normalizeMemoryContentForDedup(content) === normalized) {
@@ -97,6 +103,18 @@ async function applyReviewDecision(input: {
   admin: SupabaseClient;
 }): Promise<ResolveMemoryResult> {
   if (input.review.decision === "approve") {
+    // Defence in depth: curated model output must pass the same discard guards
+    // as raw candidate text — never persist injection/PII/temp-state into memory.
+    const curatedUnsafe = deterministicMemoryDiscard(input.review.content);
+    if (curatedUnsafe && curatedUnsafe.decision === "discard") {
+      return resolveMemoryCandidateDiscard({
+        candidateId: input.candidateId,
+        reasonCode: curatedUnsafe.reasonCode,
+        review: curatedUnsafe,
+        admin: input.admin,
+      });
+    }
+
     const duplicate = await findActiveDuplicateMemory(
       input.admin,
       input.review.content,

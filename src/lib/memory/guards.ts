@@ -39,14 +39,26 @@ export function deterministicMemoryDiscard(
     return { decision: "discard", reasonCode: "instructional_content" };
   }
 
-  // Canon rewrite attempts as primary thrust
+  // Canon rewrite / redefinition attempts as primary thrust
   if (
     /\b(leaf|greenwood|canon|fenn)\b.{0,40}\b(now means|is now redefined|rules? are now|should ignore)\b/i.test(
       compact,
     ) ||
-    /\brewrite (the )?canon\b/i.test(compact)
+    /\brewrite (the )?canon\b/i.test(compact) ||
+    /\bleaf\b.{0,30}\bis now\b/i.test(compact) ||
+    /\bleaf\b.{0,20}\bis (a )?bitcoin\b/i.test(compact)
   ) {
     return { decision: "discard", reasonCode: "canon_rewrite" };
+  }
+
+  // Explicit current Treasury/Commons numeric claims (broader than prior patterns)
+  if (
+    /\bthe treasury (balance|currently|right now|has|holds|is)\b.{0,40}\d/i.test(
+      compact,
+    ) ||
+    /\btreasury balance is\b.{0,20}\d/i.test(compact)
+  ) {
+    return { decision: "discard", reasonCode: "temporary_state" };
   }
 
   // Secrets / contact / wallets as primary payload
