@@ -50,6 +50,11 @@ export type CampTurnInput = {
   outlawNumber?: number | null;
   conversationHistory: CampHistoryMessage[];
   userMessage: string;
+  /**
+   * Optional Stage 11.6 delimited FENN knowledge reference (system append).
+   * Null/undefined/empty → no knowledge block (pre-RAG behaviour).
+   */
+  knowledgeContext?: string | null;
 };
 
 export type CampTurnResult = {

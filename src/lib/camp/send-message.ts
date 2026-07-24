@@ -37,6 +37,11 @@ import {
   type CampModelCaller,
 } from "@/lib/camp/runtime";
 import {
+  safeRetrieveCampKnowledge,
+  type CampKnowledgeRetriever,
+} from "@/lib/camp/knowledge";
+import { buildFennKnowledgeContext } from "@/lib/memory/context";
+import {
   detectCampRepetition,
   detectCampRewardGaming,
 } from "@/lib/camp/signals";
@@ -83,6 +88,8 @@ export async function sendCampMessage(input: {
   callModel?: CampModelCaller;
   applyReward?: CampRewardApplicator;
   applyMemoryCandidate?: CampMemoryCandidateApplicator;
+  /** Test seam — defaults to safeRetrieveCampKnowledge (scope locked to camp). */
+  retrieveCampKnowledge?: CampKnowledgeRetriever;
 }): Promise<SendCampMessageResult> {
   const admin = input.admin ?? (await defaultAdmin());
   const applyReward = input.applyReward ?? defaultApplyReward;
@@ -215,6 +222,13 @@ export async function sendCampMessage(input: {
   // runCampCharacterTurn appends userMessage again — pass prior turns only.
   const prior = historyIncludingUser.slice(0, -1);
 
+  // Stage 11.6: best-effort scoped retrieval. Failure → empty context; Camp continues.
+  const retrieved = await safeRetrieveCampKnowledge({
+    userMessage: userContent,
+    retrieve: input.retrieveCampKnowledge,
+  });
+  const knowledgeContext = buildFennKnowledgeContext(retrieved);
+
   let turn;
   try {
     turn = await runCampCharacterTurn(
@@ -223,6 +237,7 @@ export async function sendCampMessage(input: {
         outlawNumber: input.outlawNumber,
         conversationHistory: prior,
         userMessage: userContent,
+        knowledgeContext,
       },
       input.callModel ? { callModel: input.callModel } : undefined,
     );

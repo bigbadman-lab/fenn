@@ -40,6 +40,23 @@ function buildSystemWithOutlaw(
   return `${base}\n\nThe speaker is registered Outlaw ${padded}. Address them as an Outlaw when it fits; do not recite their number every turn.`;
 }
 
+/** Append delimited knowledge reference after character (+ Outlaw) instructions. */
+export function assembleCampSystemPrompt(input: {
+  characterInstructions: string;
+  outlawNumber?: number | null;
+  knowledgeContext?: string | null;
+}): string {
+  let system = buildSystemWithOutlaw(
+    input.characterInstructions,
+    input.outlawNumber,
+  );
+  const knowledge = input.knowledgeContext?.trim();
+  if (knowledge) {
+    system = `${system}\n\n${knowledge}`;
+  }
+  return system;
+}
+
 function isTimeoutLike(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const e = error as { status?: number; code?: string; name?: string };
@@ -130,10 +147,11 @@ export async function runCampCharacterTurn(
     { role: "user", content: userMessage },
   ];
 
-  const system = buildSystemWithOutlaw(
-    character.systemInstructions,
-    input.outlawNumber,
-  );
+  const system = assembleCampSystemPrompt({
+    characterInstructions: character.systemInstructions,
+    outlawNumber: input.outlawNumber,
+    knowledgeContext: input.knowledgeContext,
+  });
 
   const callModel = options?.callModel ?? defaultCampModelCaller;
 

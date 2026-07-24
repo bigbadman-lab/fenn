@@ -162,6 +162,7 @@ describe("camp persistence safety (source)", () => {
     assert.match(source, /applyReward/);
     assert.match(source, /applyMemoryCandidate/);
     assert.match(source, /createAndReviewMemoryCandidateFromCampMessage/);
+    assert.match(source, /safeRetrieveCampKnowledge/);
     assert.match(source, /reward_granted:\s*0/);
     assert.match(source, /leaf_ledger_id:\s*null/);
   });
@@ -622,6 +623,299 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
         }),
       (err: unknown) =>
         err instanceof CampAiError && err.code === "camp_character_locked",
+    );
+  });
+});
+
+describe("sendCampMessage Stage 11.6 RAG", () => {
+  it("retrieves with scope=camp and injects knowledge on success", async () => {
+    const { sendCampMessage } = await import("./send-message");
+    const state = createMemoryCampStore();
+    state.characters.set("fenn", {
+      id: "22222222-2222-4222-8222-222222222222",
+      slug: "fenn",
+      display_name: "FENN",
+      prompt_key: "camp.character.fenn",
+      is_active: true,
+      is_locked: false,
+    });
+
+    let retrieveCalls = 0;
+    let capturedSystem = "";
+
+    const result = await sendCampMessage({
+      profileId: "11111111-1111-4111-8111-111111111111",
+      outlawNumber: 7,
+      characterSlug: "fenn",
+      message: "What is LEAF?",
+      clientMessageId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      admin: state.asAdmin() as never,
+      retrieveCampKnowledge: async (args) => {
+        retrieveCalls += 1;
+        assert.equal(args.scope, "camp");
+        assert.equal(args.query, "What is LEAF?");
+        return [
+          {
+            memoryId: "c1",
+            layer: "canon",
+            title: "LEAF",
+            text: "LEAF measures what you gave the Greenwood.",
+            chunkIndex: 0,
+            score: 0.78,
+            visibility: "public",
+          },
+        ];
+      },
+      callModel: async ({ system, messages }) => {
+        capturedSystem = system;
+        assert.equal(messages.at(-1)?.content, "What is LEAF?");
+        return {
+          reply: "LEAF measures what you gave.",
+          evaluation: {
+            rewardRecommendation: 0,
+            memoryCandidate: false,
+            quality: 1,
+            originality: 1,
+            relevance: 2,
+            spamProbability: 0.05,
+            reason: "definition question",
+          },
+        };
+      },
+      applyReward: async () => ({
+        recommended: 0,
+        actualGrant: 0,
+        reason: "zero",
+        characterDailyGranted: 0,
+        globalDailyGranted: 0,
+        ledgerId: null,
+        finalized: true,
+      }),
+      applyMemoryCandidate: async () => ({ skipped: true }),
+    });
+
+    assert.equal(retrieveCalls, 1);
+    assert.match(capturedSystem, /BEGIN_FENN_KNOWLEDGE_REFERENCE/);
+    assert.match(capturedSystem, /LEAF measures what you gave the Greenwood/);
+    assert.equal(result.assistantMessage.content, "LEAF measures what you gave.");
+    assert.equal(
+      state.messages.some((m) =>
+        m.content.includes("BEGIN_FENN_KNOWLEDGE_REFERENCE"),
+      ),
+      false,
+    );
+  });
+
+  it("continues Camp when retrieval throws and omits knowledge block", async () => {
+    const { sendCampMessage } = await import("./send-message");
+    const state = createMemoryCampStore();
+    state.characters.set("fenn", {
+      id: "22222222-2222-4222-8222-222222222222",
+      slug: "fenn",
+      display_name: "FENN",
+      prompt_key: "camp.character.fenn",
+      is_active: true,
+      is_locked: false,
+    });
+
+    let capturedSystem = "";
+    const result = await sendCampMessage({
+      profileId: "11111111-1111-4111-8111-111111111111",
+      outlawNumber: 7,
+      characterSlug: "fenn",
+      message: "hello there friend",
+      clientMessageId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      admin: state.asAdmin() as never,
+      retrieveCampKnowledge: async () => {
+        throw new Error("supabase down");
+      },
+      callModel: async ({ system }) => {
+        capturedSystem = system;
+        return {
+          reply: "speak plainly.",
+          evaluation: {
+            rewardRecommendation: 0,
+            memoryCandidate: false,
+            quality: 1,
+            originality: 1,
+            relevance: 1,
+            spamProbability: 0.2,
+            reason: "greeting",
+          },
+        };
+      },
+      applyReward: async () => ({
+        recommended: 0,
+        actualGrant: 0,
+        reason: "zero",
+        characterDailyGranted: 0,
+        globalDailyGranted: 0,
+        ledgerId: null,
+        finalized: true,
+      }),
+      applyMemoryCandidate: async () => ({ skipped: true }),
+    });
+
+    assert.doesNotMatch(capturedSystem, /BEGIN_FENN_KNOWLEDGE_REFERENCE/);
+    assert.equal(result.assistantMessage.content, "speak plainly.");
+  });
+
+  it("empty retrieval omits knowledge block", async () => {
+    const { sendCampMessage } = await import("./send-message");
+    const state = createMemoryCampStore();
+    state.characters.set("fenn", {
+      id: "22222222-2222-4222-8222-222222222222",
+      slug: "fenn",
+      display_name: "FENN",
+      prompt_key: "camp.character.fenn",
+      is_active: true,
+      is_locked: false,
+    });
+
+    let capturedSystem = "";
+    await sendCampMessage({
+      profileId: "11111111-1111-4111-8111-111111111111",
+      outlawNumber: 7,
+      characterSlug: "fenn",
+      message: "zzz unrelated noise",
+      clientMessageId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      admin: state.asAdmin() as never,
+      retrieveCampKnowledge: async () => [],
+      callModel: async ({ system }) => {
+        capturedSystem = system;
+        return {
+          reply: "say more.",
+          evaluation: {
+            rewardRecommendation: 0,
+            memoryCandidate: false,
+            quality: 1,
+            originality: 1,
+            relevance: 1,
+            spamProbability: 0.1,
+            reason: "weak",
+          },
+        };
+      },
+      applyReward: async () => ({
+        recommended: 0,
+        actualGrant: 0,
+        reason: "zero",
+        characterDailyGranted: 0,
+        globalDailyGranted: 0,
+        ledgerId: null,
+        finalized: true,
+      }),
+      applyMemoryCandidate: async () => ({ skipped: true }),
+    });
+
+    assert.doesNotMatch(capturedSystem, /BEGIN_FENN_KNOWLEDGE_REFERENCE/);
+  });
+
+  it("retrieval failure does not change Camp AI error contract", async () => {
+    const { sendCampMessage } = await import("./send-message");
+    const { CampAiError } = await import("./errors");
+    const state = createMemoryCampStore();
+    state.characters.set("fenn", {
+      id: "22222222-2222-4222-8222-222222222222",
+      slug: "fenn",
+      display_name: "FENN",
+      prompt_key: "camp.character.fenn",
+      is_active: true,
+      is_locked: false,
+    });
+
+    await assert.rejects(
+      () =>
+        sendCampMessage({
+          profileId: "11111111-1111-4111-8111-111111111111",
+          outlawNumber: 7,
+          characterSlug: "fenn",
+          message: "a real question",
+          clientMessageId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          admin: state.asAdmin() as never,
+          retrieveCampKnowledge: async () => {
+            throw new Error("rag fail");
+          },
+          callModel: async () => {
+            throw new CampAiError(
+              "camp_ai_timeout",
+              "Camp intelligence timed out",
+              504,
+            );
+          },
+        }),
+      (err: unknown) =>
+        err instanceof CampAiError && err.code === "camp_ai_timeout",
+    );
+  });
+
+  it("memory candidate still uses user content when knowledge is present", async () => {
+    const { sendCampMessage } = await import("./send-message");
+    const state = createMemoryCampStore();
+    state.characters.set("fenn", {
+      id: "22222222-2222-4222-8222-222222222222",
+      slug: "fenn",
+      display_name: "FENN",
+      prompt_key: "camp.character.fenn",
+      is_active: true,
+      is_locked: false,
+    });
+
+    let candidateMessageId: string | null = null;
+    await sendCampMessage({
+      profileId: "11111111-1111-4111-8111-111111111111",
+      outlawNumber: 7,
+      characterSlug: "fenn",
+      message: "a systems idea about persistence thresholds",
+      clientMessageId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      admin: state.asAdmin() as never,
+      retrieveCampKnowledge: async () => [
+        {
+          memoryId: "c1",
+          layer: "canon",
+          title: "LEAF",
+          text: "LEAF measures contribution.",
+          chunkIndex: 0,
+          score: 0.9,
+          visibility: "public",
+        },
+      ],
+      callModel: async () => ({
+        reply: "worth carrying.",
+        evaluation: {
+          rewardRecommendation: 1,
+          memoryCandidate: true,
+          quality: 2,
+          originality: 2,
+          relevance: 2,
+          spamProbability: 0.05,
+          reason: "idea",
+        },
+      }),
+      applyReward: async () => ({
+        recommended: 1,
+        actualGrant: 0,
+        reason: "cooldown",
+        characterDailyGranted: 0,
+        globalDailyGranted: 0,
+        ledgerId: null,
+        finalized: true,
+      }),
+      applyMemoryCandidate: async ({ messageId }) => {
+        candidateMessageId = messageId;
+        return { created: true };
+      },
+    });
+
+    assert.ok(candidateMessageId);
+    const user = state.messages.find((m) => m.role === "user");
+    assert.equal(
+      user?.content,
+      "a systems idea about persistence thresholds",
+    );
+    assert.doesNotMatch(
+      user?.content ?? "",
+      /BEGIN_FENN|LEAF measures contribution/,
     );
   });
 });

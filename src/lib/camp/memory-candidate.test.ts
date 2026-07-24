@@ -161,6 +161,7 @@ describe("Camp memory source safety", () => {
     const source = readFileSync(join(here, "send-message.ts"), "utf8");
     assert.match(source, /createAndReviewMemoryCandidateFromCampMessage/);
     assert.match(source, /applyMemoryCandidate/);
+    assert.match(source, /safeRetrieveCampKnowledge/);
     assert.doesNotMatch(source, /\.from\(\s*["']fenn_memories["']\s*\)/);
     assert.doesNotMatch(source, /profiles\.leaf_balance/);
   });

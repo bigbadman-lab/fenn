@@ -112,7 +112,7 @@ function isVisibility(
 
 /**
  * Trusted server-only knowledge retrieval.
- * Does not mutate DB. Does not inject into prompts (Stage 11.6).
+ * Camp (Stage 11.6) may inject results via buildFennKnowledgeContext.
  */
 export async function retrieveFennKnowledge(
   input: RetrieveFennKnowledgeInput,
