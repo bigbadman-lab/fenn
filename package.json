@@ -13,7 +13,9 @@
     "memory:index": "tsx --conditions=react-server --env-file=.env.local scripts/index-fenn-memory.ts",
     "memory:retrieve": "tsx --conditions=react-server --env-file=.env.local scripts/retrieve-fenn-knowledge.ts",
     "x:verify-account": "tsx --conditions=react-server --env-file=.env.local scripts/x-verify-account.ts",
-    "x:poll": "tsx --conditions=react-server --env-file=.env.local scripts/x-poll.ts"
+    "x:poll": "tsx --conditions=react-server --env-file=.env.local scripts/x-poll.ts",
+    "agent:judge-x": "tsx --conditions=react-server --env-file=.env.local scripts/agent-judge-x.ts",
+    "agent:inspect-judgement": "tsx --conditions=react-server --env-file=.env.local scripts/agent-inspect-judgement.ts"
   },
   "dependencies": {
     "@privy-io/node": "^0.27.0",

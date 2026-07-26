@@ -1,0 +1,60 @@
+/**
+ * Trusted ops: inspect one persisted X judgement.
+ *
+ * Usage:
+ *   npm run agent:inspect-judgement -- --x-post-id=123
+ *
+ * Safe fields only — no retrieval scores / chain-of-thought.
+ */
+
+import { inspectJudgementByXPostId } from "@/lib/agent/judge-persist";
+
+function parseXPostId(argv: string[]): string | null {
+  const flag = argv.find((a) => a.startsWith("--x-post-id="));
+  if (!flag) return null;
+  const value = flag.slice("--x-post-id=".length).trim();
+  return value.length > 0 ? value : null;
+}
+
+async function main() {
+  const xPostId = parseXPostId(process.argv.slice(2));
+  if (!xPostId) {
+    console.error("Usage: npm run agent:inspect-judgement -- --x-post-id=<id>");
+    process.exitCode = 1;
+    return;
+  }
+
+  const view = await inspectJudgementByXPostId(xPostId);
+  if (!view) {
+    console.log(`No judgement for x_post_id=${xPostId}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(
+    [
+      "X judgement inspection",
+      `x_post_id: ${view.xPostId}`,
+      `perception_status: ${view.perceptionStatus}`,
+      `action: ${view.action}`,
+      `reasonCode: ${view.reasonCode}`,
+      `engage: ${view.engage}`,
+      `identityUnverified: ${view.identityUnverified}`,
+      `needsLiveState: ${view.needsLiveState.join(",") || "(none)"}`,
+      `knowledgeAvailable: ${view.knowledgeAvailable}`,
+      `model: ${view.model}`,
+      `promptVersion: ${view.promptVersion}`,
+      `replyText: ${view.replyText === null ? "(none)" : JSON.stringify(view.replyText)}`,
+      `wallBody: ${view.wallBody === null ? "(none)" : JSON.stringify(view.wallBody)}`,
+      `excerpt: ${JSON.stringify(view.perceptionExcerpt)}`,
+    ].join("\n"),
+  );
+}
+
+main().catch((error) => {
+  console.error(
+    "[agent:inspect-judgement] failed",
+    error instanceof Error ? error.message : error,
+  );
+  process.exitCode = 1;
+});
