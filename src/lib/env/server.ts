@@ -60,6 +60,10 @@ const serverOnlySchema = z.object({
   X_BEARER_TOKEN: optionalSecret,
   X_OAUTH_CLIENT_ID: optionalSecret,
   X_OAUTH_CLIENT_SECRET: optionalSecret,
+  /** Stable @askfenn X user id (digit string). Verified via npm run x:verify-account. */
+  FENN_X_USER_ID: optionalSecret,
+  /** X username without @. Defaults to askfenn when unset. */
+  FENN_X_USERNAME: optionalSecret,
   FENN_ADMIN_WALLETS: fennAdminWallets,
 });
 
@@ -77,6 +81,8 @@ function readServerOnlyEnv(): ServerOnlyEnv {
     X_BEARER_TOKEN: process.env.X_BEARER_TOKEN,
     X_OAUTH_CLIENT_ID: process.env.X_OAUTH_CLIENT_ID,
     X_OAUTH_CLIENT_SECRET: process.env.X_OAUTH_CLIENT_SECRET,
+    FENN_X_USER_ID: process.env.FENN_X_USER_ID,
+    FENN_X_USERNAME: process.env.FENN_X_USERNAME,
     FENN_ADMIN_WALLETS: process.env.FENN_ADMIN_WALLETS,
   });
 
