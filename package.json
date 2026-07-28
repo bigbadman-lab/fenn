@@ -16,7 +16,8 @@
     "x:poll": "tsx --conditions=react-server --env-file=.env.local scripts/x-poll.ts",
     "agent:judge-x": "tsx --conditions=react-server --env-file=.env.local scripts/agent-judge-x.ts",
     "agent:inspect-judgement": "tsx --conditions=react-server --env-file=.env.local scripts/agent-inspect-judgement.ts",
-    "agent:sight-x": "tsx --conditions=react-server --env-file=.env.local scripts/agent-sight-x.ts"
+    "agent:sight-x": "tsx --conditions=react-server --env-file=.env.local scripts/agent-sight-x.ts",
+    "agent:authorize-x": "tsx --conditions=react-server --env-file=.env.local scripts/agent-authorize-x.ts"
   },
   "dependencies": {
     "@privy-io/node": "^0.27.0",

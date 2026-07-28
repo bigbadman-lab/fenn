@@ -1,5 +1,5 @@
 /**
- * Trusted ops: inspect one persisted X judgement.
+ * Trusted ops: inspect one persisted X judgement + authority.
  *
  * Usage:
  *   npm run agent:inspect-judgement -- --x-post-id=123
@@ -7,6 +7,7 @@
  * Safe fields only — no retrieval scores / chain-of-thought.
  */
 
+import { inspectAuthorizationByXPostId } from "@/lib/agent/authority-persist";
 import { inspectJudgementByXPostId } from "@/lib/agent/judge-persist";
 
 function parseXPostId(argv: string[]): string | null {
@@ -31,33 +32,52 @@ async function main() {
     return;
   }
 
-  console.log(
-    [
-      "X judgement inspection",
-      `x_post_id: ${view.xPostId}`,
-      `perception_status: ${view.perceptionStatus}`,
-      `action: ${view.action}`,
-      `reasonCode: ${view.reasonCode}`,
-      `engage: ${view.engage}`,
-      `identityUnverified: ${view.identityUnverified}`,
-      `needsLiveState: ${view.needsLiveState.join(",") || "(none)"}`,
-      `knowledgeAvailable: ${view.knowledgeAvailable}`,
-      `model: ${view.model}`,
-      `promptVersion: ${view.promptVersion}`,
-      `replyText: ${view.replyText === null ? "(none)" : JSON.stringify(view.replyText)}`,
-      `wallBody: ${view.wallBody === null ? "(none)" : JSON.stringify(view.wallBody)}`,
-      `final_status: ${view.finalStatus}`,
-      `final_action: ${view.finalAction ?? "(none)"}`,
-      `final_reasonCode: ${view.finalReasonCode ?? "(none)"}`,
-      `final_engage: ${view.finalEngage}`,
-      `final_replyText: ${view.finalReplyText === null ? "(none)" : JSON.stringify(view.finalReplyText)}`,
-      `final_wallBody: ${view.finalWallBody === null ? "(none)" : JSON.stringify(view.finalWallBody)}`,
-      `live_state_available: ${view.liveStateAvailable}`,
-      `live_state_succeeded: ${view.liveStateSucceeded.join(",") || "(none)"}`,
-      `live_state_failed: ${view.liveStateFailed.join(",") || "(none)"}`,
-      `excerpt: ${JSON.stringify(view.perceptionExcerpt)}`,
-    ].join("\n"),
-  );
+  const lines = [
+    "X judgement inspection",
+    `x_post_id: ${view.xPostId}`,
+    `perception_status: ${view.perceptionStatus}`,
+    `action: ${view.action}`,
+    `reasonCode: ${view.reasonCode}`,
+    `engage: ${view.engage}`,
+    `identityUnverified: ${view.identityUnverified}`,
+    `needsLiveState: ${view.needsLiveState.join(",") || "(none)"}`,
+    `knowledgeAvailable: ${view.knowledgeAvailable}`,
+    `model: ${view.model}`,
+    `promptVersion: ${view.promptVersion}`,
+    `replyText: ${view.replyText === null ? "(none)" : JSON.stringify(view.replyText)}`,
+    `wallBody: ${view.wallBody === null ? "(none)" : JSON.stringify(view.wallBody)}`,
+    `final_status: ${view.finalStatus}`,
+    `final_action: ${view.finalAction ?? "(none)"}`,
+    `final_reasonCode: ${view.finalReasonCode ?? "(none)"}`,
+    `final_engage: ${view.finalEngage}`,
+    `final_replyText: ${view.finalReplyText === null ? "(none)" : JSON.stringify(view.finalReplyText)}`,
+    `final_wallBody: ${view.finalWallBody === null ? "(none)" : JSON.stringify(view.finalWallBody)}`,
+    `live_state_available: ${view.liveStateAvailable}`,
+    `live_state_succeeded: ${view.liveStateSucceeded.join(",") || "(none)"}`,
+    `live_state_failed: ${view.liveStateFailed.join(",") || "(none)"}`,
+    `excerpt: ${JSON.stringify(view.perceptionExcerpt)}`,
+  ];
+
+  const auth = await inspectAuthorizationByXPostId(xPostId);
+  if (!auth) {
+    lines.push("authority: (none)");
+  } else {
+    lines.push(
+      `authority_outcome: ${auth.outcome}`,
+      `authority_policyCode: ${auth.policyCode}`,
+      `authority_policyVersion: ${auth.policyVersion}`,
+      `authority_finalAction: ${auth.finalAction}`,
+      `authority_sourceXPostId: ${auth.sourceXPostId}`,
+      `effects: ${auth.effects.length}`,
+    );
+    for (const e of auth.effects) {
+      lines.push(
+        `- effect ${e.effectType} status=${e.status} key=${e.idempotencyKey}`,
+      );
+    }
+  }
+
+  console.log(lines.join("\n"));
 }
 
 main().catch((error) => {

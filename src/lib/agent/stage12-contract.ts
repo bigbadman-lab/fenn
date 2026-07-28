@@ -50,6 +50,7 @@ export const STAGE12_MAY = [
   "propose Wall body text including ASCII (whitespace preserved)",
   "choose from STAGE12_AGENT_ACTIONS",
   "form and persist Stage 12.3 intentions without executing them",
+  "authorise final intentions into pending consequence plans (Stage 12.5)",
 ] as const;
 
 /** What Stage 12 must never do. */
@@ -66,6 +67,8 @@ export const STAGE12_MAY_NOT = [
   "call retrieveFennKnowledge with a caller-controlled scope",
   "execute reply_on_x / write_to_wall / live tools in Stage 12.3",
   "create Memory or Canon from X perceptions or judgement candidates",
+  "let the model control reply target, idempotency keys, or Wall provenance",
+  "execute authorised effects in Stage 12.5 (pending only; Stage 12.6 executes)",
 ] as const;
 
 export type {
