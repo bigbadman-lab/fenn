@@ -3,6 +3,12 @@ export type GreenwoodMemberStatus = {
   greenwoodEnteredAt: string;
   thresholdAtEntry: number;
   lifetimeLeafAtEntry: number;
+  /** Current lifetime LEAF (standing continues to count). */
+  currentLifetimeLeaf: number;
+  /** 1-based deterministic rank among Greenwood members. */
+  standingRank: number;
+  /** Total Greenwood members included in the rank calculation. */
+  standingTotalMembers: number;
 };
 
 export type GreenwoodIneligibleStatus = {
@@ -32,6 +38,13 @@ export type GreenwoodAdmissionAdmitted = {
   greenwoodEnteredAt: string;
   thresholdAtEntry: number;
   lifetimeLeafAtEntry: number;
+  /**
+   * Optional: if computed by the admission pipeline, it can be shown immediately.
+   * Interior can also refresh via GET /api/greenwood/status.
+   */
+  currentLifetimeLeaf?: number;
+  standingRank?: number;
+  standingTotalMembers?: number;
 };
 
 export type GreenwoodAdmissionAlreadyMember = {
@@ -39,6 +52,9 @@ export type GreenwoodAdmissionAlreadyMember = {
   greenwoodEnteredAt: string;
   thresholdAtEntry: number;
   lifetimeLeafAtEntry: number;
+  currentLifetimeLeaf?: number;
+  standingRank?: number;
+  standingTotalMembers?: number;
 };
 
 export type GreenwoodAdmissionNotEligible = {

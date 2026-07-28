@@ -1,3 +1,4 @@
+import type { SafeDeed } from "@/lib/deeds/types";
 import type {
   GreenwoodAdmissionResult,
   GreenwoodStatus,
@@ -7,6 +8,7 @@ type ApiEnvelope = {
   ok?: boolean;
   status?: GreenwoodStatus;
   result?: GreenwoodAdmissionResult;
+  deeds?: SafeDeed[];
   error?: string;
   code?: string;
 };
@@ -105,4 +107,42 @@ export async function postGreenwoodEnter(
   }
 
   return { ok: true, result: body.result };
+}
+
+export type GreenwoodDeedsFetchResult =
+  | { ok: true; deeds: SafeDeed[] }
+  | { ok: false; error: GreenwoodClientError };
+
+/**
+ * Authenticated GET /api/greenwood/deeds.
+ * Server verifies Greenwood membership before returning the projection.
+ */
+export async function fetchGreenwoodDeeds(
+  headers: HeadersInit,
+): Promise<GreenwoodDeedsFetchResult> {
+  const response = await fetch("/api/greenwood/deeds", {
+    headers,
+    cache: "no-store",
+  });
+
+  let body: ApiEnvelope | null = null;
+  try {
+    body = (await response.json()) as ApiEnvelope;
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok || !body?.ok || !Array.isArray(body.deeds)) {
+    return {
+      ok: false,
+      error: asError(
+        response.status,
+        body,
+        "greenwood_deeds_failed",
+        "Greenwood deeds failed",
+      ),
+    };
+  }
+
+  return { ok: true, deeds: body.deeds };
 }

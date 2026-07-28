@@ -2954,6 +2954,68 @@ button.wall-mark__action:focus-visible {
   margin-bottom: 0.4rem;
 }
 
+.greenwood-transition__body p {
+  margin-bottom: 0.35rem;
+}
+
+.greenwood-interior__section {
+  max-width: 32rem;
+}
+
+.greenwood-interior__place-line {
+  margin: 0.25rem 0 0;
+  letter-spacing: 0.04em;
+}
+
+.greenwood-interior__grove-ascii {
+  margin: 0 0 0.9rem;
+  color: color-mix(in srgb, var(--color-greenwood) 70%, var(--color-bone));
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.greenwood-interior__transition-ascii {
+  margin: 0.65rem 0 0;
+  color: color-mix(in srgb, var(--color-greenwood) 75%, var(--color-bone));
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.15;
+}
+
+.greenwood-deeds__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.greenwood-deeds__item {
+  margin: 0 0 1rem;
+}
+
+.greenwood-deeds__item:last-child {
+  margin-bottom: 0;
+}
+
+.greenwood-deeds__line {
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.greenwood-deeds__reward {
+  color: var(--color-leaf);
+}
+
+.greenwood-deeds__read {
+  color: var(--color-greenwood);
+  text-decoration: none;
+}
+
+.greenwood-deeds__read:hover,
+.greenwood-deeds__read:focus-visible {
+  color: var(--color-bone);
+  outline: 1px solid transparent;
+}
+
 .greenwood-member__entered {
   margin-top: 0.35rem;
   font-size: 0.88rem;

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { GREENWOOD_GATE_ASCII } from "@/components/greenwood/greenwood-frames";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import type {
@@ -95,21 +97,6 @@ export function GreenwoodGateListening() {
   );
 }
 
-type StandingProps = {
-  standing: GreenwoodStandingView;
-};
-
-function GreenwoodStandingBlock({ standing }: StandingProps) {
-  return (
-    <div className="greenwood-gate__standing" aria-live="polite">
-      <p className="greenwood-gate__standing-label">YOUR STANDING</p>
-      <p className="greenwood-gate__standing-line">
-        {standing.lifetimeLeaf} / {standing.threshold} LIFETIME LEAF
-      </p>
-    </div>
-  );
-}
-
 type IneligibleProps = {
   standing: GreenwoodStandingView;
 };
@@ -126,25 +113,23 @@ export function GreenwoodGateIneligible({ standing }: IneligibleProps) {
         accent="greenwood"
         subtitle={
           <>
-            <p>the path continues without you.</p>
-            <p>not yet.</p>
+            <p>the road does not open for everyone.</p>
+            <p>{standing.lifetimeLeaf} LEAF stand beside your name.</p>
+            <p>
+              {standing.threshold} LEAF are required before the trees part.
+            </p>
+            <p className="muted">Nothing is spent here.</p>
           </>
         }
       />
       <div className="greenwood-gate__body">
-        <GreenwoodStandingBlock standing={standing} />
-        <p className="greenwood-gate__standing-remain">
-          {standing.remainingLeaf} LEAF REMAIN.
-        </p>
         <p className="greenwood-gate__enter">
-          <button
-            type="button"
+          <Link
+            href="/#the-map"
             className="btn-text greenwood-gate__enter-btn"
-            disabled
-            aria-disabled="true"
           >
-            [ THE WOOD REMAINS CLOSED ]
-          </button>
+            [ RETURN TO THE ROAD ]
+          </Link>
         </p>
         <p className="greenwood-gate__footnote muted">
           the wood keeps its own account.
@@ -178,15 +163,16 @@ export function GreenwoodGateEligible({
         accent="greenwood"
         subtitle={
           <>
-            <p>you brought enough leaf.</p>
-            <p>the path continues.</p>
+            <p>you have walked far enough.</p>
+            <p>{standing.lifetimeLeaf} LEAF stand beside your name.</p>
+            <p>the wood knows why they are there.</p>
+            <p>the path that was closed to you is closed no longer.</p>
           </>
         }
       />
       <div className="greenwood-gate__body">
-        <GreenwoodStandingBlock standing={standing} />
-        <p className="greenwood-gate__standing-remain">
-          THE WOOD HAS HEARD ENOUGH.
+        <p className="greenwood-gate__pause">
+          {standing.threshold} LEAF opens this part of the road.
         </p>
         <p className="greenwood-gate__enter">
           <button
@@ -196,12 +182,12 @@ export function GreenwoodGateEligible({
             disabled={enterDisabled || entering}
             aria-busy={entering || undefined}
           >
-            [ ENTER THE GREENWOOD ]
+            [ CROSS ]
           </button>
         </p>
         {entering ? (
           <p className="muted" role="status">
-            the gate is opening...
+            the wood is parting...
           </p>
         ) : null}
       </div>

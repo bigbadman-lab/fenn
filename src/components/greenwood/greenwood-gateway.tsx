@@ -5,13 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { GreenwoodCrossing } from "@/components/greenwood/greenwood-crossing";
+import { GreenwoodFirstCrossingTransition } from "@/components/greenwood/greenwood-first-crossing-transition";
 import {
   GreenwoodGate,
   GreenwoodGateEligible,
   GreenwoodGateEnterError,
   GreenwoodGateIneligible,
   GreenwoodGateListening,
-  GreenwoodGateMember,
   GreenwoodGateStatusError,
 } from "@/components/greenwood/greenwood-gate";
 import { GreenwoodMember } from "@/components/greenwood/greenwood-member";
@@ -64,6 +64,7 @@ type RegisteredGreenwoodGateProps = {
   outlawLabel: string;
   alias: string | null;
   getAuthHeaders: () => Promise<HeadersInit | null>;
+  reducedMotion: boolean;
 };
 
 /**
@@ -74,6 +75,7 @@ function RegisteredGreenwoodGate({
   outlawLabel,
   alias,
   getAuthHeaders,
+  reducedMotion,
 }: RegisteredGreenwoodGateProps) {
   const [registeredGate, setRegisteredGate] =
     useState<RegisteredGateState>(INITIAL_REGISTERED);
@@ -139,12 +141,18 @@ function RegisteredGreenwoodGate({
           member: mapped.member ?? prev.member,
         };
       }
+
+      const keepNewlyAdmitted =
+        prev.newlyAdmitted &&
+        (mapped.view === "member" ||
+          // Preserve first-entry copy until the transition ends.
+          (prev.view === "member" && mapped.view === "interior"));
+
       return {
         view: mapped.view,
         standing: mapped.standing ?? null,
         member: mapped.member ?? null,
-        newlyAdmitted:
-          prev.newlyAdmitted && mapped.view === "member" ? true : false,
+        newlyAdmitted: keepNewlyAdmitted,
       };
     });
   }, [getAuthHeaders]);
@@ -206,18 +214,17 @@ function RegisteredGreenwoodGate({
         member: mapped.member ?? null,
         newlyAdmitted: result.result.status === "admitted",
       });
+
+      // Admission already_member can bypass the transition. Refresh so the
+      // interior gets current standing + rank from GET /api/greenwood/status.
+      if (mapped.view === "interior") {
+        void loadStatus({ quiet: true });
+      }
     } finally {
       enterInFlight.current = false;
       setAdmitPending(false);
     }
-  }, [getAuthHeaders, registeredGate.view]);
-
-  const handleContinue = useCallback(() => {
-    setRegisteredGate((prev) => ({
-      ...prev,
-      view: "interior",
-    }));
-  }, []);
+  }, [getAuthHeaders, registeredGate.view, loadStatus]);
 
   switch (registeredGate.view) {
     case "loading":
@@ -266,11 +273,12 @@ function RegisteredGreenwoodGate({
         return <GreenwoodGateListening />;
       }
       return (
-        <GreenwoodGateMember
-          outlawLabel={outlawLabel}
-          member={registeredGate.member}
-          newlyAdmitted={registeredGate.newlyAdmitted}
-          onContinue={handleContinue}
+        <GreenwoodFirstCrossingTransition
+          reducedMotion={reducedMotion}
+          onComplete={() => {
+            // Refresh the member snapshot so interior gets rank + current standing.
+            void loadStatus({ quiet: true });
+          }}
         />
       );
     case "interior":
@@ -282,6 +290,8 @@ function RegisteredGreenwoodGate({
           outlawLabel={outlawLabel}
           alias={alias}
           member={registeredGate.member}
+          newlyAdmitted={registeredGate.newlyAdmitted}
+          getAuthHeaders={getAuthHeaders}
         />
       );
     default:
@@ -368,6 +378,7 @@ function GreenwoodGatewaySession({
         outlawLabel={`OUTLAW ${formatOutlawNumber(profile.outlawNumber)}`}
         alias={profile.alias}
         getAuthHeaders={getAuthHeaders}
+        reducedMotion={reducedMotion}
       />
     );
   }

@@ -29,6 +29,12 @@ export type GreenwoodMemberSnapshotView = {
   greenwoodEnteredAt: string;
   thresholdAtEntry: number;
   lifetimeLeafAtEntry: number;
+  /** Current lifetime LEAF (may be refreshed after first-entry transition). */
+  currentLifetimeLeaf?: number;
+  /** Deterministic rank among Greenwood members (may be refreshed after transition). */
+  standingRank?: number;
+  /** Total Greenwood members included in the rank calculation. */
+  standingTotalMembers?: number;
 };
 
 /** Auth / registration branch before Greenwood status is consulted. */
@@ -58,6 +64,9 @@ export function memberSnapshotFromStatus(
     greenwoodEnteredAt: status.greenwoodEnteredAt,
     thresholdAtEntry: status.thresholdAtEntry,
     lifetimeLeafAtEntry: status.lifetimeLeafAtEntry,
+    currentLifetimeLeaf: status.currentLifetimeLeaf,
+    standingRank: status.standingRank,
+    standingTotalMembers: status.standingTotalMembers,
   };
 }
 
@@ -106,6 +115,9 @@ export function viewFromAdmissionResult(result: GreenwoodAdmissionResult): {
         greenwoodEnteredAt: result.greenwoodEnteredAt,
         thresholdAtEntry: result.thresholdAtEntry,
         lifetimeLeafAtEntry: result.lifetimeLeafAtEntry,
+        currentLifetimeLeaf: result.currentLifetimeLeaf,
+        standingRank: result.standingRank,
+        standingTotalMembers: result.standingTotalMembers,
       },
     };
   }
@@ -117,6 +129,9 @@ export function viewFromAdmissionResult(result: GreenwoodAdmissionResult): {
         greenwoodEnteredAt: result.greenwoodEnteredAt,
         thresholdAtEntry: result.thresholdAtEntry,
         lifetimeLeafAtEntry: result.lifetimeLeafAtEntry,
+        currentLifetimeLeaf: result.currentLifetimeLeaf,
+        standingRank: result.standingRank,
+        standingTotalMembers: result.standingTotalMembers,
       },
     };
   }

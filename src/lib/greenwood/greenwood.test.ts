@@ -11,13 +11,26 @@ import type { AdmitToGreenwoodRpcRow } from "./types";
 const here = dirname(fileURLToPath(import.meta.url));
 const PROFILE_ID = "11111111-1111-4111-8111-111111111111";
 
-function profileAdmin(data: Record<string, unknown> | null) {
+function profileAdmin(
+  data: Record<string, unknown> | null,
+  listData: Array<Record<string, unknown>> = [],
+) {
   return {
     from(table: string) {
       assert.equal(table, "profiles");
       return {
         select() {
           return {
+            then: (
+              resolve: (value: { data: unknown; error: unknown }) => void,
+              reject: (reason?: unknown) => void,
+            ) => {
+              try {
+                resolve({ data: listData, error: null });
+              } catch (err) {
+                reject(err);
+              }
+            },
             eq() {
               return {
                 async maybeSingle() {
@@ -119,7 +132,16 @@ describe("getGreenwoodStatus", () => {
         greenwood_entered_at: "2026-07-01T00:00:00.000Z",
         greenwood_threshold_at_entry: 30,
         greenwood_lifetime_leaf_at_entry: 34,
-      }) as never,
+        leaf_lifetime_earned: 34,
+        outlaw_number: 42,
+      }, [
+        {
+          id: PROFILE_ID,
+          outlaw_number: 42,
+          leaf_lifetime_earned: 34,
+          greenwood_entered_at: "2026-07-01T00:00:00.000Z",
+        },
+      ]) as never,
       async () => {
         standingCalls += 1;
         throw new Error("standing must not run for members");
@@ -131,6 +153,9 @@ describe("getGreenwoodStatus", () => {
       greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
       thresholdAtEntry: 30,
       lifetimeLeafAtEntry: 34,
+      currentLifetimeLeaf: 34,
+      standingRank: 1,
+      standingTotalMembers: 1,
     });
   });
 

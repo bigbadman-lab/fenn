@@ -7,6 +7,7 @@ import type { GreenwoodStatus } from "@/lib/greenwood/types";
 import { LeafError } from "@/lib/leaf/errors";
 import type { StandingSnapshot } from "@/lib/leaf/types";
 import { assertProfileId, assertSafeIntegerAmount } from "@/lib/leaf/validate";
+import { computeGreenwoodStandingRank } from "@/lib/greenwood/ranking";
 
 async function defaultAdmin(): Promise<SupabaseClient> {
   const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -24,6 +25,7 @@ type GreenwoodProfileSnapshot = {
   greenwood_entered_at: string | null;
   greenwood_threshold_at_entry: number | null;
   greenwood_lifetime_leaf_at_entry: number | string | null;
+  leaf_lifetime_earned: number | string | null;
 };
 
 export type GreenwoodStandingLoader = (
@@ -46,7 +48,7 @@ export async function getGreenwoodStatus(
   const { data, error } = await db
     .from("profiles")
     .select(
-      "greenwood_entered_at, greenwood_threshold_at_entry, greenwood_lifetime_leaf_at_entry",
+      "greenwood_entered_at, greenwood_threshold_at_entry, greenwood_lifetime_leaf_at_entry, leaf_lifetime_earned",
     )
     .eq("id", id)
     .maybeSingle();
@@ -69,7 +71,7 @@ export async function getGreenwoodStatus(
   const row = data as GreenwoodProfileSnapshot;
 
   if (row.greenwood_entered_at != null) {
-    return toMemberStatus(row);
+    return toMemberStatus(row, db, id);
   }
 
   // Non-member: reuse Stage 4 standing (lifetime + configured threshold).
@@ -121,7 +123,53 @@ export async function getGreenwoodStatus(
   };
 }
 
-function toMemberStatus(row: GreenwoodProfileSnapshot): GreenwoodStatus {
+async function loadMemberRank(
+  db: SupabaseClient,
+  profileId: string,
+): Promise<{ rank: number; total: number }> {
+  const { data, error } = await db
+    .from("profiles")
+    .select("id, outlaw_number, leaf_lifetime_earned, greenwood_entered_at");
+
+  if (error) {
+    throw new GreenwoodError(
+      "greenwood_status_failed",
+      "Failed to load Greenwood standing rank",
+      500,
+    );
+  }
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    outlaw_number: number;
+    leaf_lifetime_earned: number | string | null;
+    greenwood_entered_at: string | null;
+  }>;
+
+  const members = rows
+    .filter((r) => r.greenwood_entered_at != null)
+    .map((r) => ({
+      profileId: r.id,
+      outlawNumber: assertSafeIntegerAmount(
+        r.outlaw_number,
+        "outlaw_number",
+        "UNSAFE_BIGINT",
+      ),
+      leafLifetimeEarned: assertSafeIntegerAmount(
+        r.leaf_lifetime_earned,
+        "leaf_lifetime_earned",
+        "UNSAFE_BIGINT",
+      ),
+    }));
+
+  return computeGreenwoodStandingRank({ profileId, members });
+}
+
+async function toMemberStatus(
+  row: GreenwoodProfileSnapshot,
+  db: SupabaseClient,
+  profileId: string,
+): Promise<GreenwoodStatus> {
   if (
     row.greenwood_threshold_at_entry == null ||
     row.greenwood_lifetime_leaf_at_entry == null
@@ -157,10 +205,20 @@ function toMemberStatus(row: GreenwoodProfileSnapshot): GreenwoodStatus {
     throw err;
   }
 
+  const currentLifetimeLeaf = assertSafeIntegerAmount(
+    row.leaf_lifetime_earned,
+    "leaf_lifetime_earned",
+    "UNSAFE_BIGINT",
+  );
+  const rank = await loadMemberRank(db, profileId);
+
   return {
     state: "member",
     greenwoodEnteredAt: row.greenwood_entered_at as string,
     thresholdAtEntry,
     lifetimeLeafAtEntry,
+    currentLifetimeLeaf,
+    standingRank: rank.rank,
+    standingTotalMembers: rank.total,
   };
 }

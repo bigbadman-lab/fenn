@@ -78,11 +78,11 @@ describe("greenwood member source safety", () => {
       join(componentsRoot, "greenwood-member.tsx"),
       "utf8",
     );
-    assert.match(source, /THE PATHS/);
-    assert.match(source, /THE NOTICE TREE/);
-    assert.match(source, /the tree is quiet/);
-    assert.match(source, /THE FIRE/);
-    assert.match(source, /cold for now/);
+    assert.match(source, /YOUR PLACE/);
+    assert.match(source, /THE GROVE/);
+    assert.match(source, /DEEPER DEEDS/);
+    assert.match(source, /THE SHARE/);
+    assert.match(source, /Nothing has been left here yet/);
     assert.match(source, /lifetimeLeafAtEntry/);
     assert.doesNotMatch(source, /ENTER THE GREENWOOD/);
     assert.doesNotMatch(source, /LEAF REMAIN/);
@@ -91,6 +91,9 @@ describe("greenwood member source safety", () => {
     assert.doesNotMatch(source, /from ["']@\/lib\/treasury/);
     assert.doesNotMatch(source, /from ["']@\/lib\/commons/);
     assert.doesNotMatch(source, /from ["']@\/lib\/circulation/);
+    assert.doesNotMatch(source, /from ["']@\/lib\/deeds\/queries/);
+    assert.doesNotMatch(source, /listPublicDeeds/);
+    assert.match(source, /fetchGreenwoodDeeds/);
     assert.doesNotMatch(source, /memory_candidate|fenn_memories|embedding/);
     assert.doesNotMatch(source, /supabase\.channel|WebSocket/);
     assert.doesNotMatch(source, /chronicle_entries/);

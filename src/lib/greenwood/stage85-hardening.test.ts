@@ -76,8 +76,10 @@ describe("Stage 8.5 Greenwood hardening source safety", () => {
     assert.doesNotMatch(gateway, /GreenwoodGateHoldingMessage/);
     assert.doesNotMatch(gateway, /GreenwoodGateInterior/);
     assert.match(member, /GreenwoodMember/);
-    assert.match(member, /THE NOTICE TREE/);
-    assert.match(member, /cold for now/);
+    assert.match(member, /YOUR PLACE/);
+    assert.match(member, /THE GROVE/);
+    assert.match(member, /DEEPER DEEDS/);
+    assert.match(member, /THE SHARE/);
   });
 
   it("crossing final hold remains 2000ms", () => {
@@ -158,5 +160,18 @@ describe("Stage 8.5 Greenwood hardening source safety", () => {
     assert.match(image, /greenwoodEnteredAt:\s*profile\.greenwood_entered_at/);
     assert.doesNotMatch(submissions, /parsed\.data\.greenwoodEnteredAt/);
     assert.doesNotMatch(image, /body\.greenwoodEnteredAt/);
+  });
+
+  it("Greenwood deeds API requires verified membership", () => {
+    const deeds = readFileSync(
+      join(srcRoot, "app/api/greenwood/deeds/route.ts"),
+      "utf8",
+    );
+    assert.match(deeds, /getVerifiedPrivyUser/);
+    assert.match(deeds, /findProfileByPrivyUserId/);
+    assert.match(deeds, /greenwood_entered_at/);
+    assert.match(deeds, /greenwood_membership_required/);
+    assert.match(deeds, /accessScope === "greenwood"/);
+    assert.doesNotMatch(deeds, /body\.profileId/);
   });
 });

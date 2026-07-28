@@ -72,12 +72,18 @@ describe("viewFromGreenwoodStatus", () => {
       greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
       thresholdAtEntry: 30,
       lifetimeLeafAtEntry: 34,
+      currentLifetimeLeaf: 34,
+      standingRank: 2,
+      standingTotalMembers: 5,
     });
     assert.equal(mapped.view, "interior");
     assert.deepEqual(mapped.member, {
       greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
       thresholdAtEntry: 30,
       lifetimeLeafAtEntry: 34,
+      currentLifetimeLeaf: 34,
+      standingRank: 2,
+      standingTotalMembers: 5,
     });
   });
 });
@@ -153,14 +159,14 @@ describe("greenwood gate source safety", () => {
 
   it("gate UI shows standing and closed wood for ineligible", () => {
     const gate = readFileSync(join(componentsRoot, "greenwood-gate.tsx"), "utf8");
-    assert.match(gate, /YOUR STANDING/);
-    assert.match(gate, /LIFETIME LEAF/);
-    assert.match(gate, /LEAF REMAIN/);
-    assert.match(gate, /THE WOOD REMAINS CLOSED/);
+    assert.match(gate, /RETURN TO THE ROAD/);
+    assert.match(gate, /NOTHING IS SPENT HERE/i);
+    assert.doesNotMatch(gate, /THE WOOD REMAINS CLOSED/);
+    assert.doesNotMatch(gate, /LEAF REMAIN/);
     assert.match(gate, /THE GATE IS LISTENING/);
     assert.match(gate, /THE GATE CANNOT HEAR YOU/);
     assert.match(gate, /THE GATE DID NOT OPEN/);
-    assert.match(gate, /THE WOOD HAS HEARD ENOUGH/);
+    assert.match(gate, /you have walked far enough/i);
     assert.doesNotMatch(gate, /progress|skeleton|spinner/i);
   });
 
