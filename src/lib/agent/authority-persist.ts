@@ -172,6 +172,11 @@ export type AuthorityInspection = {
     effectType: string;
     idempotencyKey: string;
     status: string;
+    attemptCount: number;
+    externalResultId: string | null;
+    failureClass: string | null;
+    lastError: string | null;
+    completedAt: string | null;
     payload: Record<string, unknown>;
   }>;
 };
@@ -262,7 +267,9 @@ export async function inspectAuthorizationByXPostId(
   };
 
   const { data: effects, error: effectsError } = await effectsTable
-    .select("id, effect_type, idempotency_key, status, payload")
+    .select(
+      "id, effect_type, idempotency_key, status, attempt_count, external_result_id, failure_class, last_error, completed_at, payload",
+    )
     .eq("authorization_id", String(auth.id))
     .order("created_at", { ascending: true });
 
@@ -287,6 +294,14 @@ export async function inspectAuthorizationByXPostId(
       effectType: String(e.effect_type),
       idempotencyKey: String(e.idempotency_key),
       status: String(e.status),
+      attemptCount: Number(e.attempt_count ?? 0),
+      externalResultId:
+        typeof e.external_result_id === "string" ? e.external_result_id : null,
+      failureClass:
+        typeof e.failure_class === "string" ? e.failure_class : null,
+      lastError: typeof e.last_error === "string" ? e.last_error : null,
+      completedAt:
+        typeof e.completed_at === "string" ? e.completed_at : null,
       payload:
         e.payload && typeof e.payload === "object" && !Array.isArray(e.payload)
           ? (e.payload as Record<string, unknown>)

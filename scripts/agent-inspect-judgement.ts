@@ -1,10 +1,10 @@
 /**
- * Trusted ops: inspect one persisted X judgement + authority.
+ * Trusted ops: inspect one persisted X judgement + authority + effects.
  *
  * Usage:
  *   npm run agent:inspect-judgement -- --x-post-id=123
  *
- * Safe fields only — no retrieval scores / chain-of-thought.
+ * Safe fields only — no retrieval scores / chain-of-thought / OAuth secrets.
  */
 
 import { inspectAuthorizationByXPostId } from "@/lib/agent/authority-persist";
@@ -72,7 +72,18 @@ async function main() {
     );
     for (const e of auth.effects) {
       lines.push(
-        `- effect ${e.effectType} status=${e.status} key=${e.idempotencyKey}`,
+        [
+          `- effect ${e.effectType}`,
+          `status=${e.status}`,
+          `attempts=${e.attemptCount}`,
+          `key=${e.idempotencyKey}`,
+          e.externalResultId ? `result=${e.externalResultId}` : null,
+          e.failureClass ? `class=${e.failureClass}` : null,
+          e.lastError ? `error=${e.lastError}` : null,
+          e.completedAt ? `completed_at=${e.completedAt}` : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
       );
     }
   }

@@ -69,6 +69,7 @@ export const STAGE12_MAY_NOT = [
   "create Memory or Canon from X perceptions or judgement candidates",
   "let the model control reply target, idempotency keys, or Wall provenance",
   "execute authorised effects in Stage 12.5 (pending only; Stage 12.6 executes)",
+  "ask the model what to do during Stage 12.6 effect execution",
 ] as const;
 
 export type {

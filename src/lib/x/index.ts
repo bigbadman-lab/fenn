@@ -50,3 +50,18 @@ export {
   formatAccountVerification,
   type XAccountVerification,
 } from "@/lib/x/account";
+export {
+  createXReplyAsFenn,
+  verifyBoundXOauthIdentity,
+  type XReplyWriteResult,
+} from "@/lib/x/write-client";
+export {
+  generatePkcePair,
+  buildXAuthorizationUrl,
+  resolveXOauthRedirectUri,
+  getXOauthClientConfig,
+} from "@/lib/x/oauth-config";
+export {
+  assertFennXIdentity,
+  accessTokenNeedsRefresh,
+} from "@/lib/x/oauth-tokens";
