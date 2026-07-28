@@ -1,3 +1,4 @@
+import { FennMapWanderer } from "@/components/home/fenn-map-wanderer";
 import Link from "next/link";
 
 import {
@@ -69,17 +70,24 @@ function MapArt({
  * Homepage world map — geography + primary Stage 5 navigation.
  * Desktop: centred landscape canvas.
  * Mobile: horizontal landscape inside a native scroll viewport.
+ * FENN wanders as an atmospheric overlay (pointer-events: none).
  */
 export function FennWorldMap() {
   return (
-    <nav className="fenn-map" aria-label="map of fenn">
+    <nav className="fenn-map" id="the-map" aria-label="map of fenn" tabIndex={-1}>
       <div className="fenn-map__desktop">
-        <MapArt rows={FENN_WORLD_MAP_DESKTOP} variant="desktop" />
+        <div className="fenn-map__stage fenn-map__stage--desktop">
+          <MapArt rows={FENN_WORLD_MAP_DESKTOP} variant="desktop" />
+          <FennMapWanderer variant="desktop" />
+        </div>
       </div>
 
       <div className="fenn-map__mobile">
         <div className="fenn-map__viewport">
-          <MapArt rows={FENN_WORLD_MAP_MOBILE} variant="mobile" />
+          <div className="fenn-map__stage fenn-map__stage--mobile">
+            <MapArt rows={FENN_WORLD_MAP_MOBILE} variant="mobile" />
+            <FennMapWanderer variant="mobile" />
+          </div>
         </div>
         <p className="fenn-map__hint muted">&lt; the road continues &gt;</p>
       </div>

@@ -301,6 +301,15 @@ export const FENN_WORLD_MAP_MOBILE: readonly MapRow[] = buildRows(
   MOBILE_WIDTH,
 );
 
+/** Fitted monospace grids (spaces = empty) for living-map clearance. */
+export const FENN_WORLD_MAP_DESKTOP_GRID: readonly string[] = DESKTOP_LINES.map(
+  (raw) => (raw.length === 0 ? " ".repeat(DESKTOP_WIDTH) : fit(raw, DESKTOP_WIDTH)),
+);
+
+export const FENN_WORLD_MAP_MOBILE_GRID: readonly string[] = MOBILE_LINES.map(
+  (raw) => (raw.length === 0 ? " ".repeat(MOBILE_WIDTH) : fit(raw, MOBILE_WIDTH)),
+);
+
 /** Approximate desktop monospace column count. */
 export const FENN_WORLD_MAP_DESKTOP_WIDTH = DESKTOP_WIDTH;
 

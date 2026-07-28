@@ -1,6 +1,6 @@
 /**
  * Canonical Welcome Text from FENN_MVP_SPEC.md §5 — VERBATIM.
- * Formatting/presentation only; do not alter the words.
+ * Retained for lore continuity; homepage arrival uses HOMEPAGE_WELCOME instead.
  */
 export const CANONICAL_WELCOME_TEXT = `i'm fenn
 
@@ -160,3 +160,21 @@ what the crown keeps
 the greenwood shares
 
 welcome to the wood`;
+
+/**
+ * Homepage arrival transmission — locked pre-launch copy.
+ * Do not rewrite or expand.
+ */
+export const HOMEPAGE_WELCOME = {
+  title: "WELCOME, OUTLAW.",
+  lines: [
+    "You stand at the edge of something old.",
+    "FENN watches, remembers, and decides what matters.",
+  ],
+  deeds: [
+    "Do deeds. Speak in Camp. Earn LEAF.",
+    "When FENN is satisfied, the Greenwood opens.",
+  ],
+  closing: "This is not a game. This is how a world remembers.",
+  enter: "[ ENTER THE MAP ]",
+} as const;

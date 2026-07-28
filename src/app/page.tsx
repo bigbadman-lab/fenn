@@ -1,3 +1,4 @@
+import { HomeFennVoice } from "@/components/home/home-fenn-voice";
 import { HomeGreenwoodTeaser } from "@/components/home/home-greenwood-teaser";
 import { HomeIdentity } from "@/components/home/home-identity";
 import { HomeLoreInterrupt } from "@/components/home/home-lore-interrupt";
@@ -9,8 +10,9 @@ import { LoreTransmission } from "@/components/home/lore-transmission";
 export default function HomePage() {
   return (
     <div className="home">
-      <HomeIdentity />
       <HomeWelcome />
+      <HomeIdentity />
+      <HomeFennVoice />
       <LoreTransmission />
       <HomeLoreInterrupt />
       <HomeOutlawRegister />
