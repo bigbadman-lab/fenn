@@ -2221,7 +2221,7 @@ button.wall-mark__action:focus-visible {
   letter-spacing: 0.06em;
 }
 
-/* The Ledger — public Circulation register */
+/* The Ledger — public LEAF recognition register */
 .ledger__header {
   margin-bottom: 1.5rem;
 }
@@ -2246,119 +2246,194 @@ button.wall-mark__action:focus-visible {
   font-size: 0.88rem;
 }
 
-.ledger__page-mark {
-  margin: 0;
-  color: var(--color-hoard);
-  letter-spacing: 0.14em;
-  font-size: 0.78rem;
-}
-
-.ledger-register {
+.ledger-unavailable {
   margin: 0 0 1.75rem;
-  border: 1px solid var(--border);
-  border-color: color-mix(in srgb, var(--color-hoard) 30%, var(--border));
+  color: color-mix(in srgb, var(--color-hoard) 55%, var(--color-bone));
+  letter-spacing: 0.04em;
 }
 
-.ledger-register__title {
+.ledger-totals {
+  margin: 0 0 1.75rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-hoard) 30%, var(--border));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-hoard) 30%, var(--border));
+}
+
+.ledger-totals__grid {
+  display: grid;
+  gap: 0.85rem 2rem;
   margin: 0;
-  padding: 0.55rem 0.85rem;
-  font-size: 0.82rem;
-  letter-spacing: 0.08em;
-  color: var(--color-hoard);
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--color-hoard) 28%, var(--border));
-  background: color-mix(in srgb, var(--color-greenwood) 18%, var(--color-night));
 }
 
-.ledger-register__scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+@media (min-width: 640px) {
+  .ledger-totals__grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
-.ledger-table {
-  width: 100%;
-  min-width: 36rem;
-  border-collapse: collapse;
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
+.ledger-totals__item {
+  margin: 0;
 }
 
-.ledger-table th,
-.ledger-table td {
-  padding: 0.45rem 0.55rem;
-  text-align: left;
-  vertical-align: top;
-  border-right: 1px solid
-    color-mix(in srgb, var(--color-bone) 14%, transparent);
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--color-bone) 14%, transparent);
-}
-
-.ledger-table th:last-child,
-.ledger-table td:last-child {
-  border-right: none;
-}
-
-.ledger-table thead th {
-  color: var(--color-hoard);
-  font-weight: 400;
-  letter-spacing: 0.05em;
+.ledger-totals__item dt {
+  margin: 0 0 0.25rem;
+  color: color-mix(in srgb, var(--color-leaf) 45%, var(--color-bone));
   font-size: 0.72rem;
-  white-space: nowrap;
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--color-hoard) 42%, var(--border));
-  background: color-mix(in srgb, var(--color-greenwood) 12%, var(--color-night));
+  letter-spacing: 0.14em;
 }
 
-.ledger-table__empty-row td {
-  border-right: none;
+.ledger-totals__item dd {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+.ledger-totals__unit {
+  color: color-mix(in srgb, var(--color-leaf) 50%, var(--color-bone));
+  font-size: 0.82rem;
+}
+
+.ledger-recognition {
+  margin: 0 0 1.75rem;
+}
+
+.ledger-recognition__title {
+  margin: 0 0 1rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--color-leaf) 45%, var(--color-bone));
+}
+
+.ledger-recognition__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ledger-entry {
+  margin: 0 0 1.25rem;
+  padding: 0 0 1.15rem;
+  border-bottom: 1px dashed color-mix(in srgb, var(--color-hoard) 28%, transparent);
+}
+
+.ledger-entry:last-child {
   border-bottom: none;
-  padding: 2rem 1rem;
-  text-align: center;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.ledger-entry__amount {
+  margin: 0 0 0.35rem;
+  color: var(--color-leaf);
+  letter-spacing: 0.06em;
+}
+
+.ledger-entry__outlaw {
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.08em;
+}
+
+.ledger-entry__summary {
+  margin: 0 0 0.45rem;
+  max-width: 36rem;
+  color: color-mix(in srgb, var(--color-bone) 88%, transparent);
+}
+
+.ledger-entry__meta {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--color-hoard) 55%, var(--color-bone));
+}
+
+.ledger-entry__category {
+  color: color-mix(in srgb, var(--color-leaf) 40%, var(--color-bone));
+}
+
+.ledger-entry__sep {
+  margin: 0 0.35rem;
+}
+
+.ledger-recognition__older {
+  margin: 1.25rem 0 0;
+}
+
+.ledger-recognition__older a {
+  color: inherit;
+  text-decoration: none;
+  letter-spacing: 0.06em;
+}
+
+.ledger-recognition__older a:hover {
+  color: var(--color-leaf);
 }
 
 .ledger-empty {
-  max-width: 22rem;
-  margin: 0 auto;
+  margin: 0.5rem 0 0;
 }
 
 .ledger-empty p {
   margin: 0 0 0.45rem;
-  max-width: none;
 }
 
 .ledger-empty p:first-child {
-  color: var(--color-bone);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+}
+
+.ledger-standing {
+  margin: 0 0 1.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-hoard) 30%, var(--border));
+}
+
+.ledger-standing__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--color-leaf) 45%, var(--color-bone));
+}
+
+.ledger-standing__aside {
+  margin: 0 0 0.85rem;
   font-size: 0.82rem;
 }
 
-.ledger-empty p:last-child {
-  margin-bottom: 0;
-}
-
-.ledger__proof-note {
+.ledger-standing__list {
+  list-style: none;
   margin: 0;
-  padding: 0.65rem 0.85rem;
-  border-top: 1px solid var(--border);
-  font-size: 0.82rem;
-  letter-spacing: 0.03em;
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-standing__row {
+  display: grid;
+  grid-template-columns: 2.25rem 1fr auto;
+  gap: 0.65rem;
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.04em;
+}
+
+.ledger-standing__rank {
+  color: color-mix(in srgb, var(--color-hoard) 55%, var(--color-bone));
+}
+
+.ledger-standing__leaf {
+  color: color-mix(in srgb, var(--color-leaf) 55%, var(--color-bone));
+  white-space: nowrap;
 }
 
 .ledger__nav {
-  margin: 0;
+  margin-top: 0.5rem;
 }
 
 .ledger__nav a {
+  color: inherit;
   text-decoration: none;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
 }
 
 .ledger__nav a:hover {
   color: var(--color-leaf);
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
 }
 
 /* The Greenwood — crossing + public gate (Stage 5) */
@@ -2901,21 +2976,6 @@ button.wall-mark__action:focus-visible {
   .commons-history__delta,
   .commons-table__amount {
     font-size: 0.78rem;
-  }
-
-  .ledger-table {
-    min-width: 0;
-    font-size: 0.78rem;
-  }
-
-  .ledger-col--basis,
-  .ledger-table th:nth-child(4),
-  .ledger-table th:nth-child(5) {
-    display: none;
-  }
-
-  .ledger-table__empty-row td {
-    padding: 1.5rem 0.75rem;
   }
 
   .greenwood-crossing {

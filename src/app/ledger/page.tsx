@@ -1,19 +1,46 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { LedgerRegister } from "@/components/ledger/ledger-register";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import { PagePulse } from "@/components/world-pulse/page-pulse";
+import { loadLedgerPageData } from "@/lib/ledger/page-data";
+import { WORLD_PULSE_LEDGER_MS } from "@/lib/world-pulse/intervals";
 
 export const metadata: Metadata = {
   title: "The Ledger",
 };
 
+export const dynamic = "force-dynamic";
+
+type LedgerPageProps = {
+  searchParams: Promise<{ before?: string; id?: string }>;
+};
+
 /**
- * Stage 5 — public Ledger register shell only.
- * No Circulation history, tx hashes, or explorer links yet.
+ * Public LEAF recognition register.
+ * LEAF is FENN's record that something mattered — not money, not XP.
  */
-export default function LedgerPage() {
+export default async function LedgerPage({ searchParams }: LedgerPageProps) {
+  const params = await searchParams;
+  const cursor =
+    typeof params.before === "string" &&
+    params.before.length > 0 &&
+    typeof params.id === "string" &&
+    params.id.length > 0
+      ? { createdAt: params.before, id: params.id }
+      : null;
+
+  const data = await loadLedgerPageData({ cursor });
+
+  const olderHref =
+    data.state === "ready" && data.nextCursor
+      ? `/ledger?before=${encodeURIComponent(data.nextCursor.createdAt)}&id=${encodeURIComponent(data.nextCursor.id)}`
+      : null;
+
   return (
     <article className="place ledger">
+      <PagePulse intervalMs={WORLD_PULSE_LEDGER_MS} />
       <header className="ledger__header">
         <AsciiPageTitle
           title="THE LEDGER"
@@ -27,63 +54,20 @@ export default function LedgerPage() {
     |-------------|--------------|
     |             ||             |
     |_____________||_____________|`}</pre>
-              <p className="ledger__lede">nothing that moves is forgotten.</p>
-              <p className="ledger__aside muted">
-                the crown hides its books.
-                <br />
-                the greenwood doesn&apos;t.
+              <p className="ledger__lede">
+                FENN&apos;s record that something mattered.
               </p>
-              <p className="ledger__page-mark" aria-hidden="true">
-                PAGE 000
+              <p className="ledger__aside muted">
+                recognition accumulates as standing.
+                <br />
+                it is not spent. it is not money.
               </p>
             </>
           }
         />
       </header>
 
-      <section className="ledger-register" aria-labelledby="ledger-register-title">
-        <h2 id="ledger-register-title" className="ledger-register__title">
-          CIRCULATION REGISTER
-        </h2>
-
-        <div className="ledger-register__scroll">
-          <table className="ledger-table">
-            <caption className="visually-hidden">
-              Public record of completed Circulations
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">NO.</th>
-                <th scope="col">DATE</th>
-                <th scope="col">CIRCULATION</th>
-                <th scope="col" className="ledger-col--basis">
-                  BASIS
-                </th>
-                <th scope="col">VALUE</th>
-                <th scope="col">STATUS</th>
-                <th scope="col">PROOF</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="ledger-table__empty-row">
-                <td colSpan={7}>
-                  <div className="ledger-empty">
-                    <p>no entries</p>
-                    <p className="muted">the first page is blank.</p>
-                    <p className="muted">
-                      history begins
-                      <br />
-                      when something moves.
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <p className="ledger__proof-note muted">proof follows movement.</p>
-      </section>
+      <LedgerRegister data={data} olderHref={olderHref} />
 
       <nav className="ledger__nav" aria-label="related">
         <Link href="/commons">[ return to the commons ]</Link>

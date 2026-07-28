@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   WORLD_PULSE_COMMONS_MS,
   WORLD_PULSE_DEEDS_MS,
+  WORLD_PULSE_LEDGER_MS,
   WORLD_PULSE_PROFILE_FOCUS_MIN_MS,
   WORLD_PULSE_WALL_MS,
 } from "@/lib/world-pulse/intervals";
@@ -23,6 +24,7 @@ describe("World Pulse intervals", () => {
     assert.equal(WORLD_PULSE_COMMONS_MS, 60_000);
     assert.equal(WORLD_PULSE_WALL_MS, 25_000);
     assert.equal(WORLD_PULSE_DEEDS_MS, 60_000);
+    assert.equal(WORLD_PULSE_LEDGER_MS, 25_000);
     assert.ok(WORLD_PULSE_PROFILE_FOCUS_MIN_MS >= 10_000);
   });
 });
@@ -81,10 +83,8 @@ describe("World Pulse wiring", () => {
     assert.match(auth, /visibilitychange/);
   });
 
-  it("does not touch ledger or add realtime", () => {
+  it("does not touch ledger shell or add realtime", () => {
     assert.ok(existsSync(join(repo, "src/app/ledger/page.tsx")));
-    const ledger = read("src/app/ledger/page.tsx");
-    assert.doesNotMatch(ledger, /PagePulse|WorldPulse|router\.refresh/);
 
     for (const rel of [
       "src/hooks/use-page-pulse.ts",
