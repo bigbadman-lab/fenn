@@ -83,27 +83,32 @@ function RegisteredGreenwoodGate({
   const statusRequestId = useRef(0);
   const enterInFlight = useRef(false);
 
-  const loadStatus = useCallback(async () => {
+  const loadStatus = useCallback(async (opts?: { quiet?: boolean }) => {
+    const quiet = Boolean(opts?.quiet);
     const requestId = ++statusRequestId.current;
-    setRegisteredGate((prev) =>
-      prev.view === "loading"
-        ? prev
-        : {
-            ...prev,
-            view: "loading",
-          },
-    );
+    if (!quiet) {
+      setRegisteredGate((prev) =>
+        prev.view === "loading"
+          ? prev
+          : {
+              ...prev,
+              view: "loading",
+            },
+      );
+    }
 
     const headers = await getAuthHeaders();
     if (!headers) {
       if (requestId !== statusRequestId.current) return;
       setStatusRetrying(false);
-      setRegisteredGate({
-        view: "status_error",
-        standing: null,
-        member: null,
-        newlyAdmitted: false,
-      });
+      if (!quiet) {
+        setRegisteredGate({
+          view: "status_error",
+          standing: null,
+          member: null,
+          newlyAdmitted: false,
+        });
+      }
       return;
     }
 
@@ -113,21 +118,34 @@ function RegisteredGreenwoodGate({
     setStatusRetrying(false);
 
     if (!result.ok) {
-      setRegisteredGate({
-        view: "status_error",
-        standing: null,
-        member: null,
-        newlyAdmitted: false,
-      });
+      if (!quiet) {
+        setRegisteredGate({
+          view: "status_error",
+          standing: null,
+          member: null,
+          newlyAdmitted: false,
+        });
+      }
       return;
     }
 
     const mapped = viewFromGreenwoodStatus(result.status);
-    setRegisteredGate({
-      view: mapped.view,
-      standing: mapped.standing ?? null,
-      member: mapped.member ?? null,
-      newlyAdmitted: false,
+    setRegisteredGate((prev) => {
+      // Quiet focus refresh must not eject an open member interior.
+      if (quiet && prev.view === "interior" && mapped.view === "member") {
+        return {
+          ...prev,
+          standing: mapped.standing ?? prev.standing,
+          member: mapped.member ?? prev.member,
+        };
+      }
+      return {
+        view: mapped.view,
+        standing: mapped.standing ?? null,
+        member: mapped.member ?? null,
+        newlyAdmitted:
+          prev.newlyAdmitted && mapped.view === "member" ? true : false,
+      };
     });
   }, [getAuthHeaders]);
 
@@ -136,6 +154,16 @@ function RegisteredGreenwoodGate({
       void loadStatus();
     }, 0);
     return () => window.clearTimeout(timer);
+  }, [loadStatus]);
+
+  // World Pulse: quiet status refresh when the tab becomes visible again.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) return;
+      void loadStatus({ quiet: true });
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [loadStatus]);
 
   const handleAdmit = useCallback(async () => {

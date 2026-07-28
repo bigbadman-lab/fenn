@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { DeedBoard } from "@/components/deeds/deed-board";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import { DeedsBoardPulse } from "@/components/world-pulse/deeds-pulse";
 import { listPublicDeeds } from "@/lib/deeds/queries";
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export default async function DeedsPage() {
 
   return (
     <article className="place deeds-place">
+      <DeedsBoardPulse endsAtList={deeds.map((d) => d.endsAt)} />
       <AsciiPageTitle
         title="DEEDS"
         mark="DEEDS"

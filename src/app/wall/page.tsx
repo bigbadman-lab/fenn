@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 
 import { WallInscriptions } from "@/components/wall/wall-inscriptions";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import { PagePulse } from "@/components/world-pulse/page-pulse";
 import { WallError } from "@/lib/wall/errors";
 import { listPublicWallEntries } from "@/lib/wall/read";
 import type { PublicWallEntry } from "@/lib/wall/types";
+import { WORLD_PULSE_WALL_MS } from "@/lib/world-pulse/intervals";
 
 export const metadata: Metadata = {
   title: "The Wall",
@@ -39,6 +41,7 @@ export default async function WallPage() {
 
   return (
     <article className="place wall">
+      <PagePulse intervalMs={WORLD_PULSE_WALL_MS} />
       <header className="wall__header">
         <AsciiPageTitle
           title="THE WALL"

@@ -15,6 +15,7 @@ import type {
   SafeApplicationSummary,
   SafeProfile,
 } from "@/lib/profiles/types";
+import { WORLD_PULSE_PROFILE_FOCUS_MIN_MS } from "@/lib/world-pulse/intervals";
 
 type MeResponse = {
   authenticated: boolean;
@@ -185,6 +186,23 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
       void refreshMe();
     }, 0);
     return () => window.clearTimeout(timer);
+  }, [ready, authenticated, refreshMe]);
+
+  // World Pulse: quiet profile refresh when returning to a visible tab.
+  useEffect(() => {
+    if (!ready || !authenticated) return;
+
+    let lastFocusRefreshAt = 0;
+    const onVisibility = () => {
+      if (document.hidden) return;
+      const now = Date.now();
+      if (now - lastFocusRefreshAt < WORLD_PULSE_PROFILE_FOCUS_MIN_MS) return;
+      lastFocusRefreshAt = now;
+      void refreshMe({ quiet: true });
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [ready, authenticated, refreshMe]);
 
   // After email login, Privy may need a moment to attach the embedded EVM wallet.

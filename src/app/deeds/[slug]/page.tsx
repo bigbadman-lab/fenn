@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { DeedDetail } from "@/components/deeds/deed-detail";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import { DeedsDetailPulse } from "@/components/world-pulse/deeds-pulse";
 import { getPublicDeedBySlug } from "@/lib/deeds/queries";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +33,7 @@ export default async function DeedDetailPage({ params }: DeedDetailPageProps) {
 
   return (
     <article className="place deeds-place">
+      <DeedsDetailPulse endsAt={deed.endsAt} />
       <AsciiPageTitle title="DEEDS" mark="DEEDS" accent="deeds" />
       <DeedDetail deed={deed} />
     </article>

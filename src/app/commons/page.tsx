@@ -5,7 +5,9 @@ import { CommonsCommitments } from "@/components/commons/commons-commitments";
 import { CommonsHistory } from "@/components/commons/commons-history";
 import { TreasuryReadout } from "@/components/commons/treasury-readout";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import { PagePulse } from "@/components/world-pulse/page-pulse";
 import { loadCommonsPageData } from "@/lib/commons/page-data";
+import { WORLD_PULSE_COMMONS_MS } from "@/lib/world-pulse/intervals";
 
 export const metadata: Metadata = {
   title: "The Commons",
@@ -22,6 +24,7 @@ export default async function CommonsPage() {
 
   return (
     <article className="place commons">
+      <PagePulse intervalMs={WORLD_PULSE_COMMONS_MS} />
       <header className="commons__header">
         <AsciiPageTitle
           title="THE COMMONS"
