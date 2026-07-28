@@ -65,6 +65,8 @@ const serverOnlySchema = z.object({
   /** X username without @. Defaults to askfenn when unset. */
   FENN_X_USERNAME: optionalSecret,
   FENN_ADMIN_WALLETS: fennAdminWallets,
+  /** Bearer secret for protected cron routes (Living Book daily writer). */
+  CRON_SECRET: optionalSecret,
 });
 
 export type ServerOnlyEnv = z.infer<typeof serverOnlySchema>;
@@ -84,6 +86,7 @@ function readServerOnlyEnv(): ServerOnlyEnv {
     FENN_X_USER_ID: process.env.FENN_X_USER_ID,
     FENN_X_USERNAME: process.env.FENN_X_USERNAME,
     FENN_ADMIN_WALLETS: process.env.FENN_ADMIN_WALLETS,
+    CRON_SECRET: process.env.CRON_SECRET,
   });
 
   if (!parsed.success) {

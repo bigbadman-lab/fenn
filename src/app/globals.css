@@ -1522,6 +1522,16 @@ a.fenn-map__link:focus-visible {
   text-underline-offset: 0.18em;
 }
 
+.book-distinction {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.book-empty {
+  margin: 1.5rem 0 0;
+}
+
 .book-entry {
   margin: 2rem 0 0;
   padding-top: 1.5rem;
@@ -1529,27 +1539,98 @@ a.fenn-map__link:focus-visible {
   scroll-margin-top: 1.25rem;
 }
 
+.book-entry__date {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+}
+
+.book-entry__kind {
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
 .book-entry__title {
   font-size: 0.95rem;
   margin-bottom: 0.85rem;
+  color: var(--color-leaf);
+  font-weight: 400;
+  letter-spacing: 0.04em;
 }
 
 .book-entry__body {
   margin: 0;
-  max-width: 36rem;
   white-space: pre-wrap;
+  line-height: 1.55;
+  color: var(--color-bone);
 }
 
 .oak-mark {
-  margin: 0 0 1.75rem;
-  font-size: clamp(0.65rem, 2vw, 0.85rem);
+  margin: 0 0 1.5rem;
+  font-size: clamp(0.7rem, 2vw, 0.9rem);
   line-height: 1.15;
-  overflow-x: auto;
+  color: var(--color-oak, #8b6f47);
+}
+
+.oak-distinction {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.oak-index {
+  margin: 0 0 2rem;
+}
+
+.oak-index ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.oak-index a {
+  text-decoration: none;
+}
+
+.oak-index a:hover {
+  color: var(--color-leaf);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.oak-ring {
+  margin: 1.75rem 0 0;
+  padding-top: 1.35rem;
+  border-top: var(--line);
+  scroll-margin-top: 1.25rem;
+}
+
+.oak-ring__title {
+  margin: 0 0 0.85rem;
+  font-size: 0.92rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--color-leaf);
+}
+
+.oak-ring__roman {
+  color: color-mix(in srgb, var(--color-bone) 70%, var(--color-night));
+}
+
+.oak-ring__body {
+  margin: 0;
+  max-width: 42rem;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  color: var(--color-bone);
+  font-size: 0.9rem;
 }
 
 .oak-fragment {
-  margin: 0 0 1.25rem;
-  max-width: 32rem;
+  margin: 1.25rem 0 0;
   color: var(--muted);
   white-space: pre-wrap;
 }
