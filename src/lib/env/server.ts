@@ -65,6 +65,15 @@ const serverOnlySchema = z.object({
   /** X username without @. Defaults to askfenn when unset. */
   FENN_X_USERNAME: optionalSecret,
   FENN_ADMIN_WALLETS: fennAdminWallets,
+  /**
+   * Trusted Greenwood access override wallets (test/founder).
+   * Comma-separated EVM addresses. Malformed entries ignored at use time.
+   * Eligibility only — never awards LEAF. Never NEXT_PUBLIC_*.
+   */
+  GREENWOOD_ACCESS_WALLETS: z.preprocess(
+    (value) => (typeof value === "string" ? value : ""),
+    z.string(),
+  ),
   /** Bearer secret for protected cron routes (Living Book daily writer). */
   CRON_SECRET: optionalSecret,
 });
@@ -86,6 +95,7 @@ function readServerOnlyEnv(): ServerOnlyEnv {
     FENN_X_USER_ID: process.env.FENN_X_USER_ID,
     FENN_X_USERNAME: process.env.FENN_X_USERNAME,
     FENN_ADMIN_WALLETS: process.env.FENN_ADMIN_WALLETS,
+    GREENWOOD_ACCESS_WALLETS: process.env.GREENWOOD_ACCESS_WALLETS,
     CRON_SECRET: process.env.CRON_SECRET,
   });
 

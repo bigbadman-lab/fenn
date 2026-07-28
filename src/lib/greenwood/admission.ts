@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { profileHasGreenwoodAccessOverride } from "@/lib/greenwood/access-wallets";
 import { GreenwoodError } from "@/lib/greenwood/errors";
 import type {
   AdmitToGreenwoodRpcRow,
@@ -17,7 +18,10 @@ async function defaultAdmin(): Promise<SupabaseClient> {
 /**
  * Admit a registered profile via Stage 8.1 public.admit_to_greenwood.
  * Passes only the trusted server-resolved profile ID.
+ * Access override is derived from the profile's stored wallet vs
+ * GREENWOOD_ACCESS_WALLETS — never from client input.
  * Idempotent: already_member is a successful permanent-member outcome.
+ * Awards/spends zero LEAF.
  */
 export async function admitProfileToGreenwood(
   profileId: string,
@@ -26,8 +30,34 @@ export async function admitProfileToGreenwood(
   const id = assertProfileId(profileId);
   const db = admin ?? (await defaultAdmin());
 
+  const { data: profileRow, error: profileError } = await db
+    .from("profiles")
+    .select("wallet_address")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new GreenwoodError(
+      "greenwood_admission_failed",
+      "Failed to load profile for Greenwood admission",
+      500,
+    );
+  }
+  if (!profileRow) {
+    throw new GreenwoodError(
+      "greenwood_admission_failed",
+      "Profile not found for Greenwood admission",
+      404,
+    );
+  }
+
+  const accessOverride = profileHasGreenwoodAccessOverride(
+    String((profileRow as { wallet_address: string }).wallet_address ?? ""),
+  );
+
   const { data, error } = await db.rpc("admit_to_greenwood", {
     p_profile_id: id,
+    p_access_override: accessOverride,
   });
 
   if (error) {

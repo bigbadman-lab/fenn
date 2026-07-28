@@ -2,12 +2,13 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { profileHasGreenwoodAccessOverride } from "@/lib/greenwood/access-wallets";
 import { GreenwoodError } from "@/lib/greenwood/errors";
+import { computeGreenwoodStandingRank } from "@/lib/greenwood/ranking";
 import type { GreenwoodStatus } from "@/lib/greenwood/types";
 import { LeafError } from "@/lib/leaf/errors";
 import type { StandingSnapshot } from "@/lib/leaf/types";
 import { assertProfileId, assertSafeIntegerAmount } from "@/lib/leaf/validate";
-import { computeGreenwoodStandingRank } from "@/lib/greenwood/ranking";
 
 async function defaultAdmin(): Promise<SupabaseClient> {
   const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -26,6 +27,7 @@ type GreenwoodProfileSnapshot = {
   greenwood_threshold_at_entry: number | null;
   greenwood_lifetime_leaf_at_entry: number | string | null;
   leaf_lifetime_earned: number | string | null;
+  wallet_address: string;
 };
 
 export type GreenwoodStandingLoader = (
@@ -48,7 +50,7 @@ export async function getGreenwoodStatus(
   const { data, error } = await db
     .from("profiles")
     .select(
-      "greenwood_entered_at, greenwood_threshold_at_entry, greenwood_lifetime_leaf_at_entry, leaf_lifetime_earned",
+      "greenwood_entered_at, greenwood_threshold_at_entry, greenwood_lifetime_leaf_at_entry, leaf_lifetime_earned, wallet_address",
     )
     .eq("id", id)
     .maybeSingle();
@@ -105,6 +107,17 @@ export async function getGreenwoodStatus(
   const remainingLeaf = Math.max(0, threshold - lifetimeLeaf);
 
   if (standing.meetsGreenwoodThreshold) {
+    return {
+      state: "eligible",
+      lifetimeLeaf,
+      threshold,
+      remainingLeaf: 0,
+      greenwoodEnteredAt: null,
+    };
+  }
+
+  // Trusted wallet allowlist: eligibility only. LEAF numbers stay real.
+  if (profileHasGreenwoodAccessOverride(row.wallet_address)) {
     return {
       state: "eligible",
       lifetimeLeaf,

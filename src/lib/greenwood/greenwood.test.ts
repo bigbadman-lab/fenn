@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { describe, it } from "node:test";
+import { afterEach, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { normalizeAdmitRpcRow } from "./admission";
@@ -42,6 +42,37 @@ function profileAdmin(
         },
       };
     },
+  };
+}
+
+const DEFAULT_WALLET = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+function admitAdmin(
+  rpcImpl: (
+    name: string,
+    args: { p_profile_id: string; p_access_override?: boolean },
+  ) => Promise<{ data: unknown; error: unknown }>,
+  walletAddress: string = DEFAULT_WALLET,
+) {
+  return {
+    from(table: string) {
+      assert.equal(table, "profiles");
+      return {
+        select(cols: string) {
+          assert.equal(cols, "wallet_address");
+          return {
+            eq() {
+              return {
+                async maybeSingle() {
+                  return { data: { wallet_address: walletAddress }, error: null };
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+    rpc: rpcImpl,
   };
 }
 
@@ -123,6 +154,16 @@ describe("normalizeAdmitRpcRow", () => {
 });
 
 describe("getGreenwoodStatus", () => {
+  const ORIGINAL_ACCESS = process.env.GREENWOOD_ACCESS_WALLETS;
+
+  afterEach(() => {
+    if (ORIGINAL_ACCESS === undefined) {
+      delete process.env.GREENWOOD_ACCESS_WALLETS;
+    } else {
+      process.env.GREENWOOD_ACCESS_WALLETS = ORIGINAL_ACCESS;
+    }
+  });
+
   it("returns member from frozen snapshot without standing lookup", async () => {
     const { getGreenwoodStatus } = await import("./status");
     let standingCalls = 0;
@@ -134,6 +175,7 @@ describe("getGreenwoodStatus", () => {
         greenwood_lifetime_leaf_at_entry: 34,
         leaf_lifetime_earned: 34,
         outlaw_number: 42,
+        wallet_address: DEFAULT_WALLET,
       }, [
         {
           id: PROFILE_ID,
@@ -160,6 +202,7 @@ describe("getGreenwoodStatus", () => {
   });
 
   it("returns ineligible with remainingLeaf", async () => {
+    delete process.env.GREENWOOD_ACCESS_WALLETS;
     const { getGreenwoodStatus } = await import("./status");
     const status = await getGreenwoodStatus(
       PROFILE_ID,
@@ -167,6 +210,7 @@ describe("getGreenwoodStatus", () => {
         greenwood_entered_at: null,
         greenwood_threshold_at_entry: null,
         greenwood_lifetime_leaf_at_entry: null,
+        wallet_address: DEFAULT_WALLET,
       }) as never,
       async () => ({
         lifetimeLeaf: 18,
@@ -184,6 +228,7 @@ describe("getGreenwoodStatus", () => {
   });
 
   it("returns eligible when lifetime meets threshold", async () => {
+    delete process.env.GREENWOOD_ACCESS_WALLETS;
     const { getGreenwoodStatus } = await import("./status");
     const status = await getGreenwoodStatus(
       PROFILE_ID,
@@ -191,6 +236,7 @@ describe("getGreenwoodStatus", () => {
         greenwood_entered_at: null,
         greenwood_threshold_at_entry: null,
         greenwood_lifetime_leaf_at_entry: null,
+        wallet_address: DEFAULT_WALLET,
       }) as never,
       async () => ({
         lifetimeLeaf: 30,
@@ -207,6 +253,58 @@ describe("getGreenwoodStatus", () => {
     });
   });
 
+  it("allowlisted wallet below threshold becomes eligible with real LEAF", async () => {
+    process.env.GREENWOOD_ACCESS_WALLETS =
+      "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+    const { getGreenwoodStatus } = await import("./status");
+    const status = await getGreenwoodStatus(
+      PROFILE_ID,
+      profileAdmin({
+        greenwood_entered_at: null,
+        greenwood_threshold_at_entry: null,
+        greenwood_lifetime_leaf_at_entry: null,
+        wallet_address: DEFAULT_WALLET,
+      }) as never,
+      async () => ({
+        lifetimeLeaf: 7,
+        greenwoodThreshold: 30,
+        meetsGreenwoodThreshold: false,
+      }),
+    );
+    assert.deepEqual(status, {
+      state: "eligible",
+      lifetimeLeaf: 7,
+      threshold: 30,
+      remainingLeaf: 0,
+      greenwoodEnteredAt: null,
+    });
+  });
+
+  it("non-allowlisted wallet below threshold remains ineligible", async () => {
+    process.env.GREENWOOD_ACCESS_WALLETS =
+      "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const { getGreenwoodStatus } = await import("./status");
+    const status = await getGreenwoodStatus(
+      PROFILE_ID,
+      profileAdmin({
+        greenwood_entered_at: null,
+        greenwood_threshold_at_entry: null,
+        greenwood_lifetime_leaf_at_entry: null,
+        wallet_address: DEFAULT_WALLET,
+      }) as never,
+      async () => ({
+        lifetimeLeaf: 7,
+        greenwoodThreshold: 30,
+        meetsGreenwoodThreshold: false,
+      }),
+    );
+    assert.equal(status.state, "ineligible");
+    if (status.state === "ineligible") {
+      assert.equal(status.lifetimeLeaf, 7);
+      assert.equal(status.remainingLeaf, 23);
+    }
+  });
+
   it("fails closed when threshold is missing", async () => {
     const { getGreenwoodStatus } = await import("./status");
     await assert.rejects(
@@ -217,6 +315,7 @@ describe("getGreenwoodStatus", () => {
             greenwood_entered_at: null,
             greenwood_threshold_at_entry: null,
             greenwood_lifetime_leaf_at_entry: null,
+            wallet_address: DEFAULT_WALLET,
           }) as never,
           async () => ({
             lifetimeLeaf: 40,
@@ -240,6 +339,7 @@ describe("getGreenwoodStatus", () => {
             greenwood_entered_at: "2026-07-01T00:00:00.000Z",
             greenwood_threshold_at_entry: null,
             greenwood_lifetime_leaf_at_entry: 34,
+            wallet_address: DEFAULT_WALLET,
           }) as never,
         ),
       (err: unknown) =>
@@ -250,75 +350,106 @@ describe("getGreenwoodStatus", () => {
 });
 
 describe("admitProfileToGreenwood", () => {
+  const ORIGINAL_ACCESS = process.env.GREENWOOD_ACCESS_WALLETS;
+
+  afterEach(() => {
+    if (ORIGINAL_ACCESS === undefined) {
+      delete process.env.GREENWOOD_ACCESS_WALLETS;
+    } else {
+      process.env.GREENWOOD_ACCESS_WALLETS = ORIGINAL_ACCESS;
+    }
+  });
+
   it("normalizes admitted RPC row", async () => {
+    delete process.env.GREENWOOD_ACCESS_WALLETS;
     const { admitProfileToGreenwood } = await import("./admission");
-    const admin = {
-      async rpc(name: string, args: { p_profile_id: string }) {
-        assert.equal(name, "admit_to_greenwood");
-        assert.equal(args.p_profile_id, PROFILE_ID);
-        return {
-          data: [
-            {
-              status: "admitted",
-              newly_admitted: true,
-              profile_id: PROFILE_ID,
-              lifetime_leaf: 31,
-              threshold: 30,
-              greenwood_entered_at: "2026-07-23T12:00:00.000Z",
-              greenwood_threshold_at_entry: 30,
-              greenwood_lifetime_leaf_at_entry: 31,
-            },
-          ],
-          error: null,
-        };
-      },
-    };
+    const admin = admitAdmin(async (name, args) => {
+      assert.equal(name, "admit_to_greenwood");
+      assert.equal(args.p_profile_id, PROFILE_ID);
+      assert.equal(args.p_access_override, false);
+      return {
+        data: [
+          {
+            status: "admitted",
+            newly_admitted: true,
+            profile_id: PROFILE_ID,
+            lifetime_leaf: 31,
+            threshold: 30,
+            greenwood_entered_at: "2026-07-23T12:00:00.000Z",
+            greenwood_threshold_at_entry: 30,
+            greenwood_lifetime_leaf_at_entry: 31,
+          },
+        ],
+        error: null,
+      };
+    });
     const result = await admitProfileToGreenwood(PROFILE_ID, admin as never);
     assert.equal(result.status, "admitted");
   });
 
+  it("passes access override from trusted profile wallet", async () => {
+    process.env.GREENWOOD_ACCESS_WALLETS = DEFAULT_WALLET;
+    const { admitProfileToGreenwood } = await import("./admission");
+    let sawOverride: boolean | undefined;
+    const admin = admitAdmin(async (_name, args) => {
+      sawOverride = args.p_access_override;
+      return {
+        data: {
+          status: "admitted",
+          newly_admitted: true,
+          profile_id: PROFILE_ID,
+          lifetime_leaf: 3,
+          threshold: 30,
+          greenwood_entered_at: "2026-07-28T12:00:00.000Z",
+          greenwood_threshold_at_entry: 30,
+          greenwood_lifetime_leaf_at_entry: 3,
+        },
+        error: null,
+      };
+    });
+    const result = await admitProfileToGreenwood(PROFILE_ID, admin as never);
+    assert.equal(sawOverride, true);
+    assert.equal(result.status, "admitted");
+    if (result.status === "admitted") {
+      assert.equal(result.lifetimeLeafAtEntry, 3);
+    }
+  });
+
   it("treats already_member as success", async () => {
     const { admitProfileToGreenwood } = await import("./admission");
-    const admin = {
-      async rpc() {
-        return {
-          data: {
-            status: "already_member",
-            newly_admitted: false,
-            profile_id: PROFILE_ID,
-            lifetime_leaf: 30,
-            threshold: 30,
-            greenwood_entered_at: "2026-07-01T00:00:00.000Z",
-            greenwood_threshold_at_entry: 30,
-            greenwood_lifetime_leaf_at_entry: 30,
-          },
-          error: null,
-        };
+    const admin = admitAdmin(async () => ({
+      data: {
+        status: "already_member",
+        newly_admitted: false,
+        profile_id: PROFILE_ID,
+        lifetime_leaf: 30,
+        threshold: 30,
+        greenwood_entered_at: "2026-07-01T00:00:00.000Z",
+        greenwood_threshold_at_entry: 30,
+        greenwood_lifetime_leaf_at_entry: 30,
       },
-    };
+      error: null,
+    }));
     const result = await admitProfileToGreenwood(PROFILE_ID, admin as never);
     assert.equal(result.status, "already_member");
   });
 
   it("returns not_eligible without throwing", async () => {
+    delete process.env.GREENWOOD_ACCESS_WALLETS;
     const { admitProfileToGreenwood } = await import("./admission");
-    const admin = {
-      async rpc() {
-        return {
-          data: {
-            status: "not_eligible",
-            newly_admitted: false,
-            profile_id: PROFILE_ID,
-            lifetime_leaf: 10,
-            threshold: 30,
-            greenwood_entered_at: null,
-            greenwood_threshold_at_entry: null,
-            greenwood_lifetime_leaf_at_entry: null,
-          },
-          error: null,
-        };
+    const admin = admitAdmin(async () => ({
+      data: {
+        status: "not_eligible",
+        newly_admitted: false,
+        profile_id: PROFILE_ID,
+        lifetime_leaf: 10,
+        threshold: 30,
+        greenwood_entered_at: null,
+        greenwood_threshold_at_entry: null,
+        greenwood_lifetime_leaf_at_entry: null,
       },
-    };
+      error: null,
+    }));
     const result = await admitProfileToGreenwood(PROFILE_ID, admin as never);
     assert.deepEqual(result, {
       status: "not_eligible",
@@ -330,14 +461,10 @@ describe("admitProfileToGreenwood", () => {
 
   it("maps unexpected RPC failure to controlled error", async () => {
     const { admitProfileToGreenwood } = await import("./admission");
-    const admin = {
-      async rpc() {
-        return {
-          data: null,
-          error: { message: "connection reset" },
-        };
-      },
-    };
+    const admin = admitAdmin(async () => ({
+      data: null,
+      error: { message: "connection reset" },
+    }));
     await assert.rejects(
       () => admitProfileToGreenwood(PROFILE_ID, admin as never),
       (err: unknown) =>
@@ -348,17 +475,13 @@ describe("admitProfileToGreenwood", () => {
 
   it("maps missing threshold RPC error to configuration error", async () => {
     const { admitProfileToGreenwood } = await import("./admission");
-    const admin = {
-      async rpc() {
-        return {
-          data: null,
-          error: {
-            message:
-              "FENN_GREENWOOD_THRESHOLD_MISSING: greenwood.lifetime_leaf_threshold is not configured",
-          },
-        };
+    const admin = admitAdmin(async () => ({
+      data: null,
+      error: {
+        message:
+          "FENN_GREENWOOD_THRESHOLD_MISSING: greenwood.lifetime_leaf_threshold is not configured",
       },
-    };
+    }));
     await assert.rejects(
       () => admitProfileToGreenwood(PROFILE_ID, admin as never),
       (err: unknown) =>
@@ -387,11 +510,13 @@ describe("greenwood API source safety", () => {
     assert.match(status, /getGreenwoodStatus\(profile\.id/);
   });
 
-  it("admission service only passes profile id to RPC", () => {
+  it("admission service only passes profile id and derived override to RPC", () => {
     const source = readFileSync(join(here, "admission.ts"), "utf8");
     assert.match(source, /admit_to_greenwood/);
     assert.match(source, /p_profile_id:\s*id/);
+    assert.match(source, /p_access_override:\s*accessOverride/);
     assert.doesNotMatch(source, /p_threshold/);
     assert.doesNotMatch(source, /p_lifetime/);
+    assert.doesNotMatch(source, /awardLeaf|leaf_ledger|leaf_balance/);
   });
 });
