@@ -233,7 +233,7 @@ describe("Stage 11.8 feedback loops + ops scripts", () => {
     assert.doesNotMatch(source, /knowledgeContext|BEGIN_FENN/);
   });
 
-  it("ops scripts use .env.local and stay server-side", () => {
+  it("ops scripts load .env.local optionally and stay server-side", () => {
     const pkg = JSON.parse(
       readFileSync(join(repo, "package.json"), "utf8"),
     ) as { scripts: Record<string, string> };
@@ -243,8 +243,8 @@ describe("Stage 11.8 feedback loops + ops scripts", () => {
       "memory:index",
       "memory:retrieve",
     ]) {
-      assert.match(pkg.scripts[key]!, /--env-file=\.env\.local/);
-      assert.doesNotMatch(pkg.scripts[key]!, /--env-file=\.env"/);
+      assert.match(pkg.scripts[key]!, /--import \.\/scripts\/load-env\.ts/);
+      assert.doesNotMatch(pkg.scripts[key]!, /--env-file=/);
     }
     assert.equal(existsSync(join(repo, "src/app/api/memory")), false);
     assert.equal(existsSync(join(repo, "src/app/api/agent")), false);

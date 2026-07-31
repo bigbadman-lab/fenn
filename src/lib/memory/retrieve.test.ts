@@ -322,12 +322,15 @@ describe("Stage 11.5 source safety", () => {
     assert.doesNotMatch(sql, /hnsw|ivfflat/i);
   });
 
-  it("ops scripts use .env.local not .env", () => {
+  it("ops scripts load .env.local optionally via load-env preload", () => {
     const pkg = readFileSync(join(repo, "package.json"), "utf8");
-    assert.match(pkg, /"canon:sync": .+--env-file=\.env\.local/);
-    assert.match(pkg, /"memory:process-pending": .+--env-file=\.env\.local/);
-    assert.match(pkg, /"memory:index": .+--env-file=\.env\.local/);
-    assert.match(pkg, /"memory:retrieve": .+--env-file=\.env\.local/);
-    assert.doesNotMatch(pkg, /--env-file=\.env"/);
+    assert.match(pkg, /"canon:sync": .+--import \.\/scripts\/load-env\.ts/);
+    assert.match(
+      pkg,
+      /"memory:process-pending": .+--import \.\/scripts\/load-env\.ts/,
+    );
+    assert.match(pkg, /"memory:index": .+--import \.\/scripts\/load-env\.ts/);
+    assert.match(pkg, /"memory:retrieve": .+--import \.\/scripts\/load-env\.ts/);
+    assert.doesNotMatch(pkg, /--env-file=/);
   });
 });

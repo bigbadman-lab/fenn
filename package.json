@@ -2,24 +2,28 @@
   "name": "fenn",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --conditions=react-server --test src/lib/leaf/**/*.test.ts src/lib/deeds/**/*.test.ts src/lib/admin/**/*.test.ts src/lib/camp/**/*.test.ts src/lib/greenwood/**/*.test.ts src/lib/treasury/**/*.test.ts src/lib/commons/**/*.test.ts src/lib/wall/**/*.test.ts src/lib/canon/**/*.test.ts src/lib/memory/**/*.test.ts src/lib/agent/**/*.test.ts src/lib/x/**/*.test.ts src/lib/world-pulse/**/*.test.ts src/lib/ledger/**/*.test.ts src/lib/home/**/*.test.ts src/lib/chronicle/**/*.test.ts",
-    "canon:sync": "tsx --conditions=react-server --env-file=.env.local scripts/sync-fenn-canon.ts",
-    "memory:process-pending": "tsx --conditions=react-server --env-file=.env.local scripts/process-pending-memory.ts",
-    "memory:index": "tsx --conditions=react-server --env-file=.env.local scripts/index-fenn-memory.ts",
-    "memory:retrieve": "tsx --conditions=react-server --env-file=.env.local scripts/retrieve-fenn-knowledge.ts",
-    "x:verify-account": "tsx --conditions=react-server --env-file=.env.local scripts/x-verify-account.ts",
-    "x:poll": "tsx --conditions=react-server --env-file=.env.local scripts/x-poll.ts",
-    "agent:judge-x": "tsx --conditions=react-server --env-file=.env.local scripts/agent-judge-x.ts",
-    "agent:inspect-judgement": "tsx --conditions=react-server --env-file=.env.local scripts/agent-inspect-judgement.ts",
-    "agent:sight-x": "tsx --conditions=react-server --env-file=.env.local scripts/agent-sight-x.ts",
-    "agent:authorize-x": "tsx --conditions=react-server --env-file=.env.local scripts/agent-authorize-x.ts",
-    "agent:execute-x": "tsx --conditions=react-server --env-file=.env.local scripts/agent-execute-x.ts",
-    "chronicle:daily": "tsx --conditions=react-server --env-file=.env.local scripts/chronicle-daily.ts"
+    "test": "tsx --conditions=react-server --test src/lib/leaf/**/*.test.ts src/lib/deeds/**/*.test.ts src/lib/admin/**/*.test.ts src/lib/camp/**/*.test.ts src/lib/greenwood/**/*.test.ts src/lib/treasury/**/*.test.ts src/lib/commons/**/*.test.ts src/lib/wall/**/*.test.ts src/lib/canon/**/*.test.ts src/lib/memory/**/*.test.ts src/lib/agent/**/*.test.ts src/lib/x/**/*.test.ts src/lib/world-pulse/**/*.test.ts src/lib/ledger/**/*.test.ts src/lib/home/**/*.test.ts src/lib/chronicle/**/*.test.ts src/lib/ops/**/*.test.ts",
+    "canon:sync": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/sync-fenn-canon.ts",
+    "memory:process-pending": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/process-pending-memory.ts",
+    "memory:index": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/index-fenn-memory.ts",
+    "memory:retrieve": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/retrieve-fenn-knowledge.ts",
+    "x:verify-account": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/x-verify-account.ts",
+    "x:poll": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/x-poll.ts",
+    "agent:judge-x": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-judge-x.ts",
+    "agent:inspect-judgement": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-inspect-judgement.ts",
+    "agent:sight-x": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-sight-x.ts",
+    "agent:authorize-x": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-authorize-x.ts",
+    "agent:execute-x": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-execute-x.ts",
+    "agent:run-x": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-run-x-pipeline.ts",
+    "chronicle:daily": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/chronicle-daily.ts"
   },
   "dependencies": {
     "@privy-io/node": "^0.27.0",
@@ -31,6 +35,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "server-only": "^0.0.1",
+    "tsx": "^4.20.5",
     "viem": "^2.52.0",
     "zod": "^4.4.3"
   },
@@ -42,7 +47,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
     "tailwindcss": "^4",
-    "tsx": "^4.20.5",
     "typescript": "^5"
   }
 }
