@@ -34,7 +34,7 @@ describe("memberInteriorCopy", () => {
     assert.equal(copy.showsEligibility, false);
     assert.equal(copy.showsEnter, false);
     assert.equal(copy.hubTitle, "THE FIRE");
-    assert.deepEqual(copy.dormantLabels, ["THE HOLLOW", "GATHERINGS"]);
+    assert.deepEqual(copy.dormantLabels, ["THE HOLLOW"]);
   });
 
   it("omits alias line when alias is empty", () => {
@@ -67,8 +67,9 @@ describe("GREENWOOD_MEMBER_PATHS", () => {
     }
   });
 
-  it("keeps Hollow and Gatherings dormant without hrefs", () => {
-    assert.equal(GREENWOOD_FIRE_DORMANT_PATHS.length, 2);
+  it("keeps Hollow dormant without hrefs (Gatherings are live at The Fire)", () => {
+    assert.equal(GREENWOOD_FIRE_DORMANT_PATHS.length, 1);
+    assert.equal(GREENWOOD_FIRE_DORMANT_PATHS[0]?.label, "THE HOLLOW");
     for (const path of GREENWOOD_FIRE_DORMANT_PATHS) {
       assert.equal("href" in path, false);
     }
@@ -84,6 +85,7 @@ describe("greenwood member source safety", () => {
     assert.match(source, /YOUR PLACE/);
     assert.match(source, /THE FIRE/);
     assert.match(source, /GreenwoodFirePresence/);
+    assert.match(source, /GreenwoodFireGathering/);
     assert.match(source, /DEEPER DEEDS/);
     assert.match(source, /GREENWOOD_FIRE_DORMANT_PATHS/);
     assert.match(source, /lifetimeLeafAtEntry/);
@@ -93,6 +95,12 @@ describe("greenwood member source safety", () => {
     assert.equal(
       GREENWOOD_FIRE_DORMANT_PATHS.some((p) => p.label === "THE HOLLOW"),
       true,
+    );
+    assert.equal(
+      (GREENWOOD_FIRE_DORMANT_PATHS.map((p) => p.label) as string[]).includes(
+        "GATHERINGS",
+      ),
+      false,
     );
     assert.equal(
       GREENWOOD_FIRE_DORMANT_PATHS.some((p) =>

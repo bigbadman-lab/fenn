@@ -1,5 +1,9 @@
 import type { SafeDeed } from "@/lib/deeds/types";
 import type {
+  FireGatheringsSnapshot,
+  SafeGathering,
+} from "@/lib/greenwood/gatherings/types";
+import type {
   FirePresenceSelfState,
   FirePresenceSnapshot,
 } from "@/lib/greenwood/presence/types";
@@ -15,6 +19,8 @@ type ApiEnvelope = {
   deeds?: SafeDeed[];
   presence?: FirePresenceSnapshot;
   self?: FirePresenceSelfState;
+  gatherings?: FireGatheringsSnapshot;
+  gathering?: SafeGathering;
   error?: string;
   code?: string;
 };
@@ -258,5 +264,92 @@ export async function postGreenwoodPresenceLeave(
     "/api/greenwood/presence/leave",
     headers,
     "Leave the Fire failed",
+  );
+}
+
+export type GreenwoodGatheringsFetchResult =
+  | { ok: true; gatherings: FireGatheringsSnapshot }
+  | { ok: false; error: GreenwoodClientError };
+
+export type GreenwoodGatheringActionResult =
+  | { ok: true; gathering: SafeGathering }
+  | { ok: false; error: GreenwoodClientError };
+
+export async function fetchGreenwoodGatherings(
+  headers: HeadersInit,
+): Promise<GreenwoodGatheringsFetchResult> {
+  const response = await fetch("/api/greenwood/gatherings", {
+    headers,
+    cache: "no-store",
+  });
+  let body: ApiEnvelope | null = null;
+  try {
+    body = (await response.json()) as ApiEnvelope;
+  } catch {
+    body = null;
+  }
+  if (!response.ok || !body?.ok || !body.gatherings) {
+    return {
+      ok: false,
+      error: asError(
+        response.status,
+        body,
+        "greenwood_gathering_failed",
+        "Gatherings failed",
+      ),
+    };
+  }
+  return { ok: true, gatherings: body.gatherings };
+}
+
+async function postGatheringHand(
+  path: string,
+  headers: HeadersInit,
+  fallback: string,
+): Promise<GreenwoodGatheringActionResult> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers,
+    cache: "no-store",
+  });
+  let body: ApiEnvelope | null = null;
+  try {
+    body = (await response.json()) as ApiEnvelope;
+  } catch {
+    body = null;
+  }
+  if (!response.ok || !body?.ok || !body.gathering) {
+    return {
+      ok: false,
+      error: asError(
+        response.status,
+        body,
+        "greenwood_gathering_failed",
+        fallback,
+      ),
+    };
+  }
+  return { ok: true, gathering: body.gathering };
+}
+
+export async function postRaiseGatheringHand(
+  gatheringId: string,
+  headers: HeadersInit,
+): Promise<GreenwoodGatheringActionResult> {
+  return postGatheringHand(
+    `/api/greenwood/gatherings/${gatheringId}/raise-hand`,
+    headers,
+    "Raise Hand failed",
+  );
+}
+
+export async function postLowerGatheringHand(
+  gatheringId: string,
+  headers: HeadersInit,
+): Promise<GreenwoodGatheringActionResult> {
+  return postGatheringHand(
+    `/api/greenwood/gatherings/${gatheringId}/lower-hand`,
+    headers,
+    "Lower Hand failed",
   );
 }

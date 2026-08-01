@@ -21,10 +21,6 @@ export const GREENWOOD_FIRE_DORMANT_PATHS = [
     label: "THE HOLLOW",
     note: "nothing has been left here yet.",
   },
-  {
-    label: "GATHERINGS",
-    note: "no gathering has been called.",
-  },
 ] as const;
 
 export type GreenwoodMemberPresentation = {

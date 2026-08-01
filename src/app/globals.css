@@ -3080,6 +3080,83 @@ button.wall-mark__action:focus-visible {
   cursor: wait;
 }
 
+.greenwood-fire-gathering__state {
+  margin: 0.35rem 0 0.55rem;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--color-leaf) 55%, var(--color-bone));
+}
+
+.greenwood-fire-gathering__title {
+  margin: 0 0 0.45rem;
+  letter-spacing: 0.04em;
+}
+
+.greenwood-fire-gathering__countdown {
+  margin: 0.65rem 0 0;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.greenwood-fire-gathering__hands {
+  margin: 0.75rem 0 0;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-leaf) 50%, var(--color-bone));
+}
+
+.greenwood-fire-gathering__deed {
+  margin: 0.65rem 0 0;
+  letter-spacing: 0.04em;
+}
+
+.greenwood-fire-gathering__actions {
+  margin-top: 1.1rem;
+}
+
+.greenwood-fire-gathering__self-state {
+  margin: 0 0 0.55rem;
+  letter-spacing: 0.07em;
+  color: color-mix(in srgb, var(--color-leaf) 60%, var(--color-bone));
+}
+
+.greenwood-fire-gathering__btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid
+    color-mix(in srgb, var(--color-greenwood) 55%, var(--border));
+  color: var(--color-leaf);
+  letter-spacing: 0.06em;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.greenwood-fire-gathering__btn:hover:not(:disabled) {
+  color: var(--color-bone);
+  border-color: var(--color-leaf);
+}
+
+.greenwood-fire-gathering__btn:focus-visible {
+  outline: 1px solid var(--color-leaf);
+  outline-offset: 3px;
+}
+
+.greenwood-fire-gathering__btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .greenwood-fire-gathering__countdown {
+    transition: none;
+  }
+}
+
+.admin-gatherings__form {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0 1.5rem;
+  max-width: 36rem;
+}
+
 .greenwood-interior__transition-ascii {
   margin: 0.65rem 0 0;
   color: color-mix(in srgb, var(--color-greenwood) 75%, var(--color-bone));
