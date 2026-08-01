@@ -83,6 +83,7 @@ describe("greenwood member source safety", () => {
     );
     assert.match(source, /YOUR PLACE/);
     assert.match(source, /THE FIRE/);
+    assert.match(source, /GreenwoodFirePresence/);
     assert.match(source, /DEEPER DEEDS/);
     assert.match(source, /GREENWOOD_FIRE_DORMANT_PATHS/);
     assert.match(source, /lifetimeLeafAtEntry/);

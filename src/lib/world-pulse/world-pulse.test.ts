@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   WORLD_PULSE_COMMONS_MS,
   WORLD_PULSE_DEEDS_MS,
+  WORLD_PULSE_GREENWOOD_FIRE_MS,
   WORLD_PULSE_LEDGER_MS,
   WORLD_PULSE_PROFILE_FOCUS_MIN_MS,
   WORLD_PULSE_WALL_MS,
@@ -25,6 +26,7 @@ describe("World Pulse intervals", () => {
     assert.equal(WORLD_PULSE_WALL_MS, 25_000);
     assert.equal(WORLD_PULSE_DEEDS_MS, 60_000);
     assert.equal(WORLD_PULSE_LEDGER_MS, 25_000);
+    assert.equal(WORLD_PULSE_GREENWOOD_FIRE_MS, 25_000);
     assert.ok(WORLD_PULSE_PROFILE_FOCUS_MIN_MS >= 10_000);
   });
 });

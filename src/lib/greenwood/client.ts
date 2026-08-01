@@ -1,5 +1,9 @@
 import type { SafeDeed } from "@/lib/deeds/types";
 import type {
+  FirePresenceSelfState,
+  FirePresenceSnapshot,
+} from "@/lib/greenwood/presence/types";
+import type {
   GreenwoodAdmissionResult,
   GreenwoodStatus,
 } from "@/lib/greenwood/types";
@@ -9,6 +13,8 @@ type ApiEnvelope = {
   status?: GreenwoodStatus;
   result?: GreenwoodAdmissionResult;
   deeds?: SafeDeed[];
+  presence?: FirePresenceSnapshot;
+  self?: FirePresenceSelfState;
   error?: string;
   code?: string;
 };
@@ -145,4 +151,112 @@ export async function fetchGreenwoodDeeds(
   }
 
   return { ok: true, deeds: body.deeds };
+}
+
+export type GreenwoodPresenceFetchResult =
+  | { ok: true; presence: FirePresenceSnapshot }
+  | { ok: false; error: GreenwoodClientError };
+
+export type GreenwoodPresenceSelfFetchResult =
+  | { ok: true; self: FirePresenceSelfState }
+  | { ok: false; error: GreenwoodClientError };
+
+/**
+ * Authenticated GET /api/greenwood/presence.
+ * Member-safe Fire presence only — no profile IDs or wallets.
+ */
+export async function fetchGreenwoodPresence(
+  headers: HeadersInit,
+): Promise<GreenwoodPresenceFetchResult> {
+  const response = await fetch("/api/greenwood/presence", {
+    headers,
+    cache: "no-store",
+  });
+
+  let body: ApiEnvelope | null = null;
+  try {
+    body = (await response.json()) as ApiEnvelope;
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok || !body?.ok || !body.presence) {
+    return {
+      ok: false,
+      error: asError(
+        response.status,
+        body,
+        "greenwood_presence_failed",
+        "Fire presence failed",
+      ),
+    };
+  }
+
+  return { ok: true, presence: body.presence };
+}
+
+async function postPresenceAction(
+  path: string,
+  headers: HeadersInit,
+  fallbackMessage: string,
+): Promise<GreenwoodPresenceSelfFetchResult> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers,
+    cache: "no-store",
+  });
+
+  let body: ApiEnvelope | null = null;
+  try {
+    body = (await response.json()) as ApiEnvelope;
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok || !body?.ok || !body.self) {
+    return {
+      ok: false,
+      error: asError(
+        response.status,
+        body,
+        "greenwood_presence_failed",
+        fallbackMessage,
+      ),
+    };
+  }
+
+  return { ok: true, self: body.self };
+}
+
+/** Authenticated POST /api/greenwood/presence/heartbeat — empty body. */
+export async function postGreenwoodPresenceHeartbeat(
+  headers: HeadersInit,
+): Promise<GreenwoodPresenceSelfFetchResult> {
+  return postPresenceAction(
+    "/api/greenwood/presence/heartbeat",
+    headers,
+    "Fire heartbeat failed",
+  );
+}
+
+/** Authenticated POST /api/greenwood/presence/sit — empty body. */
+export async function postGreenwoodPresenceSit(
+  headers: HeadersInit,
+): Promise<GreenwoodPresenceSelfFetchResult> {
+  return postPresenceAction(
+    "/api/greenwood/presence/sit",
+    headers,
+    "Sit by the Fire failed",
+  );
+}
+
+/** Authenticated POST /api/greenwood/presence/leave — empty body. */
+export async function postGreenwoodPresenceLeave(
+  headers: HeadersInit,
+): Promise<GreenwoodPresenceSelfFetchResult> {
+  return postPresenceAction(
+    "/api/greenwood/presence/leave",
+    headers,
+    "Leave the Fire failed",
+  );
 }

@@ -78,6 +78,7 @@ describe("Stage 8.5 Greenwood hardening source safety", () => {
     assert.match(member, /GreenwoodMember/);
     assert.match(member, /YOUR PLACE/);
     assert.match(member, /THE FIRE/);
+    assert.match(member, /GreenwoodFirePresence/);
     assert.match(member, /DEEPER DEEDS/);
     assert.match(member, /GREENWOOD_FIRE_DORMANT_PATHS/);
     assert.doesNotMatch(member, /THE GROVE/);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { GreenwoodFirePresence } from "@/components/greenwood/greenwood-fire-presence";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { formatDeedBoardDate, formatDeedReward } from "@/lib/deeds/format";
 import type { SafeDeed } from "@/lib/deeds/types";
@@ -24,8 +25,8 @@ type GreenwoodMemberProps = {
 };
 
 /**
- * Living Greenwood 1 — The Fire member hub.
- * No presence, gatherings, Hollow rewards, or admin controls.
+ * Living Greenwood — The Fire member hub.
+ * Presence heartbeats + sit/leave (LG2). No gatherings or Hollow rewards.
  */
 export function GreenwoodMember({
   outlawLabel,
@@ -146,6 +147,10 @@ export function GreenwoodMember({
             <p key={line}>{line}</p>
           ))}
         </section>
+
+        <hr className="greenwood-member__rule" />
+
+        <GreenwoodFirePresence getAuthHeaders={getAuthHeaders} />
 
         <hr className="greenwood-member__rule" />
 

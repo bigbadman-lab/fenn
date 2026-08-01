@@ -40,5 +40,17 @@ export {
 
 export type { SafeGreenwoodSigil } from "@/lib/greenwood/sigil/types";
 
-// Server-only status / admission / sigil assignment:
+export {
+  GREENWOOD_FIRE_ACTIVE_TIMEOUT_MS,
+  GREENWOOD_FIRE_HEARTBEAT_MS,
+  GREENWOOD_FIRE_PRESENCE_REFRESH_MS,
+} from "@/lib/greenwood/presence/constants";
+
+export type {
+  FirePresenceMember,
+  FirePresenceSelfState,
+  FirePresenceSnapshot,
+} from "@/lib/greenwood/presence/types";
+
+// Server-only status / admission / sigil / presence:
 // import modules directly from trusted server code.
