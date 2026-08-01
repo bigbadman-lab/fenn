@@ -4,6 +4,11 @@ import type {
   SafeGathering,
 } from "@/lib/greenwood/gatherings/types";
 import type {
+  HollowFireStatus,
+  HollowInboxSnapshot,
+  SafeHollowReward,
+} from "@/lib/greenwood/hollow/types";
+import type {
   FirePresenceSelfState,
   FirePresenceSnapshot,
 } from "@/lib/greenwood/presence/types";
@@ -21,6 +26,12 @@ type ApiEnvelope = {
   self?: FirePresenceSelfState;
   gatherings?: FireGatheringsSnapshot;
   gathering?: SafeGathering;
+  hollow?: HollowInboxSnapshot;
+  hollowStatus?: HollowFireStatus;
+  reward?: SafeHollowReward;
+  leafBalance?: number;
+  leafLifetimeEarned?: number;
+  newlyClaimed?: boolean;
   error?: string;
   code?: string;
 };
@@ -352,4 +363,117 @@ export async function postLowerGatheringHand(
     headers,
     "Lower Hand failed",
   );
+}
+
+export type GreenwoodHollowFetchResult =
+  | { ok: true; hollow: HollowInboxSnapshot }
+  | { ok: false; error: GreenwoodClientError };
+
+export type GreenwoodHollowStatusFetchResult =
+  | { ok: true; status: HollowFireStatus }
+  | { ok: false; error: GreenwoodClientError };
+
+export type GreenwoodHollowClaimResult =
+  | {
+      ok: true;
+      reward: SafeHollowReward;
+      leafBalance: number;
+      leafLifetimeEarned: number;
+      newlyClaimed: boolean;
+    }
+  | { ok: false; error: GreenwoodClientError };
+
+export async function fetchGreenwoodHollow(
+  headers: HeadersInit,
+): Promise<GreenwoodHollowFetchResult> {
+  const response = await fetch("/api/greenwood/hollow", {
+    headers,
+    cache: "no-store",
+  });
+  let body: ApiEnvelope | null = null;
+  try {
+    body = (await response.json()) as ApiEnvelope;
+  } catch {
+    body = null;
+  }
+  if (!response.ok || !body?.ok || !body.hollow) {
+    return {
+      ok: false,
+      error: asError(
+        response.status,
+        body,
+        "greenwood_hollow_failed",
+        "The Hollow failed",
+      ),
+    };
+  }
+  return { ok: true, hollow: body.hollow };
+}
+
+export async function fetchGreenwoodHollowStatus(
+  headers: HeadersInit,
+): Promise<GreenwoodHollowStatusFetchResult> {
+  const response = await fetch("/api/greenwood/hollow/status", {
+    headers,
+    cache: "no-store",
+  });
+  let body: ApiEnvelope | null = null;
+  try {
+    body = (await response.json()) as ApiEnvelope;
+  } catch {
+    body = null;
+  }
+  if (!response.ok || !body?.ok || !body.hollowStatus) {
+    return {
+      ok: false,
+      error: asError(
+        response.status,
+        body,
+        "greenwood_hollow_failed",
+        "Hollow status failed",
+      ),
+    };
+  }
+  return { ok: true, status: body.hollowStatus };
+}
+
+export async function postClaimHollowReward(
+  rewardId: string,
+  headers: HeadersInit,
+): Promise<GreenwoodHollowClaimResult> {
+  const response = await fetch(`/api/greenwood/hollow/${rewardId}/claim`, {
+    method: "POST",
+    headers,
+    cache: "no-store",
+  });
+  let body: ApiEnvelope | null = null;
+  try {
+    body = (await response.json()) as ApiEnvelope;
+  } catch {
+    body = null;
+  }
+  if (
+    !response.ok ||
+    !body?.ok ||
+    !body.reward ||
+    body.leafBalance == null ||
+    body.leafLifetimeEarned == null
+  ) {
+    return {
+      ok: false,
+      error: asError(
+        response.status,
+        body,
+        "greenwood_hollow_failed",
+        "Claim failed",
+      ),
+    };
+  }
+  return {
+    ok: true,
+    reward: body.reward,
+    leafBalance: body.leafBalance,
+    leafLifetimeEarned: body.leafLifetimeEarned,
+    newlyClaimed: Boolean(body.newlyClaimed),
+  };
 }

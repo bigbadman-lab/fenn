@@ -15,7 +15,15 @@ export type GreenwoodErrorCode =
   | "greenwood_gathering_cancelled"
   | "greenwood_gathering_full"
   | "greenwood_gathering_overlap"
-  | "greenwood_gathering_not_visible";
+  | "greenwood_gathering_not_visible"
+  | "greenwood_hollow_failed"
+  | "greenwood_hollow_not_found"
+  | "greenwood_hollow_forbidden"
+  | "greenwood_hollow_not_claimable"
+  | "greenwood_hollow_not_available"
+  | "greenwood_hollow_cancelled"
+  | "greenwood_hollow_expired"
+  | "greenwood_hollow_snapshot_invalid";
 
 export class GreenwoodError extends Error {
   code: GreenwoodErrorCode;

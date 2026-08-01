@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { GreenwoodFireGathering } from "@/components/greenwood/greenwood-fire-gathering";
+import { GreenwoodFireHollow } from "@/components/greenwood/greenwood-fire-hollow";
 import { GreenwoodFirePresence } from "@/components/greenwood/greenwood-fire-presence";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { formatDeedBoardDate, formatDeedReward } from "@/lib/deeds/format";
@@ -14,7 +15,6 @@ import {
   GREENWOOD_FIRE_MESSAGE,
 } from "@/lib/greenwood/fire-message";
 import type { GreenwoodMemberSnapshotView } from "@/lib/greenwood/gate-view";
-import { GREENWOOD_FIRE_DORMANT_PATHS } from "@/lib/greenwood/member-paths";
 import { toRomanNumeral } from "@/lib/greenwood/ranking";
 
 type GreenwoodMemberProps = {
@@ -27,7 +27,7 @@ type GreenwoodMemberProps = {
 
 /**
  * Living Greenwood — The Fire member hub.
- * Presence (LG2) + Gatherings / Raise Hand (LG3). No Hollow rewards.
+ * Presence, Gatherings, and The Hollow door. No auto treasury distribution.
  */
 export function GreenwoodMember({
   outlawLabel,
@@ -206,24 +206,7 @@ export function GreenwoodMember({
 
         <hr className="greenwood-member__rule" />
 
-        <section
-          className="greenwood-interior__section"
-          aria-labelledby="gf-paths"
-        >
-          <h2 id="gf-paths" className="greenwood-member__section-title">
-            PATHS
-          </h2>
-          <ul className="greenwood-member__path-list">
-            {GREENWOOD_FIRE_DORMANT_PATHS.map((path) => (
-              <li key={path.label} className="greenwood-member__path">
-                <span className="greenwood-fire__dormant-label">
-                  [ {path.label} ]
-                </span>
-                <p className="muted greenwood-member__path-note">{path.note}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <GreenwoodFireHollow getAuthHeaders={getAuthHeaders} />
       </div>
     </article>
   );

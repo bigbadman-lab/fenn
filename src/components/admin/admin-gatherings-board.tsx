@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
@@ -239,7 +240,13 @@ export function AdminGatheringsBoard() {
         <p className="admin-deeds__eyebrow">GREENWOOD · GATHERINGS</p>
         <h1 className="place__title">THE CALL DESK</h1>
         <p className="muted">
-          schedule Gatherings at The Fire. Raise Hand only. No rewards yet.
+          schedule Gatherings at The Fire. Raise Hand only. Hollow campaigns
+          are created from closed Gatherings on the rewards desk.
+        </p>
+        <p>
+          <Link href="/admin/greenwood/rewards" className="btn-text">
+            [ rewards desk ]
+          </Link>
         </p>
       </header>
 
@@ -400,6 +407,14 @@ export function AdminGatheringsBoard() {
                   >
                     [ close ]
                   </button>
+                ) : null}
+                {item.resolvedState === "closed" || item.status === "closed" ? (
+                  <Link
+                    href={`/admin/greenwood/rewards?gathering=${item.id}`}
+                    className="btn-text"
+                  >
+                    [ create reward campaign ]
+                  </Link>
                 ) : null}
               </div>
             </li>

@@ -1,0 +1,77 @@
+import { NextResponse } from "next/server";
+
+import { AdminAuthError, requireFennAdmin } from "@/lib/admin/auth";
+import { GreenwoodError } from "@/lib/greenwood/errors";
+import {
+  adminGetCampaign,
+  adminUpdateDraftCampaign,
+} from "@/lib/greenwood/hollow/campaign-ops";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const runtime = "nodejs";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(request: Request, context: RouteContext) {
+  try {
+    await requireFennAdmin(request);
+    const { id } = await context.params;
+    const admin = createAdminClient();
+    const campaign = await adminGetCampaign(id, admin);
+    return NextResponse.json(
+      { ok: true, campaign },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    return mapAdminError(error, "GET admin reward");
+  }
+}
+
+export async function PATCH(request: Request, context: RouteContext) {
+  try {
+    const identity = await requireFennAdmin(request);
+    const { id } = await context.params;
+    const body = (await request.json()) as {
+      title?: string;
+      reason?: string;
+      amountPerRecipient?: number | null;
+      profileIds?: string[];
+      assetChainId?: number | null;
+      assetSymbol?: string | null;
+      assetContractAddress?: string | null;
+    };
+    const admin = createAdminClient();
+    const campaign = await adminUpdateDraftCampaign(
+      id,
+      body,
+      identity.actorId,
+      admin,
+    );
+    return NextResponse.json(
+      { ok: true, campaign },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    return mapAdminError(error, "PATCH admin reward");
+  }
+}
+
+function mapAdminError(error: unknown, label: string) {
+  if (error instanceof AdminAuthError) {
+    return NextResponse.json(
+      { error: error.message, code: "unauthorized" },
+      { status: error.status },
+    );
+  }
+  if (error instanceof GreenwoodError) {
+    return NextResponse.json(
+      { error: error.message, code: error.code },
+      { status: error.status },
+    );
+  }
+  console.error(`[${label}]`, error);
+  return NextResponse.json(
+    { error: "Internal server error", code: "greenwood_hollow_failed" },
+    { status: 500 },
+  );
+}

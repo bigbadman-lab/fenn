@@ -14,7 +14,7 @@ import {
 } from "@/lib/leaf/validate";
 import { requireProfileWallet, writeLeafEntry } from "@/lib/leaf/write";
 
-const AWARD_SOURCE_TYPES = new Set(["camp", "deed", "system"]);
+const AWARD_SOURCE_TYPES = new Set(["camp", "deed", "system", "hollow"]);
 const AWARD_ACTOR_TYPES = new Set(["system", "service"]);
 
 /**
@@ -36,7 +36,7 @@ export async function awardLeaf(
   if (!AWARD_SOURCE_TYPES.has(input.sourceType)) {
     throw new LeafError(
       "INVALID_SOURCE_TYPE",
-      "sourceType must be camp, deed, or system",
+      "sourceType must be camp, deed, system, or hollow",
     );
   }
   if (!AWARD_ACTOR_TYPES.has(input.actorType)) {

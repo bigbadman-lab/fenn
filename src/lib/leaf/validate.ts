@@ -188,4 +188,6 @@ export const leafIdempotencyKeys = {
     `admin_adjustment:${adjustmentId}`,
   system: (eventId: string, purpose: string) =>
     `system:${eventId}:${purpose}`,
+  hollowRewardClaim: (rewardId: string) =>
+    `hollow_reward:${rewardId}:claim`,
 } as const;

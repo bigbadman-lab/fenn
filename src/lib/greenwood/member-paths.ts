@@ -11,17 +11,20 @@ export const GREENWOOD_MEMBER_PATHS = [
     label: "DEEDS",
     note: "work left for the Greenwood.",
   },
+  {
+    href: "/greenwood/hollow",
+    label: "THE HOLLOW",
+    note: "things are sometimes left here for those the Greenwood remembers.",
+  },
 ] as const;
 
 export type GreenwoodMemberPath = (typeof GREENWOOD_MEMBER_PATHS)[number];
 
 /** Dormant Fire paths — not routes, not claims of live systems. */
-export const GREENWOOD_FIRE_DORMANT_PATHS = [
-  {
-    label: "THE HOLLOW",
-    note: "nothing has been left here yet.",
-  },
-] as const;
+export const GREENWOOD_FIRE_DORMANT_PATHS: readonly {
+  label: string;
+  note: string;
+}[] = [];
 
 export type GreenwoodMemberPresentation = {
   outlawLabel: string;

@@ -16,5 +16,8 @@ export const WORLD_PULSE_GREENWOOD_FIRE_MS = 25_000;
 /** Fire Gathering active/upcoming refresh while visible. */
 export const WORLD_PULSE_GREENWOOD_GATHERING_MS = 25_000;
 
+/** Hollow Fire indicator — restrained; not a reward-detail poller. */
+export const WORLD_PULSE_GREENWOOD_HOLLOW_MS = 60_000;
+
 /** Minimum gap between focus/visibility profile refreshes. */
 export const WORLD_PULSE_PROFILE_FOCUS_MIN_MS = 15_000;

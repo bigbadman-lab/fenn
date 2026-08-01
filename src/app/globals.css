@@ -3157,6 +3157,45 @@ button.wall-mark__action:focus-visible {
   max-width: 36rem;
 }
 
+.greenwood-fire-hollow__hint {
+  margin: 0.55rem 0 0;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--color-leaf) 55%, var(--color-bone));
+}
+
+.greenwood-fire-hollow__action {
+  margin: 0.85rem 0 0;
+}
+
+.greenwood-hollow__list {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+
+.greenwood-hollow__item {
+  margin: 0 0 1.35rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-greenwood) 28%, var(--border));
+}
+
+.greenwood-hollow__eyebrow {
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--color-leaf) 55%, var(--color-bone));
+}
+
+.greenwood-hollow__title {
+  margin: 0 0 0.4rem;
+  letter-spacing: 0.04em;
+}
+
+.greenwood-hollow__amount {
+  margin: 0.55rem 0;
+  letter-spacing: 0.06em;
+}
+
 .greenwood-interior__transition-ascii {
   margin: 0.65rem 0 0;
   color: color-mix(in srgb, var(--color-greenwood) 75%, var(--color-bone));
