@@ -67,6 +67,14 @@ describe("viewFromGreenwoodStatus", () => {
   });
 
   it("maps returning member straight to interior without admission ritual", () => {
+    const sigil = {
+      slug: "ember-notch",
+      asciiBody: "||",
+      a11yLabel: "Ember notch",
+      width: 2,
+      height: 3,
+      isFallback: false,
+    };
     const mapped = viewFromGreenwoodStatus({
       state: "member",
       greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
@@ -75,6 +83,7 @@ describe("viewFromGreenwoodStatus", () => {
       currentLifetimeLeaf: 34,
       standingRank: 2,
       standingTotalMembers: 5,
+      sigil,
     });
     assert.equal(mapped.view, "interior");
     assert.deepEqual(mapped.member, {
@@ -84,6 +93,7 @@ describe("viewFromGreenwoodStatus", () => {
       currentLifetimeLeaf: 34,
       standingRank: 2,
       standingTotalMembers: 5,
+      sigil,
     });
   });
 });

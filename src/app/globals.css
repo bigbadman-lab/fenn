@@ -2974,6 +2974,24 @@ button.wall-mark__action:focus-visible {
   white-space: pre;
 }
 
+.greenwood-fire__sigil {
+  margin: 0 0 0.85rem;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.15;
+  color: color-mix(in srgb, var(--color-greenwood) 72%, var(--color-bone));
+}
+
+.greenwood-fire__message p {
+  margin-bottom: 0.35rem;
+}
+
+.greenwood-fire__dormant-label {
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--color-greenwood) 45%, var(--color-bone));
+}
+
 .greenwood-interior__transition-ascii {
   margin: 0.65rem 0 0;
   color: color-mix(in srgb, var(--color-greenwood) 75%, var(--color-bone));

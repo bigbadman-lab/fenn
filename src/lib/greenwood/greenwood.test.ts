@@ -10,13 +10,51 @@ import type { AdmitToGreenwoodRpcRow } from "./types";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PROFILE_ID = "11111111-1111-4111-8111-111111111111";
+const SIGIL_ID = "a0000000-0000-4000-8000-000000000001";
+
+const MOCK_SIGIL_CATALOGUE = {
+  slug: "ember-notch",
+  ascii_body: "  /\\\n /  \\\n/____\\\n  ||",
+  a11y_label: "Ember notch — a small peaked mark",
+  width: 6,
+  height: 4,
+  is_fallback: false,
+};
+
+const MOCK_ASSIGN_RPC_ROW = {
+  profile_id: PROFILE_ID,
+  sigil_id: SIGIL_ID,
+  ...MOCK_SIGIL_CATALOGUE,
+  newly_assigned: true,
+  assigned_at: "2026-08-01T12:00:00.000Z",
+};
 
 function profileAdmin(
   data: Record<string, unknown> | null,
   listData: Array<Record<string, unknown>> = [],
+  sigilAssignment: {
+    greenwood_sigil_catalogue: typeof MOCK_SIGIL_CATALOGUE;
+  } | null = {
+    greenwood_sigil_catalogue: MOCK_SIGIL_CATALOGUE,
+  },
 ) {
   return {
     from(table: string) {
+      if (table === "greenwood_sigil_assignments") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  async maybeSingle() {
+                    return { data: sigilAssignment, error: null };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
       assert.equal(table, "profiles");
       return {
         select() {
@@ -42,6 +80,12 @@ function profileAdmin(
         },
       };
     },
+    async rpc(name: string) {
+      if (name === "assign_greenwood_sigil") {
+        return { data: [MOCK_ASSIGN_RPC_ROW], error: null };
+      }
+      throw new Error(`unexpected rpc ${name}`);
+    },
   };
 }
 
@@ -50,7 +94,11 @@ const DEFAULT_WALLET = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 function admitAdmin(
   rpcImpl: (
     name: string,
-    args: { p_profile_id: string; p_access_override?: boolean },
+    args: {
+      p_profile_id: string;
+      p_access_override?: boolean;
+      p_assigned_by?: string;
+    },
   ) => Promise<{ data: unknown; error: unknown }>,
   walletAddress: string = DEFAULT_WALLET,
 ) {
@@ -72,7 +120,19 @@ function admitAdmin(
         },
       };
     },
-    rpc: rpcImpl,
+    async rpc(
+      name: string,
+      args: {
+        p_profile_id: string;
+        p_access_override?: boolean;
+        p_assigned_by?: string;
+      },
+    ) {
+      if (name === "assign_greenwood_sigil") {
+        return { data: [MOCK_ASSIGN_RPC_ROW], error: null };
+      }
+      return rpcImpl(name, args);
+    },
   };
 }
 
@@ -198,6 +258,14 @@ describe("getGreenwoodStatus", () => {
       currentLifetimeLeaf: 34,
       standingRank: 1,
       standingTotalMembers: 1,
+      sigil: {
+        slug: "ember-notch",
+        asciiBody: MOCK_SIGIL_CATALOGUE.ascii_body,
+        a11yLabel: MOCK_SIGIL_CATALOGUE.a11y_label,
+        width: 6,
+        height: 4,
+        isFallback: false,
+      },
     });
   });
 
@@ -385,6 +453,10 @@ describe("admitProfileToGreenwood", () => {
     });
     const result = await admitProfileToGreenwood(PROFILE_ID, admin as never);
     assert.equal(result.status, "admitted");
+    if (result.status === "admitted") {
+      assert.equal(result.sigil?.slug, "ember-notch");
+      assert.equal(result.sigil?.isFallback, false);
+    }
   });
 
   it("passes access override from trusted profile wallet", async () => {
@@ -412,6 +484,7 @@ describe("admitProfileToGreenwood", () => {
     assert.equal(result.status, "admitted");
     if (result.status === "admitted") {
       assert.equal(result.lifetimeLeafAtEntry, 3);
+      assert.equal(result.sigil?.slug, "ember-notch");
     }
   });
 

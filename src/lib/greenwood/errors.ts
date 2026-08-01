@@ -4,7 +4,9 @@ export type GreenwoodErrorCode =
   | "greenwood_configuration_error"
   | "greenwood_status_failed"
   | "greenwood_admission_failed"
-  | "greenwood_profile_corrupt";
+  | "greenwood_profile_corrupt"
+  | "greenwood_sigil_failed"
+  | "greenwood_membership_required";
 
 export class GreenwoodError extends Error {
   code: GreenwoodErrorCode;

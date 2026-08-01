@@ -1,40 +1,31 @@
 import type { GreenwoodMemberSnapshotView } from "@/lib/greenwood/gate-view";
 
-/** Existing FENN destinations safe to surface from inside Greenwood. */
+/**
+ * Real destinations safe to surface from inside Greenwood.
+ * Camp/Book/etc. remain reachable from the wider world nav;
+ * The Fire keeps the local list tight.
+ */
 export const GREENWOOD_MEMBER_PATHS = [
-  {
-    href: "/camp",
-    label: "CAMP",
-    note: "voices by the fire.",
-  },
   {
     href: "/deeds",
     label: "DEEDS",
-    note: "work left in the world.",
-  },
-  {
-    href: "/book",
-    label: "THE BOOK",
-    note: "what has been written.",
-  },
-  {
-    href: "/oak",
-    label: "THE OAK",
-    note: "older than the road.",
-  },
-  {
-    href: "/ledger",
-    label: "THE LEDGER",
-    note: "what has been recorded.",
-  },
-  {
-    href: "/commons",
-    label: "THE COMMONS",
-    note: "accounts of what may move.",
+    note: "work left for the Greenwood.",
   },
 ] as const;
 
 export type GreenwoodMemberPath = (typeof GREENWOOD_MEMBER_PATHS)[number];
+
+/** Dormant Fire paths — not routes, not claims of live systems. */
+export const GREENWOOD_FIRE_DORMANT_PATHS = [
+  {
+    label: "THE HOLLOW",
+    note: "nothing has been left here yet.",
+  },
+  {
+    label: "GATHERINGS",
+    note: "no gathering has been called.",
+  },
+] as const;
 
 export type GreenwoodMemberPresentation = {
   outlawLabel: string;
@@ -50,6 +41,8 @@ export function memberInteriorCopy(input: GreenwoodMemberPresentation): {
   showsEligibility: boolean;
   showsEnter: boolean;
   pathHrefs: readonly string[];
+  hubTitle: "THE FIRE";
+  dormantLabels: readonly string[];
 } {
   return {
     outlawLabel: input.outlawLabel,
@@ -61,5 +54,7 @@ export function memberInteriorCopy(input: GreenwoodMemberPresentation): {
     showsEligibility: false,
     showsEnter: false,
     pathHrefs: GREENWOOD_MEMBER_PATHS.map((path) => path.href),
+    hubTitle: "THE FIRE",
+    dormantLabels: GREENWOOD_FIRE_DORMANT_PATHS.map((path) => path.label),
   };
 }

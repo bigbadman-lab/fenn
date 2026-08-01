@@ -5,6 +5,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { profileHasGreenwoodAccessOverride } from "@/lib/greenwood/access-wallets";
 import { GreenwoodError } from "@/lib/greenwood/errors";
 import { computeGreenwoodStandingRank } from "@/lib/greenwood/ranking";
+import {
+  ensureMemberSigil,
+  getProfileSigil,
+} from "@/lib/greenwood/sigil/assignment";
+import type { SafeGreenwoodSigil } from "@/lib/greenwood/sigil/types";
 import type { GreenwoodStatus } from "@/lib/greenwood/types";
 import { LeafError } from "@/lib/leaf/errors";
 import type { StandingSnapshot } from "@/lib/leaf/types";
@@ -224,6 +229,7 @@ async function toMemberStatus(
     "UNSAFE_BIGINT",
   );
   const rank = await loadMemberRank(db, profileId);
+  const sigil = await loadMemberSigil(profileId, db);
 
   return {
     state: "member",
@@ -233,5 +239,35 @@ async function toMemberStatus(
     currentLifetimeLeaf,
     standingRank: rank.rank,
     standingTotalMembers: rank.total,
+    sigil,
   };
+}
+
+/**
+ * Prefer existing assignment; lazily ensure if missing (ops recovery).
+ * Never fails membership status — logs and returns null on assignment errors.
+ */
+async function loadMemberSigil(
+  profileId: string,
+  db: SupabaseClient,
+): Promise<SafeGreenwoodSigil | null> {
+  try {
+    const existing = await getProfileSigil(profileId, db);
+    if (existing) return existing;
+    const ensured = await ensureMemberSigil(profileId, "system_status", db);
+    return {
+      slug: ensured.slug,
+      asciiBody: ensured.asciiBody,
+      a11yLabel: ensured.a11yLabel,
+      width: ensured.width,
+      height: ensured.height,
+      isFallback: ensured.isFallback,
+    };
+  } catch (err) {
+    console.error(
+      "[getGreenwoodStatus] sigil ensure failed; membership unchanged",
+      { profileId, err },
+    );
+    return null;
+  }
 }

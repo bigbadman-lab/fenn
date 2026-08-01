@@ -1,3 +1,5 @@
+import type { SafeGreenwoodSigil } from "@/lib/greenwood/sigil/types";
+
 export type GreenwoodMemberStatus = {
   state: "member";
   greenwoodEnteredAt: string;
@@ -9,6 +11,8 @@ export type GreenwoodMemberStatus = {
   standingRank: number;
   /** Total Greenwood members included in the rank calculation. */
   standingTotalMembers: number;
+  /** Persistent ASCII mark for The Fire. Null only if assignment failed. */
+  sigil: SafeGreenwoodSigil | null;
 };
 
 export type GreenwoodIneligibleStatus = {
@@ -45,6 +49,7 @@ export type GreenwoodAdmissionAdmitted = {
   currentLifetimeLeaf?: number;
   standingRank?: number;
   standingTotalMembers?: number;
+  sigil?: SafeGreenwoodSigil | null;
 };
 
 export type GreenwoodAdmissionAlreadyMember = {
@@ -55,6 +60,7 @@ export type GreenwoodAdmissionAlreadyMember = {
   currentLifetimeLeaf?: number;
   standingRank?: number;
   standingTotalMembers?: number;
+  sigil?: SafeGreenwoodSigil | null;
 };
 
 export type GreenwoodAdmissionNotEligible = {

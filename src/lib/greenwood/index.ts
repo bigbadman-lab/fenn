@@ -28,8 +28,17 @@ export {
 } from "@/lib/greenwood/gate-view";
 
 export {
+  GREENWOOD_FIRE_DORMANT_PATHS,
   GREENWOOD_MEMBER_PATHS,
   memberInteriorCopy,
 } from "@/lib/greenwood/member-paths";
 
-// Server-only status / admission: import modules directly from trusted server code.
+export {
+  GREENWOOD_FIRE_ASCII,
+  GREENWOOD_FIRE_MESSAGE,
+} from "@/lib/greenwood/fire-message";
+
+export type { SafeGreenwoodSigil } from "@/lib/greenwood/sigil/types";
+
+// Server-only status / admission / sigil assignment:
+// import modules directly from trusted server code.

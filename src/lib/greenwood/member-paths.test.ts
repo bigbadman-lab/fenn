@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  GREENWOOD_FIRE_DORMANT_PATHS,
   GREENWOOD_MEMBER_PATHS,
   memberInteriorCopy,
 } from "./member-paths";
@@ -32,6 +33,8 @@ describe("memberInteriorCopy", () => {
     );
     assert.equal(copy.showsEligibility, false);
     assert.equal(copy.showsEnter, false);
+    assert.equal(copy.hubTitle, "THE FIRE");
+    assert.deepEqual(copy.dormantLabels, ["THE HOLLOW", "GATHERINGS"]);
   });
 
   it("omits alias line when alias is empty", () => {
@@ -49,16 +52,9 @@ describe("memberInteriorCopy", () => {
 });
 
 describe("GREENWOOD_MEMBER_PATHS", () => {
-  it("links only existing FENN routes", () => {
+  it("links only existing FENN routes from The Fire", () => {
     const hrefs = GREENWOOD_MEMBER_PATHS.map((path) => path.href);
-    assert.deepEqual(hrefs, [
-      "/camp",
-      "/deeds",
-      "/book",
-      "/oak",
-      "/ledger",
-      "/commons",
-    ]);
+    assert.deepEqual(hrefs, ["/deeds"]);
     for (const href of hrefs) {
       const pagePath = join(appRoot, href.slice(1), "page.tsx");
       assert.equal(existsSync(pagePath), true, `missing page for ${href}`);
@@ -67,23 +63,42 @@ describe("GREENWOOD_MEMBER_PATHS", () => {
 
   it("does not invent routes", () => {
     for (const path of GREENWOOD_MEMBER_PATHS) {
-      assert.doesNotMatch(path.href, /treasury|circulation|fire|notice/i);
+      assert.doesNotMatch(path.href, /treasury|circulation|fire|notice|hollow/i);
+    }
+  });
+
+  it("keeps Hollow and Gatherings dormant without hrefs", () => {
+    assert.equal(GREENWOOD_FIRE_DORMANT_PATHS.length, 2);
+    for (const path of GREENWOOD_FIRE_DORMANT_PATHS) {
+      assert.equal("href" in path, false);
     }
   });
 });
 
 describe("greenwood member source safety", () => {
-  it("member component stays free of Stage 9+ systems", () => {
+  it("member component is The Fire hub without Stage 9+ surfaces", () => {
     const source = readFileSync(
       join(componentsRoot, "greenwood-member.tsx"),
       "utf8",
     );
     assert.match(source, /YOUR PLACE/);
-    assert.match(source, /THE GROVE/);
+    assert.match(source, /THE FIRE/);
     assert.match(source, /DEEPER DEEDS/);
-    assert.match(source, /THE SHARE/);
-    assert.match(source, /Nothing has been left here yet/);
+    assert.match(source, /GREENWOOD_FIRE_DORMANT_PATHS/);
     assert.match(source, /lifetimeLeafAtEntry/);
+    assert.match(source, /sigil/);
+    assert.doesNotMatch(source, /THE GROVE/);
+    assert.doesNotMatch(source, /THE SHARE/);
+    assert.equal(
+      GREENWOOD_FIRE_DORMANT_PATHS.some((p) => p.label === "THE HOLLOW"),
+      true,
+    );
+    assert.equal(
+      GREENWOOD_FIRE_DORMANT_PATHS.some((p) =>
+        /nothing has been left here yet/i.test(p.note),
+      ),
+      true,
+    );
     assert.doesNotMatch(source, /ENTER THE GREENWOOD/);
     assert.doesNotMatch(source, /LEAF REMAIN/);
     assert.doesNotMatch(source, /remainingLeaf/);
@@ -97,6 +112,7 @@ describe("greenwood member source safety", () => {
     assert.doesNotMatch(source, /memory_candidate|fenn_memories|embedding/);
     assert.doesNotMatch(source, /supabase\.channel|WebSocket/);
     assert.doesNotMatch(source, /chronicle_entries/);
+    assert.doesNotMatch(source, /walletAddress/);
   });
 
   it("crossing frames remain unchanged at 2000ms final hold", () => {

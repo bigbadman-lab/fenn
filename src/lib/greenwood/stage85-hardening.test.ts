@@ -77,9 +77,11 @@ describe("Stage 8.5 Greenwood hardening source safety", () => {
     assert.doesNotMatch(gateway, /GreenwoodGateInterior/);
     assert.match(member, /GreenwoodMember/);
     assert.match(member, /YOUR PLACE/);
-    assert.match(member, /THE GROVE/);
+    assert.match(member, /THE FIRE/);
     assert.match(member, /DEEPER DEEDS/);
-    assert.match(member, /THE SHARE/);
+    assert.match(member, /GREENWOOD_FIRE_DORMANT_PATHS/);
+    assert.doesNotMatch(member, /THE GROVE/);
+    assert.doesNotMatch(member, /THE SHARE/);
   });
 
   it("crossing final hold remains 2000ms", () => {

@@ -4,6 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { profileHasGreenwoodAccessOverride } from "@/lib/greenwood/access-wallets";
 import { GreenwoodError } from "@/lib/greenwood/errors";
+import { ensureMemberSigil } from "@/lib/greenwood/sigil/assignment";
+import type { SafeGreenwoodSigil } from "@/lib/greenwood/sigil/types";
 import type {
   AdmitToGreenwoodRpcRow,
   GreenwoodAdmissionResult,
@@ -76,7 +78,46 @@ export async function admitProfileToGreenwood(
     );
   }
 
-  return normalizeAdmitRpcRow(row);
+  const result = normalizeAdmitRpcRow(row);
+
+  if (result.status === "admitted" || result.status === "already_member") {
+    const sigil = await tryEnsureSigilAfterAdmission(
+      id,
+      result.status === "admitted" ? "system_admit" : "system_ensure",
+      db,
+    );
+    return { ...result, sigil };
+  }
+
+  return result;
+}
+
+/**
+ * Sigil assignment must not undo a successful admission.
+ * Failures are logged for ops; membership remains valid.
+ */
+async function tryEnsureSigilAfterAdmission(
+  profileId: string,
+  assignedBy: string,
+  db: SupabaseClient,
+): Promise<SafeGreenwoodSigil | null> {
+  try {
+    const assigned = await ensureMemberSigil(profileId, assignedBy, db);
+    return {
+      slug: assigned.slug,
+      asciiBody: assigned.asciiBody,
+      a11yLabel: assigned.a11yLabel,
+      width: assigned.width,
+      height: assigned.height,
+      isFallback: assigned.isFallback,
+    };
+  } catch (err) {
+    console.error(
+      "[admitProfileToGreenwood] sigil assignment failed after admission",
+      { profileId, assignedBy, err },
+    );
+    return null;
+  }
 }
 
 export function normalizeAdmitRpcRow(

@@ -7,7 +7,12 @@ import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { formatDeedBoardDate, formatDeedReward } from "@/lib/deeds/format";
 import type { SafeDeed } from "@/lib/deeds/types";
 import { fetchGreenwoodDeeds } from "@/lib/greenwood/client";
+import {
+  GREENWOOD_FIRE_ASCII,
+  GREENWOOD_FIRE_MESSAGE,
+} from "@/lib/greenwood/fire-message";
 import type { GreenwoodMemberSnapshotView } from "@/lib/greenwood/gate-view";
+import { GREENWOOD_FIRE_DORMANT_PATHS } from "@/lib/greenwood/member-paths";
 import { toRomanNumeral } from "@/lib/greenwood/ranking";
 
 type GreenwoodMemberProps = {
@@ -19,8 +24,8 @@ type GreenwoodMemberProps = {
 };
 
 /**
- * Greenwood interior surface.
- * No Grove message infrastructure, no Greenwood admin controls.
+ * Living Greenwood 1 — The Fire member hub.
+ * No presence, gatherings, Hollow rewards, or admin controls.
  */
 export function GreenwoodMember({
   outlawLabel,
@@ -36,6 +41,7 @@ export function GreenwoodMember({
   const rankRoman = member.standingRank
     ? toRomanNumeral(member.standingRank)
     : "?";
+  const sigil = member.sigil ?? null;
 
   const [deeds, setDeeds] = useState<SafeDeed[] | null>(null);
   useEffect(() => {
@@ -60,11 +66,7 @@ export function GreenwoodMember({
 
   const deedsContent = useMemo(() => {
     if (deeds === null) {
-      return (
-        <p className="muted">
-          the board is listening...
-        </p>
-      );
+      return <p className="muted">the board is listening...</p>;
     }
 
     if (deeds.length === 0) {
@@ -104,23 +106,18 @@ export function GreenwoodMember({
   }, [deeds]);
 
   return (
-    <article
-      className="place greenwood-member"
-      aria-live="polite"
-    >
+    <article className="place greenwood-member greenwood-fire" aria-live="polite">
       <header className="greenwood-member__header">
         <AsciiPageTitle
-          title="THE GREENWOOD"
-          mark="GREENWOOD"
+          title="THE FIRE"
+          ascii={GREENWOOD_FIRE_ASCII}
           accent="greenwood"
           subtitle={
             <>
               {newlyAdmitted ? (
                 <>
                   <p>you are inside.</p>
-                  <p>
-                    {member.thresholdAtEntry} LEAF opened the Greenwood.
-                  </p>
+                  <p>{member.thresholdAtEntry} LEAF opened the Greenwood.</p>
                   <p className="muted">
                     what you do here determines your place within it.
                   </p>
@@ -138,10 +135,37 @@ export function GreenwoodMember({
       </header>
 
       <div className="greenwood-member__body">
-        <section className="greenwood-interior__section" aria-labelledby="gp">
-          <h2 id="gp" className="greenwood-member__section-title">
+        <section
+          className="greenwood-interior__section greenwood-fire__message"
+          aria-labelledby="gf-message"
+        >
+          <h2 id="gf-message" className="greenwood-member__section-title">
+            FENN SPEAKS
+          </h2>
+          {GREENWOOD_FIRE_MESSAGE.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </section>
+
+        <hr className="greenwood-member__rule" />
+
+        <section
+          className="greenwood-interior__section"
+          aria-labelledby="gf-place"
+        >
+          <h2 id="gf-place" className="greenwood-member__section-title">
             YOUR PLACE
           </h2>
+          {sigil ? (
+            <pre
+              className="ascii greenwood-fire__sigil"
+              aria-label={sigil.a11yLabel}
+            >
+              {sigil.asciiBody}
+            </pre>
+          ) : (
+            <p className="muted">your mark has not settled yet.</p>
+          )}
           <p className="greenwood-interior__place-line">
             {displayName} · {currentLeaf} LEAF
           </p>
@@ -160,27 +184,11 @@ export function GreenwoodMember({
 
         <hr className="greenwood-member__rule" />
 
-        <section className="greenwood-interior__section" aria-labelledby="gg">
-          <h2 id="gg" className="greenwood-member__section-title">
-            THE GROVE
-          </h2>
-          <pre
-            aria-hidden="true"
-            className="ascii greenwood-interior__grove-ascii"
-          >
-            {`        &&&   &&&&
-    &&&&  &&&&  &&&&
-        &&&   &&&&
-`}
-          </pre>
-          <p>FENN speaks differently beneath these trees.</p>
-          <p className="muted">Nothing has been left here yet.</p>
-        </section>
-
-        <hr className="greenwood-member__rule" />
-
-        <section className="greenwood-interior__section" aria-labelledby="gd">
-          <h2 id="gd" className="greenwood-member__section-title">
+        <section
+          className="greenwood-interior__section"
+          aria-labelledby="gf-deeds"
+        >
+          <h2 id="gf-deeds" className="greenwood-member__section-title">
             DEEPER DEEDS
           </h2>
           {deedsContent}
@@ -188,12 +196,23 @@ export function GreenwoodMember({
 
         <hr className="greenwood-member__rule" />
 
-        <section className="greenwood-interior__section" aria-labelledby="gs">
-          <h2 id="gs" className="greenwood-member__section-title">
-            THE SHARE
+        <section
+          className="greenwood-interior__section"
+          aria-labelledby="gf-paths"
+        >
+          <h2 id="gf-paths" className="greenwood-member__section-title">
+            PATHS
           </h2>
-          <p>what the crown keeps, the Greenwood shares.</p>
-          <p className="muted">nothing is being shared today.</p>
+          <ul className="greenwood-member__path-list">
+            {GREENWOOD_FIRE_DORMANT_PATHS.map((path) => (
+              <li key={path.label} className="greenwood-member__path">
+                <span className="greenwood-fire__dormant-label">
+                  [ {path.label} ]
+                </span>
+                <p className="muted greenwood-member__path-note">{path.note}</p>
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </article>

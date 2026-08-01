@@ -1,3 +1,4 @@
+import type { SafeGreenwoodSigil } from "@/lib/greenwood/sigil/types";
 import type {
   GreenwoodAdmissionResult,
   GreenwoodEligibleStatus,
@@ -35,6 +36,8 @@ export type GreenwoodMemberSnapshotView = {
   standingRank?: number;
   /** Total Greenwood members included in the rank calculation. */
   standingTotalMembers?: number;
+  /** Persistent ASCII mark (may be null if assignment failed). */
+  sigil?: SafeGreenwoodSigil | null;
 };
 
 /** Auth / registration branch before Greenwood status is consulted. */
@@ -67,6 +70,7 @@ export function memberSnapshotFromStatus(
     currentLifetimeLeaf: status.currentLifetimeLeaf,
     standingRank: status.standingRank,
     standingTotalMembers: status.standingTotalMembers,
+    sigil: status.sigil,
   };
 }
 
@@ -118,6 +122,7 @@ export function viewFromAdmissionResult(result: GreenwoodAdmissionResult): {
         currentLifetimeLeaf: result.currentLifetimeLeaf,
         standingRank: result.standingRank,
         standingTotalMembers: result.standingTotalMembers,
+        sigil: result.sigil,
       },
     };
   }
@@ -132,6 +137,7 @@ export function viewFromAdmissionResult(result: GreenwoodAdmissionResult): {
         currentLifetimeLeaf: result.currentLifetimeLeaf,
         standingRank: result.standingRank,
         standingTotalMembers: result.standingTotalMembers,
+        sigil: result.sigil,
       },
     };
   }
