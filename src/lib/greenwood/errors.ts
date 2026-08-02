@@ -33,8 +33,13 @@ export class GreenwoodError extends Error {
   code: GreenwoodErrorCode;
   status: number;
 
-  constructor(code: GreenwoodErrorCode, message: string, status = 400) {
-    super(message);
+  constructor(
+    code: GreenwoodErrorCode,
+    message: string,
+    status = 400,
+    options?: { cause?: unknown },
+  ) {
+    super(message, options?.cause !== undefined ? { cause: options.cause } : undefined);
     this.name = "GreenwoodError";
     this.code = code;
     this.status = status;

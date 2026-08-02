@@ -37,16 +37,30 @@ function profileAdmin(
   } | null = {
     greenwood_sigil_catalogue: MOCK_SIGIL_CATALOGUE,
   },
+  options: {
+    sigilReadError?: {
+      code: string;
+      message: string;
+      details?: string;
+      hint?: string;
+    };
+    onSigilSelect?: (columns: string) => void;
+    onAssignRpc?: () => void;
+  } = {},
 ) {
   return {
     from(table: string) {
       if (table === "greenwood_sigil_assignments") {
         return {
-          select() {
+          select(columns: string) {
+            options.onSigilSelect?.(columns);
             return {
               eq() {
                 return {
                   async maybeSingle() {
+                    if (options.sigilReadError) {
+                      return { data: null, error: options.sigilReadError };
+                    }
                     return { data: sigilAssignment, error: null };
                   },
                 };
@@ -82,6 +96,7 @@ function profileAdmin(
     },
     async rpc(name: string) {
       if (name === "assign_greenwood_sigil") {
+        options.onAssignRpc?.();
         return { data: [MOCK_ASSIGN_RPC_ROW], error: null };
       }
       throw new Error(`unexpected rpc ${name}`);
@@ -244,30 +259,47 @@ describe("getGreenwoodStatus", () => {
   it("returns member from frozen snapshot without standing lookup", async () => {
     const { getGreenwoodStatus } = await import("./status");
     let standingCalls = 0;
+    let sigilSelect = "";
+    let assignCalls = 0;
     const status = await getGreenwoodStatus(
       PROFILE_ID,
-      profileAdmin({
-        greenwood_entered_at: "2026-07-01T00:00:00.000Z",
-        greenwood_threshold_at_entry: 30,
-        greenwood_lifetime_leaf_at_entry: 34,
-        greenwood_arrival_ceremony_completed_at: "2026-07-01T00:00:00.000Z",
-        leaf_lifetime_earned: 34,
-        outlaw_number: 42,
-        wallet_address: DEFAULT_WALLET,
-      }, [
+      profileAdmin(
         {
-          id: PROFILE_ID,
-          outlaw_number: 42,
-          leaf_lifetime_earned: 34,
           greenwood_entered_at: "2026-07-01T00:00:00.000Z",
+          greenwood_threshold_at_entry: 30,
+          greenwood_lifetime_leaf_at_entry: 34,
+          greenwood_arrival_ceremony_completed_at: "2026-07-01T00:00:00.000Z",
+          leaf_lifetime_earned: 34,
+          outlaw_number: 42,
+          wallet_address: DEFAULT_WALLET,
         },
-      ]) as never,
+        [
+          {
+            id: PROFILE_ID,
+            outlaw_number: 42,
+            leaf_lifetime_earned: 34,
+            greenwood_entered_at: "2026-07-01T00:00:00.000Z",
+          },
+        ],
+        { greenwood_sigil_catalogue: MOCK_SIGIL_CATALOGUE },
+        {
+          onSigilSelect: (columns) => {
+            sigilSelect = columns;
+          },
+          onAssignRpc: () => {
+            assignCalls += 1;
+          },
+        },
+      ) as never,
       async () => {
         standingCalls += 1;
         throw new Error("standing must not run for members");
       },
     );
     assert.equal(standingCalls, 0);
+    assert.equal(assignCalls, 0);
+    assert.match(sigilSelect, /greenwood_sigil_catalogue!sigil_id/);
+    assert.doesNotMatch(sigilSelect, /previous_sigil_id/);
     assert.deepEqual(status, {
       state: "member",
       greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
@@ -286,6 +318,101 @@ describe("getGreenwoodStatus", () => {
         isFallback: false,
       },
     });
+  });
+
+  it("lazily assigns a sigil when membership has no assignment row", async () => {
+    const { getGreenwoodStatus } = await import("./status");
+    let assignCalls = 0;
+    const status = await getGreenwoodStatus(
+      PROFILE_ID,
+      profileAdmin(
+        {
+          greenwood_entered_at: "2026-07-01T00:00:00.000Z",
+          greenwood_threshold_at_entry: 30,
+          greenwood_lifetime_leaf_at_entry: 34,
+          greenwood_arrival_ceremony_completed_at: "2026-07-01T00:00:00.000Z",
+          leaf_lifetime_earned: 34,
+          outlaw_number: 42,
+          wallet_address: DEFAULT_WALLET,
+        },
+        [
+          {
+            id: PROFILE_ID,
+            outlaw_number: 42,
+            leaf_lifetime_earned: 34,
+            greenwood_entered_at: "2026-07-01T00:00:00.000Z",
+          },
+        ],
+        null,
+        {
+          onAssignRpc: () => {
+            assignCalls += 1;
+          },
+        },
+      ) as never,
+    );
+    assert.equal(assignCalls, 1);
+    assert.equal(status.state, "member");
+    if (status.state !== "member") return;
+    assert.equal(status.sigil?.slug, "ember-notch");
+  });
+
+  it("keeps membership when sigil read fails and retains diagnostics in cause", async () => {
+    const { getGreenwoodStatus } = await import("./status");
+    const { getProfileSigil } = await import("./sigil/assignment");
+    const admin = profileAdmin(
+      {
+        greenwood_entered_at: "2026-07-01T00:00:00.000Z",
+        greenwood_threshold_at_entry: 30,
+        greenwood_lifetime_leaf_at_entry: 34,
+        greenwood_arrival_ceremony_completed_at: "2026-07-01T00:00:00.000Z",
+        leaf_lifetime_earned: 34,
+        outlaw_number: 42,
+        wallet_address: DEFAULT_WALLET,
+      },
+      [
+        {
+          id: PROFILE_ID,
+          outlaw_number: 42,
+          leaf_lifetime_earned: 34,
+          greenwood_entered_at: "2026-07-01T00:00:00.000Z",
+        },
+      ],
+      null,
+      {
+        sigilReadError: {
+          code: "PGRST201",
+          message: "Could not embed because more than one relationship was found",
+          details: "sigil_id, previous_sigil_id",
+          hint: "Try using greenwood_sigil_catalogue!sigil_id",
+        },
+      },
+    );
+
+    await assert.rejects(
+      () => getProfileSigil(PROFILE_ID, admin as never),
+      (err: unknown) => {
+        assert.ok(err instanceof GreenwoodError);
+        assert.equal(err.message, "Failed to load Greenwood sigil");
+        assert.equal(err.code, "greenwood_sigil_failed");
+        const cause = err.cause as {
+          operation?: string;
+          code?: string;
+          hint?: string;
+          profileId?: string;
+        };
+        assert.equal(cause.operation, "getProfileSigil");
+        assert.equal(cause.code, "PGRST201");
+        assert.equal(cause.profileId, PROFILE_ID);
+        assert.match(cause.hint ?? "", /sigil_id/);
+        return true;
+      },
+    );
+
+    const status = await getGreenwoodStatus(PROFILE_ID, admin as never);
+    assert.equal(status.state, "member");
+    if (status.state !== "member") return;
+    assert.equal(status.sigil, null);
   });
 
   it("returns ineligible with remainingLeaf", async () => {

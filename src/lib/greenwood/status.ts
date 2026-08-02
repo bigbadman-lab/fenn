@@ -267,9 +267,20 @@ async function loadMemberSigil(
       isFallback: ensured.isFallback,
     };
   } catch (err) {
+    const cause =
+      err instanceof Error && err.cause && typeof err.cause === "object"
+        ? err.cause
+        : undefined;
     console.error(
       "[getGreenwoodStatus] sigil ensure failed; membership unchanged",
-      { profileId, err },
+      {
+        profileId,
+        err:
+          err instanceof Error
+            ? { name: err.name, message: err.message, code: (err as { code?: string }).code }
+            : err,
+        cause,
+      },
     );
     return null;
   }

@@ -11,6 +11,7 @@ import type {
   DeskDeedStatusFilter,
 } from "@/lib/desk/deeds-types";
 import { formatDeedReward } from "@/lib/deeds/format";
+import { DESK_CURRENT_SIGIL_MARK_SELECT } from "@/lib/greenwood/sigil/embeds";
 import {
   approveDeedSubmission,
   rejectDeedSubmission,
@@ -102,12 +103,10 @@ async function loadSigils(
   if (profileIds.length === 0) return map;
   const { data } = await db
     .from("greenwood_sigil_assignments")
-    .select(
-      "profile_id, greenwood_sigil_catalogue ( ascii_body, a11y_label )",
-    )
+    .select(DESK_CURRENT_SIGIL_MARK_SELECT)
     .in("profile_id", profileIds);
   for (const row of data ?? []) {
-    const r = row as {
+    const r = row as unknown as {
       profile_id: string;
       greenwood_sigil_catalogue:
         | { ascii_body: string; a11y_label: string }

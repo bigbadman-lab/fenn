@@ -19,6 +19,7 @@ import {
   type CreateGatheringInput,
 } from "@/lib/greenwood/gatherings/admin-ops";
 import type { AdminGatheringListItem } from "@/lib/greenwood/gatherings/types";
+import { DESK_CURRENT_SIGIL_MARK_SELECT } from "@/lib/greenwood/sigil/embeds";
 import { assertProfileId, assertSafeIntegerAmount } from "@/lib/leaf/validate";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 
@@ -170,13 +171,11 @@ async function loadDeskHands(
   if (profileIds.length > 0) {
     const { data: sigilRows, error: sigilError } = await db
       .from("greenwood_sigil_assignments")
-      .select(
-        "profile_id, greenwood_sigil_catalogue ( ascii_body, a11y_label )",
-      )
+      .select(DESK_CURRENT_SIGIL_MARK_SELECT)
       .in("profile_id", profileIds);
     if (sigilError) throw new Error(sigilError.message);
     for (const raw of sigilRows ?? []) {
-      const r = raw as {
+      const r = raw as unknown as {
         profile_id: string;
         greenwood_sigil_catalogue:
           | { ascii_body: string; a11y_label: string }

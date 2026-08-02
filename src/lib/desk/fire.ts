@@ -9,6 +9,7 @@ import type {
 import { resolveGatheringStateFromRow } from "@/lib/greenwood/gatherings/state";
 import type { GatheringRow } from "@/lib/greenwood/gatherings/types";
 import { isFirePresenceActive } from "@/lib/greenwood/presence/filter";
+import { DESK_CURRENT_SIGIL_MARK_SELECT } from "@/lib/greenwood/sigil/embeds";
 import { assertSafeIntegerAmount } from "@/lib/leaf/validate";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 
@@ -69,13 +70,11 @@ export async function getDeskFireSnapshot(
     const ids = activeRows.map((row) => row.profile_id);
     const { data: sigilRows, error: sigilError } = await db
       .from("greenwood_sigil_assignments")
-      .select(
-        "profile_id, greenwood_sigil_catalogue ( ascii_body, a11y_label )",
-      )
+      .select(DESK_CURRENT_SIGIL_MARK_SELECT)
       .in("profile_id", ids);
     if (sigilError) throw new Error(sigilError.message);
     for (const raw of sigilRows ?? []) {
-      const r = raw as {
+      const r = raw as unknown as {
         profile_id: string;
         greenwood_sigil_catalogue:
           | { ascii_body: string; a11y_label: string }

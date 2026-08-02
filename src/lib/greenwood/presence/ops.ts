@@ -12,6 +12,7 @@ import type {
   FirePresenceSnapshot,
   GreenwoodPresenceRpcRow,
 } from "@/lib/greenwood/presence/types";
+import { PRESENCE_CURRENT_SIGIL_SELECT } from "@/lib/greenwood/sigil/embeds";
 import type { SafeGreenwoodSigil } from "@/lib/greenwood/sigil/types";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 import { assertProfileId, assertSafeIntegerAmount } from "@/lib/leaf/validate";
@@ -200,26 +201,23 @@ export async function getFirePresenceSnapshot(
     const ids = activeRows.map((row) => row.profile_id);
     const { data: sigilRows, error: sigilError } = await db
       .from("greenwood_sigil_assignments")
-      .select(
-        `
-        profile_id,
-        greenwood_sigil_catalogue (
-          slug,
-          ascii_body,
-          a11y_label,
-          width,
-          height,
-          is_fallback
-        )
-      `,
-      )
+      .select(PRESENCE_CURRENT_SIGIL_SELECT)
       .in("profile_id", ids);
 
     if (sigilError) {
+      const diagnostics = {
+        operation: "loadFirePresence.sigils",
+        code: sigilError.code,
+        message: sigilError.message,
+        details: sigilError.details,
+        hint: sigilError.hint,
+      };
+      console.error("[loadFirePresence] sigil embed failed", diagnostics);
       throw new GreenwoodError(
         "greenwood_presence_failed",
         "Failed to load Fire presence marks",
         500,
+        { cause: diagnostics },
       );
     }
 

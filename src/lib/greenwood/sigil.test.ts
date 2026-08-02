@@ -15,6 +15,11 @@ import {
   assertSigilGeometry,
 } from "./sigil/catalogue";
 import { normalizeAssignRpcRow } from "./sigil/assignment";
+import {
+  CURRENT_SIGIL_CATALOGUE_RELATION,
+  PREVIOUS_SIGIL_CATALOGUE_RELATION,
+  currentSigilCatalogueEmbed,
+} from "./sigil/embeds";
 import { GreenwoodError } from "@/lib/greenwood/errors";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -151,6 +156,127 @@ describe("assignGreenwoodSigil helpers", () => {
         err instanceof GreenwoodError &&
         err.code === "greenwood_membership_required",
     );
+  });
+});
+
+describe("sigil PostgREST embeds", () => {
+  it("current-mark embed is disambiguated through sigil_id", () => {
+    assert.equal(
+      CURRENT_SIGIL_CATALOGUE_RELATION,
+      "greenwood_sigil_catalogue!sigil_id",
+    );
+    assert.equal(
+      PREVIOUS_SIGIL_CATALOGUE_RELATION,
+      "greenwood_sigil_catalogue!previous_sigil_id",
+    );
+    assert.equal(
+      currentSigilCatalogueEmbed("slug, ascii_body"),
+      "greenwood_sigil_catalogue!sigil_id ( slug, ascii_body )",
+    );
+  });
+
+  it("repository embeds never use an unqualified catalogue join", () => {
+    const paths = [
+      "src/lib/greenwood/sigil/embeds.ts",
+      "src/lib/greenwood/sigil/assignment.ts",
+      "src/lib/greenwood/presence/ops.ts",
+      "src/lib/desk/deeds.ts",
+      "src/lib/desk/fire.ts",
+      "src/lib/desk/gatherings.ts",
+      "src/lib/desk/register.ts",
+    ];
+    const ambiguous =
+      /greenwood_sigil_catalogue(?!!sigil_id)(?!!previous_sigil_id)\s*\(/;
+    for (const rel of paths) {
+      const source = readFileSync(join(repoRoot, rel), "utf8");
+      assert.match(
+        source,
+        /greenwood_sigil_catalogue!sigil_id|PROFILE_CURRENT_SIGIL_SELECT|PRESENCE_CURRENT_SIGIL_SELECT|DESK_CURRENT_SIGIL_/,
+        rel,
+      );
+      assert.doesNotMatch(
+        source,
+        ambiguous,
+        `unqualified catalogue embed in ${rel}`,
+      );
+    }
+  });
+
+  it("status API responses do not leak Supabase diagnostics", () => {
+    const route = readFileSync(
+      join(repoRoot, "src/app/api/greenwood/status/route.ts"),
+      "utf8",
+    );
+    assert.match(route, /error\.message, code: error\.code/);
+    assert.doesNotMatch(route, /error\.cause|details|hint|PGRST/);
+  });
+
+  it("getProfileSigil returns null for missing assignment without throwing", async () => {
+    const { getProfileSigil } = await import("./sigil/assignment");
+    const admin = {
+      from() {
+        return {
+          select(columns: string) {
+            assert.match(columns, /greenwood_sigil_catalogue!sigil_id/);
+            assert.doesNotMatch(columns, /previous_sigil_id/);
+            return {
+              eq() {
+                return {
+                  async maybeSingle() {
+                    return { data: null, error: null };
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+    };
+    const result = await getProfileSigil(
+      "11111111-1111-4111-8111-111111111111",
+      admin as never,
+    );
+    assert.equal(result, null);
+  });
+
+  it("getProfileSigil returns the current catalogue row only", async () => {
+    const { getProfileSigil } = await import("./sigil/assignment");
+    const admin = {
+      from() {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  async maybeSingle() {
+                    return {
+                      data: {
+                        sigil_id: UNMARKED_SIGIL_ID,
+                        greenwood_sigil_catalogue: {
+                          slug: "ember-notch",
+                          ascii_body: CURATED_GREENWOOD_SIGILS[0]!.asciiBody,
+                          a11y_label: CURATED_GREENWOOD_SIGILS[0]!.a11yLabel,
+                          width: CURATED_GREENWOOD_SIGILS[0]!.width,
+                          height: CURATED_GREENWOOD_SIGILS[0]!.height,
+                          is_fallback: false,
+                        },
+                      },
+                      error: null,
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+    };
+    const result = await getProfileSigil(
+      "11111111-1111-4111-8111-111111111111",
+      admin as never,
+    );
+    assert.equal(result?.slug, "ember-notch");
+    assert.equal(result?.isFallback, false);
   });
 });
 

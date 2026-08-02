@@ -17,6 +17,7 @@ import {
   shortenWallet,
 } from "@/lib/greenwood/hollow/explorer";
 import { isFirePresenceActive } from "@/lib/greenwood/presence/filter";
+import { DESK_CURRENT_SIGIL_SLUG_SELECT } from "@/lib/greenwood/sigil/embeds";
 import { getLeafHistory } from "@/lib/leaf/reads";
 import { getStandingSnapshot } from "@/lib/leaf/standing";
 import { assertProfileId } from "@/lib/leaf/validate";
@@ -205,13 +206,11 @@ async function loadSigils(
   if (profileIds.length === 0) return map;
   const { data, error } = await db
     .from("greenwood_sigil_assignments")
-    .select(
-      "profile_id, greenwood_sigil_catalogue ( slug, ascii_body, a11y_label )",
-    )
+    .select(DESK_CURRENT_SIGIL_SLUG_SELECT)
     .in("profile_id", profileIds);
   if (error) throw new Error(error.message);
   for (const row of data ?? []) {
-    const r = row as {
+    const r = row as unknown as {
       profile_id: string;
       greenwood_sigil_catalogue:
         | {

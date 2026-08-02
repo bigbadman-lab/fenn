@@ -10,6 +10,17 @@ export {
   type GreenwoodSigilDefinition,
 } from "@/lib/greenwood/sigil/catalogue";
 
+export {
+  CURRENT_SIGIL_CATALOGUE_RELATION,
+  PREVIOUS_SIGIL_CATALOGUE_RELATION,
+  DESK_CURRENT_SIGIL_MARK_SELECT,
+  DESK_CURRENT_SIGIL_SLUG_SELECT,
+  PRESENCE_CURRENT_SIGIL_SELECT,
+  PROFILE_CURRENT_SIGIL_SELECT,
+  currentSigilCatalogueEmbed,
+  previousSigilCatalogueEmbed,
+} from "@/lib/greenwood/sigil/embeds";
+
 export type {
   AssignGreenwoodSigilRpcRow,
   GreenwoodSigilAssignmentResult,

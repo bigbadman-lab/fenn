@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { GreenwoodError } from "@/lib/greenwood/errors";
+import { PROFILE_CURRENT_SIGIL_SELECT } from "@/lib/greenwood/sigil/embeds";
 import type {
   AssignGreenwoodSigilRpcRow,
   GreenwoodSigilAssignmentResult,
@@ -13,6 +14,29 @@ import { assertProfileId, assertSafeIntegerAmount } from "@/lib/leaf/validate";
 async function defaultAdmin(): Promise<SupabaseClient> {
   const { createAdminClient } = await import("@/lib/supabase/admin");
   return createAdminClient();
+}
+
+type SupabaseLikeError = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
+
+/** Safe structured diagnostics for trusted server logs (never browser responses). */
+export function sigilSupabaseDiagnostics(
+  operation: string,
+  error: SupabaseLikeError,
+  extra?: { profileId?: string },
+): Record<string, string | undefined> {
+  return {
+    operation,
+    code: error.code,
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    profileId: extra?.profileId,
+  };
 }
 
 function toSafeSigil(row: {
@@ -59,23 +83,26 @@ export async function getProfileSigil(
 
   const { data, error } = await db
     .from("greenwood_sigil_assignments")
-    .select(
-      "sigil_id, greenwood_sigil_catalogue ( slug, ascii_body, a11y_label, width, height, is_fallback )",
-    )
+    .select(PROFILE_CURRENT_SIGIL_SELECT)
     .eq("profile_id", id)
     .maybeSingle();
 
   if (error) {
+    const diagnostics = sigilSupabaseDiagnostics("getProfileSigil", error, {
+      profileId: id,
+    });
+    console.error("[getProfileSigil] failed", diagnostics);
     throw new GreenwoodError(
       "greenwood_sigil_failed",
       "Failed to load Greenwood sigil",
       500,
+      { cause: diagnostics },
     );
   }
   if (!data) return null;
 
   const catalogue = (
-    data as {
+    data as unknown as {
       greenwood_sigil_catalogue:
         | {
             slug: string;
@@ -122,7 +149,11 @@ export async function assignGreenwoodSigil(
   });
 
   if (error) {
-    throw mapAssignRpcError(error.message ?? "");
+    const diagnostics = sigilSupabaseDiagnostics("assignGreenwoodSigil", error, {
+      profileId: id,
+    });
+    console.error("[assignGreenwoodSigil] failed", diagnostics);
+    throw mapAssignRpcError(error.message ?? "", diagnostics);
   }
 
   const row = (Array.isArray(data) ? data[0] : data) as
@@ -168,10 +199,16 @@ export async function backfillGreenwoodSigils(
   const { data, error } = await db.rpc("backfill_greenwood_sigils");
 
   if (error) {
+    const diagnostics = sigilSupabaseDiagnostics(
+      "backfillGreenwoodSigils",
+      error,
+    );
+    console.error("[backfillGreenwoodSigils] failed", diagnostics);
     throw new GreenwoodError(
       "greenwood_sigil_failed",
       "Greenwood sigil backfill failed",
       500,
+      { cause: diagnostics },
     );
   }
 
@@ -206,12 +243,17 @@ export async function backfillGreenwoodSigils(
   };
 }
 
-function mapAssignRpcError(message: string): GreenwoodError {
+function mapAssignRpcError(
+  message: string,
+  diagnostics?: Record<string, string | undefined>,
+): GreenwoodError {
+  const cause = diagnostics ? { cause: diagnostics } : undefined;
   if (message.includes("FENN_PROFILE_NOT_FOUND")) {
     return new GreenwoodError(
       "greenwood_sigil_failed",
       "Profile not found for sigil assignment",
       404,
+      cause,
     );
   }
   if (message.includes("FENN_GREENWOOD_MEMBERSHIP_REQUIRED")) {
@@ -219,6 +261,7 @@ function mapAssignRpcError(message: string): GreenwoodError {
       "greenwood_membership_required",
       "Greenwood membership required for sigil assignment",
       403,
+      cause,
     );
   }
   if (message.includes("FENN_GREENWOOD_SIGIL_FALLBACK_MISSING")) {
@@ -226,6 +269,7 @@ function mapAssignRpcError(message: string): GreenwoodError {
       "greenwood_sigil_failed",
       "UNMARKED fallback sigil is not configured",
       503,
+      cause,
     );
   }
   if (message.includes("FENN_VALIDATION")) {
@@ -233,11 +277,13 @@ function mapAssignRpcError(message: string): GreenwoodError {
       "greenwood_sigil_failed",
       "Greenwood sigil validation failed",
       400,
+      cause,
     );
   }
   return new GreenwoodError(
     "greenwood_sigil_failed",
     "Greenwood sigil assignment failed",
     500,
+    cause,
   );
 }
