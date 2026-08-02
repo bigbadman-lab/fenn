@@ -12,6 +12,12 @@ export type DeskFireMember = {
   } | null;
   state: DeskFireMemberState;
   handRaised: boolean;
+  /** ISO last_seen_at for operational freshness. */
+  lastSeenAt: string;
+  /** ISO sitting_since when seated; null when present only. */
+  sittingSince: string | null;
+  /** Short human waiting label when seated. */
+  waitingLabel: string | null;
 };
 
 export type DeskFireActiveGathering = {
@@ -25,6 +31,7 @@ export type DeskFireSnapshot = {
   generatedAt: string;
   activeCount: number;
   sittingCount: number;
+  warmCount: number;
   members: DeskFireMember[];
   activeGathering: DeskFireActiveGathering | null;
 };

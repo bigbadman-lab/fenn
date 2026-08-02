@@ -378,13 +378,19 @@ describe("Living Greenwood 2 source safety", () => {
       join(repoRoot, "src/hooks/use-greenwood-fire-presence.ts"),
       "utf8",
     );
+    const provider = readFileSync(
+      join(repoRoot, "src/components/shell/fire-presence-provider.tsx"),
+      "utf8",
+    );
     assert.match(member, /GreenwoodFirePresence/);
     assert.match(presenceUi, /AT THE FIRE/);
     assert.match(presenceUi, /SIT BY THE FIRE/);
     assert.match(presenceUi, /LEAVE THE FIRE/);
+    assert.match(presenceUi, /id="the-fire"/);
     assert.match(hook, /usePagePulse/);
-    assert.match(hook, /GREENWOOD_FIRE_HEARTBEAT_MS/);
+    assert.match(hook, /enabled: enabled && !seated/);
     assert.match(hook, /WORLD_PULSE_GREENWOOD_FIRE_MS/);
+    assert.match(provider, /enabled: seated/);
     assert.doesNotMatch(hook, /supabase\.channel|WebSocket|beforeunload/);
     assert.doesNotMatch(presenceUi, /awardLeaf|hollow|raise.?hand/i);
   });

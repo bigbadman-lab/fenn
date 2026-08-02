@@ -17,12 +17,28 @@ type PresenceJoinRow = {
   profile_id: string;
   last_seen_at: string;
   sitting: boolean;
+  sitting_since: string | null;
   profiles: {
     outlaw_number: number | string;
     alias: string | null;
     greenwood_entered_at: string | null;
   } | null;
 };
+
+function formatWaitingLabel(
+  sittingSince: string | null,
+  nowMs: number,
+): string | null {
+  if (!sittingSince) return null;
+  const started = Date.parse(sittingSince);
+  if (!Number.isFinite(started)) return null;
+  const mins = Math.floor((nowMs - started) / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m waiting`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h waiting`;
+  return `${Math.floor(hours / 24)}d waiting`;
+}
 
 async function defaultAdmin(): Promise<SupabaseClient> {
   const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -43,6 +59,7 @@ export async function getDeskFireSnapshot(
       profile_id,
       last_seen_at,
       sitting,
+      sitting_since,
       profiles!inner (
         outlaw_number,
         alias,
@@ -136,13 +153,19 @@ export async function getDeskFireSnapshot(
     const outlawLabel = formatOutlawNumber(outlawNumber);
     const alias = profile.alias?.trim() || null;
     const sigil = sigilByProfile.get(row.profile_id) ?? null;
+    const sitting = Boolean(row.sitting);
     members.push({
       profileId: row.profile_id,
       displayName: alias ?? `Outlaw ${outlawLabel}`,
       outlawNumberLabel: outlawLabel,
       sigil,
-      state: row.sitting ? "sitting" : "present",
+      state: sitting ? "sitting" : "present",
       handRaised: raisedProfileIds.has(row.profile_id),
+      lastSeenAt: row.last_seen_at,
+      sittingSince: sitting ? row.sitting_since : null,
+      waitingLabel: sitting
+        ? formatWaitingLabel(row.sitting_since, nowMs)
+        : null,
     });
   }
 
@@ -157,6 +180,7 @@ export async function getDeskFireSnapshot(
     generatedAt: new Date(nowMs).toISOString(),
     activeCount: members.length,
     sittingCount,
+    warmCount: members.length - sittingCount,
     members,
     activeGathering,
   };

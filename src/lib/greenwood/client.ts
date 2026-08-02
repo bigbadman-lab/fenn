@@ -291,6 +291,65 @@ export type GreenwoodPresenceSelfFetchResult =
   | { ok: true; self: FirePresenceSelfState }
   | { ok: false; error: GreenwoodClientError };
 
+export type FireSelfStatusPayload = {
+  member: boolean;
+  active: boolean;
+  sitting: boolean;
+};
+
+export type GreenwoodFireSelfStatusFetchResult =
+  | { ok: true; status: FireSelfStatusPayload }
+  | { ok: false; error: GreenwoodClientError };
+
+/**
+ * Authenticated GET /api/greenwood/presence/self — compact shell status.
+ */
+export async function fetchGreenwoodFireSelfStatus(
+  headers: HeadersInit,
+): Promise<GreenwoodFireSelfStatusFetchResult> {
+  const response = await fetch("/api/greenwood/presence/self", {
+    headers,
+    cache: "no-store",
+  });
+
+  type SelfStatusBody = {
+    ok?: boolean;
+    status?: FireSelfStatusPayload;
+    error?: string;
+    code?: string;
+  };
+
+  let body: SelfStatusBody | null = null;
+  try {
+    body = (await response.json()) as SelfStatusBody;
+  } catch {
+    body = null;
+  }
+
+  if (
+    !response.ok ||
+    !body?.ok ||
+    !body.status ||
+    typeof body.status.member !== "boolean" ||
+    typeof body.status.active !== "boolean" ||
+    typeof body.status.sitting !== "boolean"
+  ) {
+    return {
+      ok: false,
+      error: asError(
+        response.status,
+        body
+          ? { ok: body.ok, error: body.error, code: body.code }
+          : null,
+        "greenwood_presence_failed",
+        "Fire status failed",
+      ),
+    };
+  }
+
+  return { ok: true, status: body.status };
+}
+
 /**
  * Authenticated GET /api/greenwood/presence.
  * Member-safe Fire presence only — no profile IDs or wallets.

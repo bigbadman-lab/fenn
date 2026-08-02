@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { GreenwoodFireGathering } from "@/components/greenwood/greenwood-fire-gathering";
+import { GreenwoodFireHashScroll } from "@/components/greenwood/greenwood-fire-hash-scroll";
 import { GreenwoodFireHollow } from "@/components/greenwood/greenwood-fire-hollow";
 import { GreenwoodFirePresence } from "@/components/greenwood/greenwood-fire-presence";
+import { useFirePresenceShell } from "@/components/shell/fire-presence-provider";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { formatDeedBoardDate, formatDeedReward } from "@/lib/deeds/format";
 import type { SafeDeed } from "@/lib/deeds/types";
@@ -37,6 +39,7 @@ export function GreenwoodMember({
   newlyAdmitted,
   getAuthHeaders,
 }: GreenwoodMemberProps) {
+  const { seated } = useFirePresenceShell();
   const enteredDate = formatDeedBoardDate(member.greenwoodEnteredAt);
   const aliasTrimmed = alias?.trim() || null;
   const displayName = aliasTrimmed ?? outlawLabel;
@@ -124,13 +127,25 @@ export function GreenwoodMember({
   }, [deeds]);
 
   return (
-    <article className="place greenwood-member greenwood-fire" aria-live="polite">
+    <article
+      className={
+        seated
+          ? "place greenwood-member greenwood-fire greenwood-fire--seated"
+          : "place greenwood-member greenwood-fire"
+      }
+      aria-live="polite"
+    >
+      <GreenwoodFireHashScroll />
       <header className="greenwood-member__header">
         <AsciiPageTitle
           title="THE FIRE"
           ascii={GREENWOOD_FIRE_ASCII}
           accent="greenwood"
-          className="greenwood-fire__hero"
+          className={
+            seated
+              ? "greenwood-fire__hero greenwood-fire__hero--seated"
+              : "greenwood-fire__hero"
+          }
           subtitle={
             <>
               {newlyAdmitted ? (

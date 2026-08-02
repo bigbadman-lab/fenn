@@ -235,6 +235,43 @@ button.btn-text:disabled {
   gap: 0.75rem 1.5rem;
 }
 
+.shell__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.65rem 1rem;
+  max-width: min(100%, 22rem);
+}
+
+.shell-fire-status {
+  color: color-mix(in srgb, var(--color-leaf) 70%, var(--color-bone));
+  letter-spacing: 0.06em;
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.shell-fire-status:hover {
+  color: var(--color-leaf);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.shell-fire-status__short {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .shell-fire-status__full {
+    display: none;
+  }
+
+  .shell-fire-status__short {
+    display: inline;
+  }
+}
+
 .shell-auth {
   display: flex;
   flex-wrap: wrap;
@@ -3143,6 +3180,133 @@ button.wall-mark__action:focus-visible {
   color: color-mix(in srgb, var(--color-greenwood) 45%, var(--color-bone));
 }
 
+.greenwood-fire--seated .greenwood-fire__hero--seated {
+  color: color-mix(in srgb, var(--color-leaf) 45%, var(--color-bone));
+}
+
+.greenwood-fire-presence--waiting .greenwood-fire-presence__clearing--waiting {
+  color: color-mix(in srgb, var(--color-leaf) 28%, var(--color-bone));
+}
+
+.greenwood-fire-presence--seated .greenwood-fire-presence__clearing--seated {
+  color: color-mix(in srgb, var(--color-leaf) 52%, var(--color-bone));
+}
+
+.greenwood-fire-presence--quiet .greenwood-fire-presence__clearing {
+  opacity: 0.92;
+}
+
+.greenwood-fire-presence--subdued .greenwood-fire-presence__clearing {
+  opacity: 0.55;
+  color: color-mix(in srgb, var(--color-greenwood) 40%, var(--color-bone));
+}
+
+.greenwood-fire-presence__scene {
+  margin: 0.35rem 0 0.95rem;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.greenwood-fire-presence__clearing {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  white-space: pre;
+  line-height: 1.12;
+  font-size: clamp(0.72rem, 2.4vw, 0.95rem);
+  text-align: center;
+}
+
+.greenwood-fire-presence__clearing--listening {
+  color: color-mix(in srgb, var(--color-greenwood) 45%, var(--color-bone));
+}
+
+.greenwood-fire-presence__state-lead {
+  margin: 0 0 0.65rem;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--color-leaf) 58%, var(--color-bone));
+}
+
+.greenwood-fire-presence__self {
+  margin: 1.1rem 0 0.85rem;
+  text-align: center;
+}
+
+.greenwood-fire-presence__self-sigil {
+  margin: 0 auto 0.55rem;
+  max-width: min(100%, 18rem);
+  overflow-x: hidden;
+  white-space: pre;
+  line-height: 1.15;
+  font-size: clamp(0.85rem, 2.8vw, 1.05rem);
+  color: color-mix(in srgb, var(--color-leaf) 55%, var(--color-bone));
+}
+
+.greenwood-fire-presence__you-here {
+  margin: 0.35rem 0 0.15rem;
+  letter-spacing: 0.1em;
+  color: var(--color-leaf);
+}
+
+.greenwood-fire-presence__self-name {
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.05em;
+}
+
+.greenwood-fire-presence__group-title {
+  margin: 1.1rem 0 0.45rem;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--color-greenwood) 55%, var(--color-bone));
+}
+
+.greenwood-fire-presence__ring {
+  margin: 1rem 0 0.35rem;
+}
+
+.greenwood-fire-presence__ring-list {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.85rem 0.75rem;
+  max-width: 36rem;
+}
+
+.greenwood-fire-presence__ring-member {
+  margin: 0;
+  text-align: center;
+  min-width: 0;
+}
+
+.greenwood-fire-presence__ring-sigil {
+  margin: 0 auto 0.3rem;
+  max-width: 100%;
+  overflow-x: hidden;
+  white-space: pre;
+  line-height: 1.1;
+  font-size: clamp(0.62rem, 2vw, 0.78rem);
+  color: color-mix(in srgb, var(--color-greenwood) 55%, var(--color-bone));
+}
+
+.greenwood-fire-presence__overflow {
+  margin: 0.65rem 0 0;
+  letter-spacing: 0.05em;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--color-leaf) 45%, var(--color-bone));
+}
+
+.greenwood-fire-presence__action-error {
+  margin: 0.75rem 0 0;
+}
+
+.greenwood-fire-presence__waiting-tag {
+  margin: 0.2rem 0 0;
+  letter-spacing: 0.05em;
+  font-size: 0.85rem;
+}
+
 .greenwood-fire-presence__list {
   list-style: none;
   margin: 0.85rem 0 0;
@@ -3162,17 +3326,14 @@ button.wall-mark__action:focus-visible {
   border-bottom: 0;
 }
 
-.greenwood-fire-presence__member--sitting .greenwood-fire-presence__name {
-  color: color-mix(in srgb, var(--color-leaf) 55%, var(--color-bone));
-}
-
 .greenwood-fire-presence__sigil {
   margin: 0 0 0.35rem;
   max-width: 100%;
-  overflow-x: auto;
+  overflow-x: hidden;
   white-space: pre;
   line-height: 1.15;
-  color: color-mix(in srgb, var(--color-greenwood) 70%, var(--color-bone));
+  font-size: clamp(0.65rem, 2vw, 0.82rem);
+  color: color-mix(in srgb, var(--color-greenwood) 55%, var(--color-bone));
 }
 
 .greenwood-fire-presence__sigil-fallback {
@@ -3183,26 +3344,16 @@ button.wall-mark__action:focus-visible {
 .greenwood-fire-presence__name {
   margin: 0;
   letter-spacing: 0.04em;
-}
-
-.greenwood-fire-presence__sitting-tag {
-  color: var(--color-leaf);
-  letter-spacing: 0.05em;
+  overflow-wrap: anywhere;
 }
 
 .greenwood-fire-presence__count {
-  margin: 0.35rem 0 0;
-  letter-spacing: 0.04em;
+  margin: 0.75rem 0 0;
+  letter-spacing: 0.05em;
 }
 
 .greenwood-fire-presence__actions {
   margin-top: 1.1rem;
-}
-
-.greenwood-fire-presence__self-state {
-  margin: 0 0 0.55rem;
-  letter-spacing: 0.07em;
-  color: color-mix(in srgb, var(--color-leaf) 60%, var(--color-bone));
 }
 
 .greenwood-fire-presence__btn {
@@ -3229,6 +3380,27 @@ button.wall-mark__action:focus-visible {
 .greenwood-fire-presence__btn:disabled {
   opacity: 0.55;
   cursor: wait;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .greenwood-fire-presence--seated,
+  .greenwood-fire__hero--seated,
+  .greenwood-fire-presence__clearing {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .greenwood-fire-presence__clearing,
+  .greenwood-fire-presence__self-sigil,
+  .greenwood-fire-presence__ring-sigil,
+  .greenwood-fire-presence__state-lead,
+  .greenwood-fire-presence__you-here,
+  .greenwood-fire-presence__btn {
+    color: CanvasText;
+    border-color: CanvasText;
+    opacity: 1;
+  }
 }
 
 .greenwood-fire-gathering__state {

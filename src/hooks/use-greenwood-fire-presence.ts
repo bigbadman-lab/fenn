@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useFirePresenceShell } from "@/components/shell/fire-presence-provider";
 import { usePagePulse } from "@/hooks/use-page-pulse";
 import {
   fetchGreenwoodPresence,
@@ -22,6 +23,7 @@ type PresenceUiState = {
   status: "loading" | "ready" | "error";
   presence: FirePresenceSnapshot | null;
   actionPending: boolean;
+  actionError: string | null;
 };
 
 const EMPTY_PRESENCE: FirePresenceSnapshot = {
@@ -30,25 +32,35 @@ const EMPTY_PRESENCE: FirePresenceSnapshot = {
   members: [],
 };
 
+const ACTION_ERROR_COPY = "the Fire did not answer.";
+
 /**
- * Fire presence: visibility-aware heartbeat + quiet list refresh.
- * No full-page reload. No Realtime.
+ * Fire presence list + sit/leave.
+ * Heartbeat while seated is owned by FirePresenceProvider (shell).
+ * This hook heartbeats only while mounted and not seated (warm nearby).
  */
 export function useGreenwoodFirePresence({
   getAuthHeaders,
   enabled = true,
 }: UseGreenwoodFirePresenceOptions) {
+  const { seated, notifySitting } = useFirePresenceShell();
   const [state, setState] = useState<PresenceUiState>({
     status: "loading",
     presence: null,
     actionPending: false,
+    actionError: null,
   });
   const getAuthHeadersRef = useRef(getAuthHeaders);
+  const seatedRef = useRef(seated);
   const actionInFlight = useRef(false);
 
   useEffect(() => {
     getAuthHeadersRef.current = getAuthHeaders;
   }, [getAuthHeaders]);
+
+  useEffect(() => {
+    seatedRef.current = seated;
+  }, [seated]);
 
   const refreshPresence = useCallback(async () => {
     const headers = await getAuthHeadersRef.current();
@@ -66,7 +78,6 @@ export function useGreenwoodFirePresence({
       setState((prev) => ({
         ...prev,
         status: "error",
-        // Fail closed: do not keep a stale inhabited list.
         presence: null,
       }));
       return;
@@ -76,8 +87,10 @@ export function useGreenwoodFirePresence({
       ...prev,
       status: "ready",
       presence: result.presence,
+      actionError: null,
     }));
-  }, []);
+    notifySitting(result.presence.self.sitting);
+  }, [notifySitting]);
 
   const heartbeat = useCallback(async () => {
     const headers = await getAuthHeadersRef.current();
@@ -93,10 +106,11 @@ export function useGreenwoodFirePresence({
     void refreshPresence();
   }, [refreshPresence]);
 
+  // Warm-nearby heartbeat only — seated heartbeat lives in the shell provider.
   usePagePulse({
     intervalMs: GREENWOOD_FIRE_HEARTBEAT_MS,
     onPulse: pulseHeartbeat,
-    enabled,
+    enabled: enabled && !seated,
     refreshOnVisible: true,
   });
 
@@ -107,13 +121,15 @@ export function useGreenwoodFirePresence({
     refreshOnVisible: true,
   });
 
-  // Immediate first heartbeat + list load when the Fire mounts.
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void (async () => {
-        await heartbeat();
+        // Shell owns heartbeat while seated; warm-nearby only here.
+        if (!seatedRef.current) {
+          await heartbeat();
+        }
         if (cancelled) return;
         await refreshPresence();
       })();
@@ -127,65 +143,88 @@ export function useGreenwoodFirePresence({
   const sit = useCallback(async () => {
     if (actionInFlight.current) return;
     actionInFlight.current = true;
-    setState((prev) => ({ ...prev, actionPending: true }));
+    setState((prev) => ({
+      ...prev,
+      actionPending: true,
+      actionError: null,
+    }));
     try {
       const headers = await getAuthHeadersRef.current();
-      if (!headers) return;
-      const result = await postGreenwoodPresenceSit(headers);
-      if (result.ok) {
-        setState((prev) => ({
-          ...prev,
-          presence: prev.presence
-            ? {
-                ...prev.presence,
-                self: result.self,
-              }
-            : {
-                ...EMPTY_PRESENCE,
-                self: result.self,
-              },
-        }));
-        await refreshPresence();
+      if (!headers) {
+        setState((prev) => ({ ...prev, actionError: ACTION_ERROR_COPY }));
+        return;
       }
+      const result = await postGreenwoodPresenceSit(headers);
+      if (!result.ok) {
+        setState((prev) => ({ ...prev, actionError: ACTION_ERROR_COPY }));
+        return;
+      }
+      notifySitting(true);
+      setState((prev) => ({
+        ...prev,
+        actionError: null,
+        presence: prev.presence
+          ? {
+              ...prev.presence,
+              self: result.self,
+            }
+          : {
+              ...EMPTY_PRESENCE,
+              self: result.self,
+            },
+      }));
+      await refreshPresence();
     } finally {
       actionInFlight.current = false;
       setState((prev) => ({ ...prev, actionPending: false }));
     }
-  }, [refreshPresence]);
+  }, [notifySitting, refreshPresence]);
 
   const leave = useCallback(async () => {
     if (actionInFlight.current) return;
     actionInFlight.current = true;
-    setState((prev) => ({ ...prev, actionPending: true }));
+    setState((prev) => ({
+      ...prev,
+      actionPending: true,
+      actionError: null,
+    }));
     try {
       const headers = await getAuthHeadersRef.current();
-      if (!headers) return;
-      const result = await postGreenwoodPresenceLeave(headers);
-      if (result.ok) {
-        setState((prev) => ({
-          ...prev,
-          presence: prev.presence
-            ? {
-                ...prev.presence,
-                self: result.self,
-              }
-            : {
-                ...EMPTY_PRESENCE,
-                self: result.self,
-              },
-        }));
-        await refreshPresence();
+      if (!headers) {
+        setState((prev) => ({ ...prev, actionError: ACTION_ERROR_COPY }));
+        return;
       }
+      const result = await postGreenwoodPresenceLeave(headers);
+      if (!result.ok) {
+        setState((prev) => ({ ...prev, actionError: ACTION_ERROR_COPY }));
+        return;
+      }
+      notifySitting(false);
+      setState((prev) => ({
+        ...prev,
+        actionError: null,
+        presence: prev.presence
+          ? {
+              ...prev.presence,
+              self: result.self,
+            }
+          : {
+              ...EMPTY_PRESENCE,
+              self: result.self,
+            },
+      }));
+      await refreshPresence();
     } finally {
       actionInFlight.current = false;
       setState((prev) => ({ ...prev, actionPending: false }));
     }
-  }, [refreshPresence]);
+  }, [notifySitting, refreshPresence]);
 
   return {
     status: state.status,
     presence: state.presence,
     actionPending: state.actionPending,
+    actionError: state.actionError,
     sit,
     leave,
   };

@@ -168,6 +168,9 @@ export function GreenwoodFireGathering({ getAuthHeaders }: Props) {
           GATHERING
         </h2>
         <p>No Gathering has been called.</p>
+        <p className="muted">
+          Those waiting at the Fire will be here when one begins.
+        </p>
       </section>
     );
   }
@@ -188,6 +191,11 @@ export function GreenwoodFireGathering({ getAuthHeaders }: Props) {
 
       <p className="greenwood-fire-gathering__state">
         {isActive ? "NOW" : "UPCOMING"}
+      </p>
+      <p className="muted">
+        {isActive
+          ? "Those seated at the Fire are here."
+          : "Those already seated at the Fire will be present when the Gathering begins."}
       </p>
       <p className="greenwood-fire-gathering__title">{focus.title}</p>
       {focus.summary ? <p>{focus.summary}</p> : null}

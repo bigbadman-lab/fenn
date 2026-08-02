@@ -13,6 +13,7 @@ export type {
   FirePresenceMember,
   FirePresenceSelfState,
   FirePresenceSnapshot,
+  FireSelfStatus,
 } from "@/lib/greenwood/presence/types";
 
-// Server-only ops: import from ops.ts in trusted server code.
+// Server-only ops / self-status: import from ops.ts / self-status.ts in trusted server code.

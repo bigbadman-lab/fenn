@@ -27,8 +27,10 @@ describe("LG5.3 Desk Fire", () => {
 
   it("Fire UI has no wallet and no force-leave", () => {
     const ui = read("src/components/desk/desk-fire-panel.tsx");
-    assert.match(ui, /WHO IS NEAR THE FIRE/);
+    assert.match(ui, /WHO IS WAITING TO BE CALLED/);
     assert.match(ui, /The Fire is quiet/);
+    assert.match(ui, /WAITING BY THE FIRE/);
+    assert.match(ui, /MARKS STILL WARM/);
     assert.doesNotMatch(ui, /force leave|walletAddress|COPY WALLET/i);
     assert.doesNotMatch(ui, /\/api\/admin/);
   });

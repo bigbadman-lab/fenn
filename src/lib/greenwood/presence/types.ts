@@ -17,6 +17,13 @@ export type FirePresenceSelfState = {
   sitting: boolean;
 };
 
+/** Compact shell / cross-route Fire readiness — no identities. */
+export type FireSelfStatus = {
+  member: boolean;
+  active: boolean;
+  sitting: boolean;
+};
+
 export type FirePresenceSnapshot = {
   self: FirePresenceSelfState;
   activeCount: number;

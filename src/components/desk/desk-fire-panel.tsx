@@ -4,7 +4,73 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { useDeskGate } from "@/components/desk/desk-gate";
-import type { DeskFireSnapshot } from "@/lib/desk/fire-types";
+import type { DeskFireMember, DeskFireSnapshot } from "@/lib/desk/fire-types";
+
+function MemberTable({
+  members,
+  empty,
+}: {
+  members: DeskFireMember[];
+  empty: string;
+}) {
+  if (members.length === 0) {
+    return <p className="muted">{empty}</p>;
+  }
+
+  return (
+    <div className="desk-register__table-wrap">
+      <table className="desk-register__table">
+        <thead>
+          <tr>
+            <th>MARK</th>
+            <th>OUTLAW</th>
+            <th>WAITING</th>
+            <th>LAST WARM</th>
+            <th>HAND</th>
+            <th>REGISTER</th>
+          </tr>
+        </thead>
+        <tbody>
+          {members.map((member) => (
+            <tr key={member.profileId}>
+              <td>
+                {member.sigil ? (
+                  <pre
+                    className="ascii desk-register__sigil"
+                    aria-label={member.sigil.a11yLabel}
+                  >
+                    {member.sigil.asciiBody}
+                  </pre>
+                ) : (
+                  <span className="muted">unmarked</span>
+                )}
+              </td>
+              <td>
+                {member.displayName}
+                <div className="muted">#{member.outlawNumberLabel}</div>
+              </td>
+              <td>
+                {member.state === "sitting"
+                  ? (member.waitingLabel ?? "waiting")
+                  : "—"}
+              </td>
+              <td className="muted">{member.lastSeenAt}</td>
+              <td>{member.handRaised ? "raised" : "—"}</td>
+              <td>
+                <Link
+                  href={`/desk/register/${member.profileId}`}
+                  className="btn-text"
+                >
+                  [ open ]
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export function DeskFirePanel() {
   const { getAuthHeaders } = useDeskGate();
@@ -58,6 +124,11 @@ export function DeskFirePanel() {
     };
   }, [load]);
 
+  const waiting =
+    fire?.members.filter((m) => m.state === "sitting") ?? [];
+  const warm =
+    fire?.members.filter((m) => m.state === "present") ?? [];
+
   return (
     <section className="desk-fire" aria-label="The Fire">
       <div className="desk-overview__header">
@@ -66,7 +137,7 @@ export function DeskFirePanel() {
           [ refresh ]
         </button>
       </div>
-      <p className="muted">WHO IS NEAR THE FIRE?</p>
+      <p className="muted">WHO IS WAITING TO BE CALLED?</p>
 
       <p className="desk-divider" aria-hidden>
         ────────────────────
@@ -84,11 +155,10 @@ export function DeskFirePanel() {
             <p className="muted">The Fire is quiet.</p>
           ) : (
             <p>
-              {fire.activeCount} mark{fire.activeCount === 1 ? "" : "s"} remain
-              warm.
+              {fire.sittingCount}{" "}
+              {fire.sittingCount === 1 ? "is" : "are"} waiting.
               <br />
-              {fire.sittingCount} {fire.sittingCount === 1 ? "is" : "are"}{" "}
-              sitting.
+              {fire.warmCount} mark{fire.warmCount === 1 ? "" : "s"} still warm.
             </p>
           )}
 
@@ -108,61 +178,31 @@ export function DeskFirePanel() {
             <p className="muted">No Gathering is active.</p>
           )}
 
+          <p>
+            <Link href="/desk/gatherings" className="btn-text">
+              [ OPEN GATHERINGS ]
+            </Link>
+          </p>
+
           <p className="desk-divider" aria-hidden>
             ────────────────────
           </p>
 
-          {fire.members.length > 0 ? (
-            <div className="desk-register__table-wrap">
-              <table className="desk-register__table">
-                <thead>
-                  <tr>
-                    <th>MARK</th>
-                    <th>OUTLAW</th>
-                    <th>STATE</th>
-                    <th>GATHERING HAND</th>
-                    <th>REGISTER</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fire.members.map((member) => (
-                    <tr key={member.profileId}>
-                      <td>
-                        {member.sigil ? (
-                          <pre
-                            className="ascii desk-register__sigil"
-                            aria-label={member.sigil.a11yLabel}
-                          >
-                            {member.sigil.asciiBody}
-                          </pre>
-                        ) : (
-                          <span className="muted">unmarked</span>
-                        )}
-                      </td>
-                      <td>
-                        {member.displayName}
-                        <div className="muted">#{member.outlawNumberLabel}</div>
-                      </td>
-                      <td>
-                        {member.state === "sitting"
-                          ? "SITTING BY THE FIRE"
-                          : "PRESENT AT THE FIRE"}
-                      </td>
-                      <td>{member.handRaised ? "raised" : "—"}</td>
-                      <td>
-                        <Link
-                          href={`/desk/register/${member.profileId}`}
-                          className="btn-text"
-                        >
-                          [ open ]
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
+          <h3 className="desk-overview__group-title">WAITING BY THE FIRE</h3>
+          <MemberTable
+            members={waiting}
+            empty="No one is sitting."
+          />
+
+          <p className="desk-divider" aria-hidden>
+            ────────────────────
+          </p>
+
+          <h3 className="desk-overview__group-title">MARKS STILL WARM</h3>
+          <MemberTable
+            members={warm}
+            empty="No warm marks without a seat."
+          />
         </>
       ) : null}
     </section>

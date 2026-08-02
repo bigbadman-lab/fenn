@@ -1,6 +1,8 @@
 import Link from "next/link";
 
+import { FirePresenceProvider } from "@/components/shell/fire-presence-provider";
 import { ShellAuthControls } from "@/components/shell/shell-auth-controls";
+import { ShellFireStatus } from "@/components/shell/shell-fire-status";
 import { ShellReturn } from "@/components/shell/shell-return";
 import { SiteFooter } from "@/components/shell/site-footer";
 
@@ -10,28 +12,33 @@ type ApplicationShellProps = {
 
 export function ApplicationShell({ children }: ApplicationShellProps) {
   return (
-    <div className="shell">
-      <div className="shell__inner">
-        <header className="shell__brand">
-          <div className="shell__brand-row">
-            <Link href="/" className="shell__identity-link">
-              <pre className="shell__identity ascii" aria-label="FENN home">
-                {`FENN`}
-              </pre>
-            </Link>
-            <ShellAuthControls />
-          </div>
-          <p className="shell__tag">
-            <Link href="/">an old corner of the wood</Link>
-          </p>
-        </header>
+    <FirePresenceProvider>
+      <div className="shell">
+        <div className="shell__inner">
+          <header className="shell__brand">
+            <div className="shell__brand-row">
+              <Link href="/" className="shell__identity-link">
+                <pre className="shell__identity ascii" aria-label="FENN home">
+                  {`FENN`}
+                </pre>
+              </Link>
+              <div className="shell__controls">
+                <ShellFireStatus />
+                <ShellAuthControls />
+              </div>
+            </div>
+            <p className="shell__tag">
+              <Link href="/">an old corner of the wood</Link>
+            </p>
+          </header>
 
-        <ShellReturn />
+          <ShellReturn />
 
-        <main className="shell__main">{children}</main>
+          <main className="shell__main">{children}</main>
 
-        <SiteFooter />
+          <SiteFooter />
+        </div>
       </div>
-    </div>
+    </FirePresenceProvider>
   );
 }
