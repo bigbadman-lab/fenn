@@ -10,9 +10,10 @@ import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { formatDeedBoardDate, formatDeedReward } from "@/lib/deeds/format";
 import type { SafeDeed } from "@/lib/deeds/types";
 import { fetchGreenwoodDeeds } from "@/lib/greenwood/client";
+import { fetchGreenwoodSpeaks } from "@/lib/greenwood/client";
 import {
   GREENWOOD_FIRE_ASCII,
-  GREENWOOD_FIRE_MESSAGE,
+  GREENWOOD_FIRE_MESSAGE_FALLBACK,
 } from "@/lib/greenwood/fire-message";
 import type { GreenwoodMemberSnapshotView } from "@/lib/greenwood/gate-view";
 import { toRomanNumeral } from "@/lib/greenwood/ranking";
@@ -46,18 +47,33 @@ export function GreenwoodMember({
   const sigil = member.sigil ?? null;
 
   const [deeds, setDeeds] = useState<SafeDeed[] | null>(null);
+  const [speaksParagraphs, setSpeaksParagraphs] = useState<string[] | null>(
+    null,
+  );
+
   useEffect(() => {
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void (async () => {
         const headers = await getAuthHeaders();
         if (!headers) {
-          if (!cancelled) setDeeds([]);
+          if (!cancelled) {
+            setDeeds([]);
+            setSpeaksParagraphs([...GREENWOOD_FIRE_MESSAGE_FALLBACK]);
+          }
           return;
         }
-        const result = await fetchGreenwoodDeeds(headers);
+        const [deedsResult, speaksResult] = await Promise.all([
+          fetchGreenwoodDeeds(headers),
+          fetchGreenwoodSpeaks(headers),
+        ]);
         if (cancelled) return;
-        setDeeds(result.ok ? result.deeds : []);
+        setDeeds(deedsResult.ok ? deedsResult.deeds : []);
+        setSpeaksParagraphs(
+          speaksResult.ok
+            ? speaksResult.paragraphs
+            : [...GREENWOOD_FIRE_MESSAGE_FALLBACK],
+        );
       })();
     }, 0);
     return () => {
@@ -114,6 +130,7 @@ export function GreenwoodMember({
           title="THE FIRE"
           ascii={GREENWOOD_FIRE_ASCII}
           accent="greenwood"
+          className="greenwood-fire__hero"
           subtitle={
             <>
               {newlyAdmitted ? (
@@ -141,12 +158,17 @@ export function GreenwoodMember({
           className="greenwood-interior__section greenwood-fire__message"
           aria-labelledby="gf-message"
         >
-          <h2 id="gf-message" className="greenwood-member__section-title">
+          <h2
+            id="gf-message"
+            className="greenwood-member__section-title greenwood-member__section-title--fenn"
+          >
             FENN SPEAKS
           </h2>
-          {GREENWOOD_FIRE_MESSAGE.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
+          {(speaksParagraphs ?? GREENWOOD_FIRE_MESSAGE_FALLBACK).map(
+            (line, index) => (
+              <p key={`${index}-${line.slice(0, 24)}`}>{line}</p>
+            ),
+          )}
         </section>
 
         <hr className="greenwood-member__rule" />
@@ -163,7 +185,10 @@ export function GreenwoodMember({
           className="greenwood-interior__section"
           aria-labelledby="gf-place"
         >
-          <h2 id="gf-place" className="greenwood-member__section-title">
+          <h2
+            id="gf-place"
+            className="greenwood-member__section-title greenwood-member__section-title--place"
+          >
             YOUR PLACE
           </h2>
           {sigil ? (
@@ -198,7 +223,10 @@ export function GreenwoodMember({
           className="greenwood-interior__section"
           aria-labelledby="gf-deeds"
         >
-          <h2 id="gf-deeds" className="greenwood-member__section-title">
+          <h2
+            id="gf-deeds"
+            className="greenwood-member__section-title greenwood-member__section-title--deeds"
+          >
             DEEPER DEEDS
           </h2>
           {deedsContent}

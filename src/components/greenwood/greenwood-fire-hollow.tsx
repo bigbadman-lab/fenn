@@ -58,7 +58,10 @@ export function GreenwoodFireHollow({ getAuthHeaders }: Props) {
       className="greenwood-interior__section greenwood-fire-hollow"
       aria-labelledby="gf-hollow"
     >
-      <h2 id="gf-hollow" className="greenwood-member__section-title">
+      <h2
+        id="gf-hollow"
+        className="greenwood-member__section-title greenwood-member__section-title--hollow"
+      >
         THE HOLLOW
       </h2>
       <p>

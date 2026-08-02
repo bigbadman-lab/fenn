@@ -38,6 +38,8 @@ export type GreenwoodMemberSnapshotView = {
   standingTotalMembers?: number;
   /** Persistent ASCII mark (may be null if assignment failed). */
   sigil?: SafeGreenwoodSigil | null;
+  /** True when the one-time arrival ceremony has not been durably completed. */
+  arrivalCeremonyPending?: boolean;
 };
 
 /** Auth / registration branch before Greenwood status is consulted. */
@@ -71,12 +73,14 @@ export function memberSnapshotFromStatus(
     standingRank: status.standingRank,
     standingTotalMembers: status.standingTotalMembers,
     sigil: status.sigil,
+    arrivalCeremonyPending: status.arrivalCeremonyPending,
   };
 }
 
 /**
  * Map GET /api/greenwood/status payload into a gate view + data.
- * Returning members go straight to the interior (no admission ritual).
+ * Returning members (ceremony complete) go straight to the interior.
+ * Members with a pending arrival ceremony see the one-time ceremony.
  * Does not invent eligibility — server state is authoritative.
  */
 export function viewFromGreenwoodStatus(status: GreenwoodStatus): {
@@ -85,9 +89,10 @@ export function viewFromGreenwoodStatus(status: GreenwoodStatus): {
   member?: GreenwoodMemberSnapshotView;
 } {
   if (status.state === "member") {
+    const member = memberSnapshotFromStatus(status);
     return {
-      view: "interior",
-      member: memberSnapshotFromStatus(status),
+      view: status.arrivalCeremonyPending ? "member" : "interior",
+      member,
     };
   }
   if (status.state === "eligible") {
@@ -104,7 +109,7 @@ export function viewFromGreenwoodStatus(status: GreenwoodStatus): {
 
 /**
  * Map POST /api/greenwood/enter domain result.
- * admitted → recognition (member). already_member → interior.
+ * admitted → arrival ceremony. already_member → ceremony if pending, else interior.
  * not_eligible returns to refusal with server numbers.
  */
 export function viewFromAdmissionResult(result: GreenwoodAdmissionResult): {
@@ -123,13 +128,15 @@ export function viewFromAdmissionResult(result: GreenwoodAdmissionResult): {
         standingRank: result.standingRank,
         standingTotalMembers: result.standingTotalMembers,
         sigil: result.sigil,
+        arrivalCeremonyPending: true,
       },
     };
   }
 
   if (result.status === "already_member") {
+    const pending = result.arrivalCeremonyPending;
     return {
-      view: "interior",
+      view: pending ? "member" : "interior",
       member: {
         greenwoodEnteredAt: result.greenwoodEnteredAt,
         thresholdAtEntry: result.thresholdAtEntry,
@@ -138,6 +145,7 @@ export function viewFromAdmissionResult(result: GreenwoodAdmissionResult): {
         standingRank: result.standingRank,
         standingTotalMembers: result.standingTotalMembers,
         sigil: result.sigil,
+        arrivalCeremonyPending: pending,
       },
     };
   }

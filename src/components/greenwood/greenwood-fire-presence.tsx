@@ -117,7 +117,10 @@ export function GreenwoodFirePresence({
       className="greenwood-interior__section greenwood-fire-presence"
       aria-labelledby="gf-at-fire"
     >
-      <h2 id="gf-at-fire" className="greenwood-member__section-title">
+      <h2
+        id="gf-at-fire"
+        className="greenwood-member__section-title greenwood-member__section-title--fire"
+      >
         AT THE FIRE
       </h2>
       {body}

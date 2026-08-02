@@ -2837,6 +2837,116 @@ button.wall-mark__action:focus-visible {
   }
 }
 
+/* One-time Greenwood arrival ceremony (full-screen, post-admission) */
+.greenwood-arrival {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1.25rem, 4vh, 2.5rem);
+  margin: 0;
+  padding: clamp(0.85rem, 3.5vw, 2rem);
+  overflow: hidden;
+  background: var(--color-night);
+  color: var(--color-bone);
+  overscroll-behavior: none;
+  touch-action: none;
+  opacity: 1;
+  transition: opacity 900ms linear;
+}
+
+.greenwood-arrival--dark .greenwood-arrival__scene,
+.greenwood-arrival--dark .greenwood-arrival__copy {
+  opacity: 0;
+}
+
+.greenwood-arrival--fade {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.greenwood-arrival__scene {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--color-greenwood) 35%, var(--color-bone));
+  font-size: clamp(0.58rem, 1.7vw, 0.95rem);
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  white-space: pre;
+  text-align: center;
+  animation: greenwood-arrival-fade-in 1200ms ease-out both;
+}
+
+.greenwood-arrival__copy {
+  max-width: min(36rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  text-align: center;
+}
+
+.greenwood-arrival__line {
+  margin: 0;
+  font-size: clamp(0.95rem, 2.4vw, 1.15rem);
+  letter-spacing: 0.04em;
+  color: var(--color-bone);
+  animation: greenwood-arrival-fade-in 700ms ease-out both;
+}
+
+.greenwood-arrival__closing {
+  margin: 0.85rem 0 0;
+  font-size: clamp(0.8rem, 2vw, 0.95rem);
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  animation: greenwood-arrival-fade-in 800ms ease-out both;
+}
+
+.greenwood-arrival--reduced .greenwood-arrival__scene,
+.greenwood-arrival--reduced .greenwood-arrival__line,
+.greenwood-arrival--reduced .greenwood-arrival__closing {
+  animation: none;
+}
+
+@keyframes greenwood-arrival-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .greenwood-arrival,
+  .greenwood-arrival__scene,
+  .greenwood-arrival__line,
+  .greenwood-arrival__closing {
+    animation: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .greenwood-arrival {
+    align-items: stretch;
+    justify-content: flex-start;
+    padding-top: 12vh;
+  }
+
+  .greenwood-arrival__scene {
+    font-size: 0.55rem;
+    align-self: center;
+  }
+
+  .greenwood-arrival__line {
+    font-size: 0.92rem;
+  }
+}
+
 .greenwood-gate {
   color: var(--color-bone);
 }
@@ -2937,8 +3047,28 @@ button.wall-mark__action:focus-visible {
   letter-spacing: 0.03em;
 }
 
+/* Fire hub accents — desaturated, heading-only */
+.greenwood-fire {
+  --gw-accent-hero: color-mix(in srgb, #a86b3c 58%, var(--color-bone));
+  --gw-accent-fenn: color-mix(in srgb, var(--color-bone) 90%, var(--color-hoard));
+  --gw-accent-gathering: color-mix(in srgb, var(--color-hoard) 68%, var(--color-bone));
+  --gw-accent-fire: color-mix(in srgb, #8f5348 56%, var(--color-bone));
+  --gw-accent-place: color-mix(in srgb, var(--color-greenwood) 32%, var(--color-bone));
+  --gw-accent-deeds: color-mix(in srgb, #667445 52%, var(--color-bone));
+  --gw-accent-hollow: color-mix(in srgb, #6d6578 58%, var(--color-bone));
+}
+
 .greenwood-member__header {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.35rem;
+}
+
+.greenwood-fire__hero.ascii-page-title {
+  margin-bottom: 1.15rem;
+}
+
+.greenwood-fire__hero .ascii-page-title__mark {
+  font-size: clamp(0.62rem, 2.35vw, 1.05rem);
+  color: var(--gw-accent-hero);
 }
 
 .greenwood-member__outlaw {
@@ -2985,6 +3115,27 @@ button.wall-mark__action:focus-visible {
 
 .greenwood-fire__message p {
   margin-bottom: 0.35rem;
+}
+
+.desk-speaks__current {
+  margin: 0 0 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  color: var(--color-bone);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.desk-register__field textarea {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--color-bone);
+  font: inherit;
+  padding: 0.45rem;
+  min-width: min(100%, 28rem);
+  max-width: 100%;
+  resize: vertical;
 }
 
 .greenwood-fire__dormant-label {
@@ -3244,18 +3395,69 @@ button.wall-mark__action:focus-visible {
 }
 
 .greenwood-member__rule {
-  margin: 1.5rem 0;
+  margin: 1.65rem 0;
   border: 0;
   border-top: 1px solid
     color-mix(in srgb, var(--color-greenwood) 55%, var(--border));
 }
 
 .greenwood-member__section-title {
-  margin: 0 0 0.75rem;
-  font-size: 0.92rem;
+  margin: 0 0 0.85rem;
+  font-size: clamp(1rem, 2.2vw, 1.08rem);
   font-weight: 400;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   color: color-mix(in srgb, var(--color-greenwood) 40%, var(--color-bone));
+}
+
+.greenwood-member__section-title--fenn {
+  color: var(--gw-accent-fenn);
+}
+
+.greenwood-member__section-title--gathering {
+  color: var(--gw-accent-gathering);
+}
+
+.greenwood-member__section-title--fire {
+  color: var(--gw-accent-fire);
+}
+
+.greenwood-member__section-title--place {
+  color: var(--gw-accent-place);
+}
+
+.greenwood-member__section-title--deeds {
+  color: var(--gw-accent-deeds);
+}
+
+.greenwood-member__section-title--hollow {
+  color: var(--gw-accent-hollow);
+}
+
+@media (max-width: 640px) {
+  .greenwood-fire__hero .ascii-page-title__mark {
+    font-size: clamp(0.58rem, 3.2vw, 0.82rem);
+  }
+
+  .greenwood-member__section-title {
+    font-size: 0.98rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+@media (forced-colors: active) {
+  .greenwood-fire__hero .ascii-page-title__mark,
+  .greenwood-member__section-title,
+  .greenwood-member__section-title--fenn,
+  .greenwood-member__section-title--gathering,
+  .greenwood-member__section-title--fire,
+  .greenwood-member__section-title--place,
+  .greenwood-member__section-title--deeds,
+  .greenwood-member__section-title--hollow {
+    color: CanvasText;
+  }
 }
 
 .greenwood-member__path-list {

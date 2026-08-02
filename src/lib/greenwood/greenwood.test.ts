@@ -101,18 +101,35 @@ function admitAdmin(
     },
   ) => Promise<{ data: unknown; error: unknown }>,
   walletAddress: string = DEFAULT_WALLET,
+  ceremonyCompletedAt: string | null = "2026-07-01T00:00:00.000Z",
 ) {
   return {
     from(table: string) {
       assert.equal(table, "profiles");
       return {
         select(cols: string) {
-          assert.equal(cols, "wallet_address");
           return {
             eq() {
               return {
                 async maybeSingle() {
-                  return { data: { wallet_address: walletAddress }, error: null };
+                  if (cols === "wallet_address") {
+                    return {
+                      data: { wallet_address: walletAddress },
+                      error: null,
+                    };
+                  }
+                  if (
+                    cols.includes("greenwood_arrival_ceremony_completed_at")
+                  ) {
+                    return {
+                      data: {
+                        greenwood_arrival_ceremony_completed_at:
+                          ceremonyCompletedAt,
+                      },
+                      error: null,
+                    };
+                  }
+                  throw new Error(`unexpected select ${cols}`);
                 },
               };
             },
@@ -233,6 +250,7 @@ describe("getGreenwoodStatus", () => {
         greenwood_entered_at: "2026-07-01T00:00:00.000Z",
         greenwood_threshold_at_entry: 30,
         greenwood_lifetime_leaf_at_entry: 34,
+        greenwood_arrival_ceremony_completed_at: "2026-07-01T00:00:00.000Z",
         leaf_lifetime_earned: 34,
         outlaw_number: 42,
         wallet_address: DEFAULT_WALLET,
@@ -258,6 +276,7 @@ describe("getGreenwoodStatus", () => {
       currentLifetimeLeaf: 34,
       standingRank: 1,
       standingTotalMembers: 1,
+      arrivalCeremonyPending: false,
       sigil: {
         slug: "ember-notch",
         asciiBody: MOCK_SIGIL_CATALOGUE.ascii_body,
@@ -456,6 +475,7 @@ describe("admitProfileToGreenwood", () => {
     if (result.status === "admitted") {
       assert.equal(result.sigil?.slug, "ember-notch");
       assert.equal(result.sigil?.isFallback, false);
+      assert.equal(result.arrivalCeremonyPending, true);
     }
   });
 
@@ -485,10 +505,11 @@ describe("admitProfileToGreenwood", () => {
     if (result.status === "admitted") {
       assert.equal(result.lifetimeLeafAtEntry, 3);
       assert.equal(result.sigil?.slug, "ember-notch");
+      assert.equal(result.arrivalCeremonyPending, true);
     }
   });
 
-  it("treats already_member as success", async () => {
+  it("treats already_member as success with ceremony state", async () => {
     const { admitProfileToGreenwood } = await import("./admission");
     const admin = admitAdmin(async () => ({
       data: {
@@ -505,6 +526,9 @@ describe("admitProfileToGreenwood", () => {
     }));
     const result = await admitProfileToGreenwood(PROFILE_ID, admin as never);
     assert.equal(result.status, "already_member");
+    if (result.status === "already_member") {
+      assert.equal(result.arrivalCeremonyPending, false);
+    }
   });
 
   it("returns not_eligible without throwing", async () => {

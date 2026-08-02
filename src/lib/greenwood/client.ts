@@ -32,6 +32,7 @@ type ApiEnvelope = {
   leafBalance?: number;
   leafLifetimeEarned?: number;
   newlyClaimed?: boolean;
+  message?: { paragraphs?: string[]; fromFallback?: boolean };
   error?: string;
   code?: string;
 };
@@ -45,6 +46,52 @@ export type GreenwoodClientError = {
 export type GreenwoodStatusFetchResult =
   | { ok: true; status: GreenwoodStatus }
   | { ok: false; error: GreenwoodClientError };
+
+export type GreenwoodSpeaksFetchResult =
+  | { ok: true; paragraphs: string[]; fromFallback: boolean }
+  | { ok: false; error: GreenwoodClientError };
+
+/**
+ * Authenticated GET /api/greenwood/speaks — current FENN SPEAKS for members.
+ */
+export async function fetchGreenwoodSpeaks(
+  headers: HeadersInit,
+): Promise<GreenwoodSpeaksFetchResult> {
+  const response = await fetch("/api/greenwood/speaks", {
+    headers,
+    cache: "no-store",
+  });
+
+  let body: ApiEnvelope | null = null;
+  try {
+    body = (await response.json()) as ApiEnvelope;
+  } catch {
+    body = null;
+  }
+
+  if (
+    !response.ok ||
+    !body?.ok ||
+    !body.message ||
+    !Array.isArray(body.message.paragraphs)
+  ) {
+    return {
+      ok: false,
+      error: asError(
+        response.status,
+        body,
+        "greenwood_fire_message_failed",
+        "FENN SPEAKS failed",
+      ),
+    };
+  }
+
+  return {
+    ok: true,
+    paragraphs: body.message.paragraphs,
+    fromFallback: Boolean(body.message.fromFallback),
+  };
+}
 
 export type GreenwoodEnterFetchResult =
   | { ok: true; result: GreenwoodAdmissionResult }
@@ -130,6 +177,72 @@ export async function postGreenwoodEnter(
   }
 
   return { ok: true, result: body.result };
+}
+
+export type GreenwoodArrivalCeremonyCompleteResult =
+  | {
+      ok: true;
+      result: {
+        status: "completed" | "already_completed";
+        completedAt: string | null;
+      };
+    }
+  | { ok: false; error: GreenwoodClientError };
+
+/**
+ * Authenticated POST /api/greenwood/arrival-ceremony/complete.
+ * Idempotent. Empty body. Never sends profile IDs from the client.
+ */
+export async function postGreenwoodArrivalCeremonyComplete(
+  headers: HeadersInit,
+): Promise<GreenwoodArrivalCeremonyCompleteResult> {
+  const response = await fetch("/api/greenwood/arrival-ceremony/complete", {
+    method: "POST",
+    headers,
+    cache: "no-store",
+  });
+
+  type CeremonyCompleteBody = {
+    ok?: boolean;
+    error?: string;
+    code?: string;
+    result?: {
+      status?: string;
+      completedAt?: string | null;
+    };
+  };
+
+  let body: CeremonyCompleteBody | null = null;
+  try {
+    body = (await response.json()) as CeremonyCompleteBody;
+  } catch {
+    body = null;
+  }
+
+  const status = body?.result?.status;
+  if (
+    !response.ok ||
+    !body?.ok ||
+    !body.result ||
+    (status !== "completed" && status !== "already_completed")
+  ) {
+    return {
+      ok: false,
+      error: {
+        httpStatus: response.status,
+        code: body?.code ?? "greenwood_status_failed",
+        message: body?.error ?? "Arrival ceremony completion failed",
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    result: {
+      status,
+      completedAt: body.result.completedAt ?? null,
+    },
+  };
 }
 
 export type GreenwoodDeedsFetchResult =

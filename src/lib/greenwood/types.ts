@@ -13,6 +13,11 @@ export type GreenwoodMemberStatus = {
   standingTotalMembers: number;
   /** Persistent ASCII mark for The Fire. Null only if assignment failed. */
   sigil: SafeGreenwoodSigil | null;
+  /**
+   * True when the member has not yet completed the one-time arrival ceremony.
+   * Existing/backfilled members are false.
+   */
+  arrivalCeremonyPending: boolean;
 };
 
 export type GreenwoodIneligibleStatus = {
@@ -50,6 +55,8 @@ export type GreenwoodAdmissionAdmitted = {
   standingRank?: number;
   standingTotalMembers?: number;
   sigil?: SafeGreenwoodSigil | null;
+  /** Newly admitted members always need the one-time arrival ceremony. */
+  arrivalCeremonyPending: true;
 };
 
 export type GreenwoodAdmissionAlreadyMember = {
@@ -61,6 +68,8 @@ export type GreenwoodAdmissionAlreadyMember = {
   standingRank?: number;
   standingTotalMembers?: number;
   sigil?: SafeGreenwoodSigil | null;
+  /** True only if durable ceremony completion is still missing. */
+  arrivalCeremonyPending: boolean;
 };
 
 export type GreenwoodAdmissionNotEligible = {

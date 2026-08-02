@@ -66,7 +66,7 @@ describe("viewFromGreenwoodStatus", () => {
     assert.equal(mapped.standing?.remainingLeaf, 0);
   });
 
-  it("maps returning member straight to interior without admission ritual", () => {
+  it("maps returning member with completed ceremony straight to interior", () => {
     const sigil = {
       slug: "ember-notch",
       asciiBody: "||",
@@ -84,6 +84,7 @@ describe("viewFromGreenwoodStatus", () => {
       standingRank: 2,
       standingTotalMembers: 5,
       sigil,
+      arrivalCeremonyPending: false,
     });
     assert.equal(mapped.view, "interior");
     assert.deepEqual(mapped.member, {
@@ -94,28 +95,48 @@ describe("viewFromGreenwoodStatus", () => {
       standingRank: 2,
       standingTotalMembers: 5,
       sigil,
+      arrivalCeremonyPending: false,
     });
+  });
+
+  it("maps member with pending arrival ceremony to ceremony view", () => {
+    const mapped = viewFromGreenwoodStatus({
+      state: "member",
+      greenwoodEnteredAt: "2026-08-02T12:00:00.000Z",
+      thresholdAtEntry: 30,
+      lifetimeLeafAtEntry: 31,
+      currentLifetimeLeaf: 31,
+      standingRank: 1,
+      standingTotalMembers: 1,
+      sigil: null,
+      arrivalCeremonyPending: true,
+    });
+    assert.equal(mapped.view, "member");
+    assert.equal(mapped.member?.arrivalCeremonyPending, true);
   });
 });
 
 describe("viewFromAdmissionResult", () => {
-  it("treats admitted as member recognition", () => {
+  it("treats admitted as arrival ceremony recognition", () => {
     const mapped = viewFromAdmissionResult({
       status: "admitted",
       greenwoodEnteredAt: "2026-07-23T12:00:00.000Z",
       thresholdAtEntry: 30,
       lifetimeLeafAtEntry: 31,
+      arrivalCeremonyPending: true,
     });
     assert.equal(mapped.view, "member");
     assert.equal(mapped.member?.lifetimeLeafAtEntry, 31);
+    assert.equal(mapped.member?.arrivalCeremonyPending, true);
   });
 
-  it("treats already_member as interior success, not error", () => {
+  it("treats already_member with completed ceremony as interior", () => {
     const mapped = viewFromAdmissionResult({
       status: "already_member",
       greenwoodEnteredAt: "2026-07-01T00:00:00.000Z",
       thresholdAtEntry: 30,
       lifetimeLeafAtEntry: 30,
+      arrivalCeremonyPending: false,
     });
     assert.equal(mapped.view, "interior");
     assert.equal(mapped.member?.lifetimeLeafAtEntry, 30);
@@ -163,6 +184,7 @@ describe("greenwood gate source safety", () => {
     assert.doesNotMatch(gateway, /leafLifetimeEarned\s*>=\s*30/);
     assert.doesNotMatch(gateway, /threshold\s*===\s*30/);
     assert.match(gateway, /GreenwoodMember/);
+    assert.match(gateway, /GreenwoodArrivalCeremony/);
     assert.doesNotMatch(gateway, /GreenwoodGateHoldingMessage/);
     assert.doesNotMatch(gateway, /GreenwoodGateInterior/);
   });

@@ -127,7 +127,10 @@ export function GreenwoodFireGathering({ getAuthHeaders }: Props) {
         className="greenwood-interior__section greenwood-fire-gathering"
         aria-labelledby="gf-gathering"
       >
-        <h2 id="gf-gathering" className="greenwood-member__section-title">
+        <h2
+          id="gf-gathering"
+          className="greenwood-member__section-title greenwood-member__section-title--gathering"
+        >
           GATHERING
         </h2>
         <p className="muted">listening for a call...</p>
@@ -141,7 +144,10 @@ export function GreenwoodFireGathering({ getAuthHeaders }: Props) {
         className="greenwood-interior__section greenwood-fire-gathering"
         aria-labelledby="gf-gathering"
       >
-        <h2 id="gf-gathering" className="greenwood-member__section-title">
+        <h2
+          id="gf-gathering"
+          className="greenwood-member__section-title greenwood-member__section-title--gathering"
+        >
           GATHERING
         </h2>
         <p className="muted">the call cannot be heard just now.</p>
@@ -155,7 +161,10 @@ export function GreenwoodFireGathering({ getAuthHeaders }: Props) {
         className="greenwood-interior__section greenwood-fire-gathering"
         aria-labelledby="gf-gathering"
       >
-        <h2 id="gf-gathering" className="greenwood-member__section-title">
+        <h2
+          id="gf-gathering"
+          className="greenwood-member__section-title greenwood-member__section-title--gathering"
+        >
           GATHERING
         </h2>
         <p>No Gathering has been called.</p>
@@ -170,7 +179,10 @@ export function GreenwoodFireGathering({ getAuthHeaders }: Props) {
       className="greenwood-interior__section greenwood-fire-gathering"
       aria-labelledby="gf-gathering"
     >
-      <h2 id="gf-gathering" className="greenwood-member__section-title">
+      <h2
+        id="gf-gathering"
+        className="greenwood-member__section-title greenwood-member__section-title--gathering"
+      >
         {isActive ? "THE GREENWOOD GATHERS" : "NEXT GATHERING"}
       </h2>
 

@@ -31,6 +31,7 @@ type GreenwoodProfileSnapshot = {
   greenwood_entered_at: string | null;
   greenwood_threshold_at_entry: number | null;
   greenwood_lifetime_leaf_at_entry: number | string | null;
+  greenwood_arrival_ceremony_completed_at: string | null;
   leaf_lifetime_earned: number | string | null;
   wallet_address: string;
 };
@@ -55,7 +56,7 @@ export async function getGreenwoodStatus(
   const { data, error } = await db
     .from("profiles")
     .select(
-      "greenwood_entered_at, greenwood_threshold_at_entry, greenwood_lifetime_leaf_at_entry, leaf_lifetime_earned, wallet_address",
+      "greenwood_entered_at, greenwood_threshold_at_entry, greenwood_lifetime_leaf_at_entry, greenwood_arrival_ceremony_completed_at, leaf_lifetime_earned, wallet_address",
     )
     .eq("id", id)
     .maybeSingle();
@@ -240,6 +241,8 @@ async function toMemberStatus(
     standingRank: rank.rank,
     standingTotalMembers: rank.total,
     sigil,
+    arrivalCeremonyPending:
+      row.greenwood_arrival_ceremony_completed_at == null,
   };
 }
 

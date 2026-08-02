@@ -8,6 +8,7 @@ import { ensureMemberSigil } from "@/lib/greenwood/sigil/assignment";
 import type { SafeGreenwoodSigil } from "@/lib/greenwood/sigil/types";
 import type {
   AdmitToGreenwoodRpcRow,
+  GreenwoodAdmissionNotEligible,
   GreenwoodAdmissionResult,
 } from "@/lib/greenwood/types";
 import { assertProfileId, assertSafeIntegerAmount } from "@/lib/leaf/validate";
@@ -80,16 +81,52 @@ export async function admitProfileToGreenwood(
 
   const result = normalizeAdmitRpcRow(row);
 
-  if (result.status === "admitted" || result.status === "already_member") {
+  if (result.status === "admitted") {
     const sigil = await tryEnsureSigilAfterAdmission(
       id,
-      result.status === "admitted" ? "system_admit" : "system_ensure",
+      "system_admit",
       db,
     );
-    return { ...result, sigil };
+    return { ...result, sigil, arrivalCeremonyPending: true };
+  }
+
+  if (result.status === "already_member") {
+    const sigil = await tryEnsureSigilAfterAdmission(
+      id,
+      "system_ensure",
+      db,
+    );
+    const pending = await loadArrivalCeremonyPending(id, db);
+    return { ...result, sigil, arrivalCeremonyPending: pending };
   }
 
   return result;
+}
+
+async function loadArrivalCeremonyPending(
+  profileId: string,
+  db: SupabaseClient,
+): Promise<boolean> {
+  const { data, error } = await db
+    .from("profiles")
+    .select("greenwood_arrival_ceremony_completed_at")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  if (error || !data) {
+    // Fail closed toward showing the ceremony only when durable state is unknown
+    // for an already-member path; prefer not inventing completion.
+    console.error(
+      "[admitProfileToGreenwood] arrival ceremony state load failed",
+      { profileId, error },
+    );
+    return true;
+  }
+
+  return (
+    (data as { greenwood_arrival_ceremony_completed_at: string | null })
+      .greenwood_arrival_ceremony_completed_at == null
+  );
 }
 
 /**
@@ -120,9 +157,25 @@ async function tryEnsureSigilAfterAdmission(
   }
 }
 
+/** RPC membership row before ceremony/sigil enrichment. */
+export type NormalizedAdmitRpcResult =
+  | {
+      status: "admitted";
+      greenwoodEnteredAt: string;
+      thresholdAtEntry: number;
+      lifetimeLeafAtEntry: number;
+    }
+  | {
+      status: "already_member";
+      greenwoodEnteredAt: string;
+      thresholdAtEntry: number;
+      lifetimeLeafAtEntry: number;
+    }
+  | GreenwoodAdmissionNotEligible;
+
 export function normalizeAdmitRpcRow(
   row: AdmitToGreenwoodRpcRow,
-): GreenwoodAdmissionResult {
+): NormalizedAdmitRpcResult {
   const status = String(row.status ?? "");
 
   if (status === "not_eligible") {
@@ -157,8 +210,7 @@ export function normalizeAdmitRpcRow(
       );
     }
 
-    return {
-      status,
+    const membership = {
       greenwoodEnteredAt: row.greenwood_entered_at,
       thresholdAtEntry: assertSafeIntegerAmount(
         row.greenwood_threshold_at_entry,
@@ -171,6 +223,10 @@ export function normalizeAdmitRpcRow(
         "UNSAFE_BIGINT",
       ),
     };
+    if (status === "admitted") {
+      return { status: "admitted", ...membership };
+    }
+    return { status: "already_member", ...membership };
   }
 
   throw new GreenwoodError(

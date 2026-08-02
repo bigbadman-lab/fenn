@@ -36,6 +36,11 @@ export {
 export {
   GREENWOOD_FIRE_ASCII,
   GREENWOOD_FIRE_MESSAGE,
+  GREENWOOD_FIRE_MESSAGE_FALLBACK,
+  GREENWOOD_FIRE_MESSAGE_MAX_CHARS,
+  fireMessageBodyToParagraphs,
+  paragraphsToFireMessageBody,
+  validateFireMessageBodyInput,
 } from "@/lib/greenwood/fire-message";
 
 export type { SafeGreenwoodSigil } from "@/lib/greenwood/sigil/types";

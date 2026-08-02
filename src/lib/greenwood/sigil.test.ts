@@ -208,11 +208,12 @@ describe("Living Greenwood 1 source safety", () => {
     assert.doesNotMatch(admission, /awardLeaf|leaf_ledger|admin_adjust_leaf/);
   });
 
-  it("Fire message stays static and non-claiming", () => {
+  it("Fire message fallback stays non-claiming", () => {
     const message = readFileSync(
       join(repoRoot, "src/lib/greenwood/fire-message.ts"),
       "utf8",
     );
+    assert.match(message, /GREENWOOD_FIRE_MESSAGE_FALLBACK/);
     assert.match(message, /The fire is small/);
     assert.doesNotMatch(message, /currently present|raise.?hand|gathering is live/i);
   });

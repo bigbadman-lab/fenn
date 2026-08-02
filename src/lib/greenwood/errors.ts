@@ -23,7 +23,11 @@ export type GreenwoodErrorCode =
   | "greenwood_hollow_not_available"
   | "greenwood_hollow_cancelled"
   | "greenwood_hollow_expired"
-  | "greenwood_hollow_snapshot_invalid";
+  | "greenwood_hollow_snapshot_invalid"
+  | "greenwood_fire_message_failed"
+  | "greenwood_fire_message_not_found"
+  | "greenwood_fire_message_invalid"
+  | "greenwood_fire_message_forbidden";
 
 export class GreenwoodError extends Error {
   code: GreenwoodErrorCode;

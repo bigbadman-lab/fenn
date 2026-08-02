@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
+import { GreenwoodArrivalCeremony } from "@/components/greenwood/greenwood-arrival-ceremony";
 import { GreenwoodCrossing } from "@/components/greenwood/greenwood-crossing";
-import { GreenwoodFirstCrossingTransition } from "@/components/greenwood/greenwood-first-crossing-transition";
 import {
   GreenwoodGate,
   GreenwoodGateEligible,
@@ -17,6 +17,7 @@ import {
 import { GreenwoodMember } from "@/components/greenwood/greenwood-member";
 import {
   fetchGreenwoodStatus,
+  postGreenwoodArrivalCeremonyComplete,
   postGreenwoodEnter,
 } from "@/lib/greenwood/client";
 import {
@@ -84,6 +85,8 @@ function RegisteredGreenwoodGate({
 
   const statusRequestId = useRef(0);
   const enterInFlight = useRef(false);
+  /** Session latch after ceremony visuals finish — avoids replay before durable write settles. */
+  const ceremonyFinishedThisSession = useRef(false);
 
   const loadStatus = useCallback(async (opts?: { quiet?: boolean }) => {
     const quiet = Boolean(opts?.quiet);
@@ -142,10 +145,23 @@ function RegisteredGreenwoodGate({
         };
       }
 
+      // After ceremony visuals finish, stay in interior until durable state catches up.
+      if (
+        ceremonyFinishedThisSession.current &&
+        mapped.view === "member" &&
+        mapped.member
+      ) {
+        return {
+          view: "interior",
+          standing: mapped.standing ?? prev.standing,
+          member: mapped.member,
+          newlyAdmitted: true,
+        };
+      }
+
       const keepNewlyAdmitted =
         prev.newlyAdmitted &&
         (mapped.view === "member" ||
-          // Preserve first-entry copy until the transition ends.
           (prev.view === "member" && mapped.view === "interior"));
 
       return {
@@ -215,8 +231,6 @@ function RegisteredGreenwoodGate({
         newlyAdmitted: result.result.status === "admitted",
       });
 
-      // Admission already_member can bypass the transition. Refresh so the
-      // interior gets current standing + rank from GET /api/greenwood/status.
       if (mapped.view === "interior") {
         void loadStatus({ quiet: true });
       }
@@ -225,6 +239,22 @@ function RegisteredGreenwoodGate({
       setAdmitPending(false);
     }
   }, [getAuthHeaders, registeredGate.view, loadStatus]);
+
+  const handleArrivalComplete = useCallback(async () => {
+    ceremonyFinishedThisSession.current = true;
+    setRegisteredGate((prev) => ({
+      ...prev,
+      view: "interior",
+      newlyAdmitted: true,
+    }));
+
+    const headers = await getAuthHeaders();
+    if (headers) {
+      // Best-effort durable write; idempotent. Refresh may replay if this fails.
+      await postGreenwoodArrivalCeremonyComplete(headers);
+    }
+    void loadStatus({ quiet: true });
+  }, [getAuthHeaders, loadStatus]);
 
   switch (registeredGate.view) {
     case "loading":
@@ -273,11 +303,10 @@ function RegisteredGreenwoodGate({
         return <GreenwoodGateListening />;
       }
       return (
-        <GreenwoodFirstCrossingTransition
+        <GreenwoodArrivalCeremony
           reducedMotion={reducedMotion}
           onComplete={() => {
-            // Refresh the member snapshot so interior gets rank + current standing.
-            void loadStatus({ quiet: true });
+            void handleArrivalComplete();
           }}
         />
       );
@@ -304,8 +333,8 @@ type GreenwoodGatewaySessionProps = {
 };
 
 /**
- * Stage 8.4 Greenwood gateway: crossing → gate → admission → member interior.
- * Crossing is unchanged. Eligibility comes only from Stage 8.2 APIs.
+ * Greenwood gateway: optional road crossing → gate → admission →
+ * one-time arrival ceremony → member interior.
  */
 function GreenwoodGatewaySession({
   startCrossing,

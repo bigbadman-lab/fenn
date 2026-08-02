@@ -127,6 +127,10 @@ describe("LG5.6 confirmation consistency", () => {
       read("src/components/desk/desk-deed-detail-panel.tsx"),
       /APPROVE THIS DEED/,
     );
+    assert.match(
+      read("src/components/desk/desk-speaks-panel.tsx"),
+      /PUBLISH THIS MESSAGE/,
+    );
   });
 });
 
