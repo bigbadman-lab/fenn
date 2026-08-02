@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import { parseAdminWalletAllowlist } from "@/lib/admin/config";
+import { parseDeskWalletAllowlist } from "@/lib/desk/config";
 import { publicEnv } from "@/lib/env/public";
 
 /**
@@ -43,6 +44,24 @@ const fennAdminWallets = z.preprocess(
   }),
 );
 
+/** Comma-separated EVM Desk wallets. Empty/missing = no Desk access. Invalid entries fail loud. */
+const fennDeskWallets = z.preprocess(
+  (value) => (typeof value === "string" ? value : ""),
+  z.string().superRefine((value, ctx) => {
+    try {
+      parseDeskWalletAllowlist(value);
+    } catch (error) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Invalid FENN_DESK_WALLETS",
+      });
+    }
+  }),
+);
+
 const serverOnlySchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: requiredSecret,
   PRIVY_APP_SECRET: requiredSecret,
@@ -65,6 +84,12 @@ const serverOnlySchema = z.object({
   /** X username without @. Defaults to askfenn when unset. */
   FENN_X_USERNAME: optionalSecret,
   FENN_ADMIN_WALLETS: fennAdminWallets,
+  /**
+   * Comma-separated EVM wallets authorised to access `/desk`.
+   * Empty/missing = no Desk access. Invalid entries fail loud at boot.
+   * Never NEXT_PUBLIC_*. Independent of FENN_ADMIN_WALLETS.
+   */
+  FENN_DESK_WALLETS: fennDeskWallets,
   /**
    * Trusted Greenwood access override wallets (test/founder).
    * Comma-separated EVM addresses. Malformed entries ignored at use time.
@@ -95,6 +120,7 @@ function readServerOnlyEnv(): ServerOnlyEnv {
     FENN_X_USER_ID: process.env.FENN_X_USER_ID,
     FENN_X_USERNAME: process.env.FENN_X_USERNAME,
     FENN_ADMIN_WALLETS: process.env.FENN_ADMIN_WALLETS,
+    FENN_DESK_WALLETS: process.env.FENN_DESK_WALLETS,
     GREENWOOD_ACCESS_WALLETS: process.env.GREENWOOD_ACCESS_WALLETS,
     CRON_SECRET: process.env.CRON_SECRET,
   });

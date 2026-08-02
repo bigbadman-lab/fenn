@@ -122,13 +122,16 @@ export async function runXAgentPipeline(
 
   log("[agent:run-x] START");
 
-  let pollResult: XPollAggregate | undefined;
-  let judgeResult: JudgeBatchAggregate | undefined;
-  let sightResult: SightBatchAggregate | undefined;
-  let authorizeResult: AuthorizeBatchAggregate | undefined;
-  let executeResult: ExecuteBatchAggregate | undefined;
   let stoppedAtStage: XPipelineStageName | null = null;
   let ok = true;
+  // Bag avoids TDZ when finish() runs after an early stage stop.
+  const stageResults: {
+    poll?: Awaited<ReturnType<typeof poll>>;
+    judge?: Awaited<ReturnType<typeof judge>>;
+    sight?: Awaited<ReturnType<typeof sight>>;
+    authorize?: Awaited<ReturnType<typeof authorize>>;
+    execute?: Awaited<ReturnType<typeof execute>>;
+  } = {};
 
   const runStage = async <T>(
     stage: XPipelineStageName,
@@ -176,14 +179,14 @@ export async function runXAgentPipeline(
     }
   };
 
-  pollResult =
+  stageResults.poll =
     (await runStage("POLL", poll, formatXPollReport, pollStageHardFailed)) ??
     undefined;
   if (stoppedAtStage) {
     return finish();
   }
 
-  judgeResult =
+  stageResults.judge =
     (await runStage(
       "JUDGE",
       judge,
@@ -194,7 +197,7 @@ export async function runXAgentPipeline(
     return finish();
   }
 
-  sightResult =
+  stageResults.sight =
     (await runStage(
       "SIGHT",
       sight,
@@ -205,7 +208,7 @@ export async function runXAgentPipeline(
     return finish();
   }
 
-  authorizeResult =
+  stageResults.authorize =
     (await runStage(
       "AUTHORIZE",
       authorize,
@@ -216,7 +219,7 @@ export async function runXAgentPipeline(
     return finish();
   }
 
-  executeResult =
+  stageResults.execute =
     (await runStage(
       "EXECUTE",
       execute,
@@ -246,11 +249,11 @@ export async function runXAgentPipeline(
       durationMs,
       stoppedAtStage,
       stages,
-      poll: pollResult,
-      judge: judgeResult,
-      sight: sightResult,
-      authorize: authorizeResult,
-      execute: executeResult,
+      poll: stageResults.poll,
+      judge: stageResults.judge,
+      sight: stageResults.sight,
+      authorize: stageResults.authorize,
+      execute: stageResults.execute,
     };
   }
 }

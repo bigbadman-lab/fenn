@@ -3936,6 +3936,306 @@ button.wall-mark__action:focus-visible {
   gap: 1.5rem;
 }
 
+/* THE DESK — operational shell */
+.desk-place {
+  max-width: 72rem;
+}
+
+.desk__title {
+  margin: 0 0 1rem;
+  letter-spacing: 0.18em;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--color-bone);
+}
+
+.desk__quiet-line {
+  margin: 0;
+  color: var(--muted);
+}
+
+.desk__lede {
+  margin: 0 0 2rem;
+  color: var(--muted);
+}
+
+.desk__keeper {
+  margin: 0 0 2.5rem;
+}
+
+.desk__sigil {
+  margin: 0 0 0.85rem;
+  font-size: 0.7rem;
+  line-height: 1.15;
+  color: var(--color-leaf, var(--color-bone));
+}
+
+.desk__keeper-label {
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.14em;
+  font-size: 0.75rem;
+  color: var(--color-hoard);
+}
+
+.desk__keeper-name {
+  margin: 0;
+  color: var(--color-bone);
+}
+
+.desk__dormant {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+.desk__chrome {
+  margin-bottom: 2rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.desk__keeper--compact .desk__sigil {
+  font-size: 0.55rem;
+}
+
+.desk__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: 1.25rem;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+  max-width: 100%;
+}
+
+.desk__body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.desk-member__list,
+.desk-member__facts {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.desk-gatherings__confirm,
+.desk-gatherings__form {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .desk__nav {
+    gap: 0.55rem 0.85rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+
+  .desk-register__table-wrap {
+    max-width: 100%;
+  }
+}
+
+.desk__nav-link {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.desk__nav-link:hover,
+.desk__nav-link:focus-visible {
+  color: var(--color-bone);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.desk__nav-link--active {
+  color: var(--color-hoard);
+}
+
+.desk-section-title {
+  margin: 0 0 0.75rem;
+  letter-spacing: 0.14em;
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--color-bone);
+}
+
+.desk-divider {
+  margin: 1rem 0;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.desk-overview__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.desk-overview__group {
+  margin: 0 0 1.25rem;
+}
+
+.desk-overview__group-title {
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.14em;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-hoard);
+}
+
+.desk-overview__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.desk-overview__note {
+  margin-top: 0.75rem;
+}
+
+.desk-register__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1rem;
+  align-items: end;
+  margin: 1rem 0;
+}
+
+.desk-register__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.desk-register__field input,
+.desk-register__field select {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--color-bone);
+  font: inherit;
+  padding: 0.35rem 0.45rem;
+  min-width: 9rem;
+}
+
+.desk-register__table-wrap {
+  overflow-x: auto;
+}
+
+.desk-register__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.desk-register__table th,
+.desk-register__table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.55rem 0.45rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.desk-register__table th {
+  letter-spacing: 0.1em;
+  color: var(--color-hoard);
+  font-weight: 400;
+}
+
+.desk-register__sigil {
+  margin: 0;
+  font-size: 0.45rem;
+  line-height: 1.1;
+  max-width: 5.5rem;
+  overflow: hidden;
+}
+
+.desk-register__name {
+  color: var(--color-bone);
+  text-decoration: none;
+}
+
+.desk-register__name:hover,
+.desk-register__name:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.desk-register__wallet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.desk-register__pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.desk-member__facts,
+.desk-member__list {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.desk-gatherings__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1rem;
+  align-items: end;
+  margin-bottom: 1.25rem;
+}
+
+.desk-gatherings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.desk-gatherings__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.desk-hollow__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.desk-hollow__filter--active {
+  text-decoration: underline;
+}
+
 .admin-deed-ticket {
   padding: 0.95rem 0.9rem 1.1rem;
   border: 1px solid color-mix(in srgb, var(--color-hoard) 42%, var(--border));

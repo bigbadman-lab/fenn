@@ -1,7 +1,7 @@
 import {
-  isNormalizedEvmAddress,
-  normalizeEvmAddress,
-} from "@/lib/wallet/evm";
+  isWalletInEvmAllowlist,
+  parseEvmWalletAllowlist,
+} from "@/lib/wallet/allowlist";
 
 /**
  * Parse FENN_ADMIN_WALLETS (comma-separated EVM addresses).
@@ -11,35 +11,12 @@ import {
 export function parseAdminWalletAllowlist(
   raw: string | null | undefined,
 ): string[] {
-  if (raw == null) return [];
-
-  const entries = raw.split(",");
-  const allowlist: string[] = [];
-  const seen = new Set<string>();
-
-  for (const entry of entries) {
-    const trimmed = entry.trim();
-    if (trimmed.length === 0) continue;
-
-    const normalized = normalizeEvmAddress(trimmed);
-    if (!isNormalizedEvmAddress(normalized)) {
-      throw new Error(
-        `Invalid address in FENN_ADMIN_WALLETS: "${trimmed}"`,
-      );
-    }
-    if (seen.has(normalized)) continue;
-    seen.add(normalized);
-    allowlist.push(normalized);
-  }
-
-  return allowlist;
+  return parseEvmWalletAllowlist(raw, "FENN_ADMIN_WALLETS");
 }
 
 export function isWalletInAdminAllowlist(
   walletAddress: string,
   allowlist: readonly string[],
 ): boolean {
-  const normalized = normalizeEvmAddress(walletAddress);
-  if (!isNormalizedEvmAddress(normalized)) return false;
-  return allowlist.includes(normalized);
+  return isWalletInEvmAllowlist(walletAddress, allowlist);
 }

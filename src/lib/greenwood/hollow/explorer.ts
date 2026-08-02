@@ -28,9 +28,38 @@ export function explorerTxUrl(
   return `${base}${hash}`;
 }
 
+const ADDRESS_EXPLORER_BY_CHAIN: Readonly<Record<number, string>> = {
+  1: "https://etherscan.io/address/",
+  8453: "https://basescan.org/address/",
+  [ROBINHOOD_CHAIN_ID]: "https://explorer.robinhood.com/address/",
+};
+
+/**
+ * Robinhood Chain address explorer for Desk wallet links.
+ * Label callers as Robinhood Chain — not a universal authority.
+ */
+export function explorerAddressUrl(
+  chainId: number | null | undefined,
+  address: string | null | undefined,
+): string | null {
+  if (chainId == null || !address) return null;
+  const base = ADDRESS_EXPLORER_BY_CHAIN[chainId];
+  if (!base) return null;
+  const normalized = address.trim().toLowerCase();
+  if (!/^0x[a-f0-9]{40}$/.test(normalized)) return null;
+  return `${base}${normalized}`;
+}
+
+export function robinhoodAddressExplorerUrl(
+  address: string | null | undefined,
+): string | null {
+  return explorerAddressUrl(ROBINHOOD_CHAIN_ID, address);
+}
+
 export function shortenWallet(address: string | null | undefined): string | null {
   if (!address) return null;
   const a = address.trim();
   if (a.length < 12) return a;
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
+

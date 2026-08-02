@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   explorerTxUrl,
   isValidTxHash,
+  robinhoodAddressExplorerUrl,
   shortenWallet,
 } from "./hollow/explorer";
 import {
@@ -61,6 +62,11 @@ describe("Hollow explorer helpers", () => {
     );
     assert.equal(explorerTxUrl(999999, hash), null);
     assert.equal(shortenWallet("0x1111111111111111111111111111111111111111"), "0x1111…1111");
+    assert.equal(
+      robinhoodAddressExplorerUrl("0x1111111111111111111111111111111111111111"),
+      "https://explorer.robinhood.com/address/0x1111111111111111111111111111111111111111",
+    );
+    assert.equal(robinhoodAddressExplorerUrl("not-an-address"), null);
   });
 });
 

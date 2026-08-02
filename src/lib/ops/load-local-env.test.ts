@@ -29,7 +29,10 @@ describe("load-local-env", () => {
         ["KEEP=from-file", "OVERRIDE=from-file", "# ignore", ""].join("\n"),
         "utf8",
       );
-      const env: NodeJS.ProcessEnv = { OVERRIDE: "from-process" };
+      const env = {
+        OVERRIDE: "from-process",
+        NODE_ENV: "test",
+      } as NodeJS.ProcessEnv;
       const result = loadLocalEnvIfPresent({ cwd: dir, env });
       assert.equal(result.loaded, true);
       assert.equal(result.keysSet, 1);
@@ -43,11 +46,12 @@ describe("load-local-env", () => {
   it("no-ops when .env.local is absent", () => {
     const dir = mkdtempSync(join(tmpdir(), "fenn-env-missing-"));
     try {
-      const env: NodeJS.ProcessEnv = {};
+      const env = { NODE_ENV: "test" } as NodeJS.ProcessEnv;
       const result = loadLocalEnvIfPresent({ cwd: dir, env });
       assert.equal(result.loaded, false);
       assert.equal(result.keysSet, 0);
-      assert.equal(Object.keys(env).length, 0);
+      assert.equal(env.NODE_ENV, "test");
+      assert.equal(Object.keys(env).filter((k) => k !== "NODE_ENV").length, 0);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

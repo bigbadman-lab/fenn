@@ -11,12 +11,12 @@ import {
 function fullEnv(
   overrides: Record<string, string | undefined> = {},
 ): NodeJS.ProcessEnv {
-  const base: NodeJS.ProcessEnv = {};
+  const base: Record<string, string | undefined> = { NODE_ENV: "test" };
   for (const name of X_AGENT_RUNTIME_REQUIRED_ENV) {
     base[name] =
       name === "FENN_X_USER_ID" ? "1234567890" : `value-for-${name}`;
   }
-  return { ...base, ...overrides };
+  return { ...base, ...overrides } as NodeJS.ProcessEnv;
 }
 
 describe("x-runtime-env", () => {

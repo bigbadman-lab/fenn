@@ -256,9 +256,13 @@ export async function getFirePresenceSnapshot(
 
   built.sort(compareFirePresenceMembers);
 
-  const members: FirePresenceMember[] = built.map(
-    ({ outlawNumber: _n, ...member }) => member,
-  );
+  const members: FirePresenceMember[] = built.map((entry) => ({
+    outlawLabel: entry.outlawLabel,
+    displayName: entry.displayName,
+    sigil: entry.sigil,
+    sitting: entry.sitting,
+    isSelf: entry.isSelf,
+  }));
 
   const selfRow = built.find((m) => m.isSelf) ?? null;
 
