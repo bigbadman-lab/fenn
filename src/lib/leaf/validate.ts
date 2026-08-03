@@ -194,4 +194,6 @@ export const leafIdempotencyKeys = {
     `system:${eventId}:${purpose}`,
   hollowRewardClaim: (rewardId: string) =>
     `hollow_reward:${rewardId}:claim`,
+  outlawInviteReward: (invitedProfileId: string) =>
+    `outlaw_invite:${invitedProfileId}:reward`,
 } as const;

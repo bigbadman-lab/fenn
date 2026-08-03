@@ -18,6 +18,7 @@ import {
 } from "@/lib/greenwood/hollow/explorer";
 import { isFirePresenceActive } from "@/lib/greenwood/presence/filter";
 import { DESK_CURRENT_SIGIL_SLUG_SELECT } from "@/lib/greenwood/sigil/embeds";
+import { getDeskInviteSummary } from "@/lib/invites/member-summary";
 import { getLeafHistory } from "@/lib/leaf/reads";
 import { getStandingSnapshot } from "@/lib/leaf/standing";
 import { assertProfileId } from "@/lib/leaf/validate";
@@ -441,6 +442,7 @@ export async function getDeskRegisterMember(
     hollow,
     camp,
     firstThirtyRes,
+    inviteSummary,
   ] = await Promise.all([
     loadXHandles(db, [profileId]),
     loadSigils(db, [profileId]),
@@ -482,6 +484,13 @@ export async function getDeskRegisterMember(
       )
       .eq("profile_id", profileId)
       .maybeSingle(),
+    getDeskInviteSummary({ profileId, admin: db }).catch(() => ({
+      registeredInviteCount: 0,
+      rewardedInviteCount: 0,
+      inviteLeafGranted: 0,
+      rewardedInvitesRemaining: 10,
+      recentArrivals: [],
+    })),
   ]);
 
   if (deeds.error) throw new Error(deeds.error.message);
@@ -621,6 +630,7 @@ export async function getDeskRegisterMember(
       threshold,
       greenwoodMember: row.greenwood_entered_at != null,
     }),
+    invite: inviteSummary,
   };
 }
 

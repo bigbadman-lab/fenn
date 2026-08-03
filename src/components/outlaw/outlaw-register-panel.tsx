@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
@@ -22,6 +23,28 @@ function formatJoinedDate(iso: string): string {
       year: "numeric",
     })
     .toUpperCase();
+}
+
+function InviteLedNotice() {
+  const searchParams = useSearchParams();
+  const led = searchParams.get("led") === "1";
+  if (!led) return null;
+
+  const from = searchParams.get("from")?.trim() ?? "";
+  const safeFrom =
+    from.length > 0 && /^OUTLAW\s+\d{1,8}$/i.test(from) ? from.toUpperCase() : null;
+
+  return (
+    <div className="invite-landing" aria-label="Invite arrival">
+      <p className="invite-landing__kicker">
+        {safeFrom ? `${safeFrom} LED YOU TO THE ROAD` : "AN OUTLAW LED YOU HERE"}
+      </p>
+      <p>The road is still yours to walk.</p>
+      <p className="muted">
+        Complete the Register and your arrival will be remembered.
+      </p>
+    </div>
+  );
 }
 
 type OutlawRegisterPanelProps = {
@@ -155,6 +178,7 @@ export function OutlawRegisterPanel({
   if (!authenticated) {
     return wrap(
       <>
+        <InviteLedNotice />
         <p>the path asks for a wallet before a name.</p>
         <p>
           <button type="button" className="btn-text" onClick={() => login()}>
@@ -244,6 +268,7 @@ export function OutlawRegisterPanel({
 
   return wrap(
     <>
+      <InviteLedNotice />
       <p>the wood needs a name.</p>
       <p className="muted">
         the wallet you choose here becomes your permanent mark.

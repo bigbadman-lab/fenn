@@ -11,18 +11,27 @@ import {
 } from "react";
 import { getAccessToken, usePrivy } from "@privy-io/react-auth";
 
+import type { SafeFirstThirtyProgress } from "@/lib/first-thirty/types";
+import type { OutlawInviteMemberSummary } from "@/lib/invites/types";
 import type {
   SafeApplicationSummary,
   SafeProfile,
 } from "@/lib/profiles/types";
 import { WORLD_PULSE_PROFILE_FOCUS_MIN_MS } from "@/lib/world-pulse/intervals";
 
-type MeResponse = {
-  authenticated: boolean;
+type BootstrapResponse = {
+  ok?: boolean;
+  authenticated?: boolean;
   registered?: boolean;
   profile: SafeProfile | null;
   application: SafeApplicationSummary | null;
   wallets?: string[];
+  firstThirty?: SafeFirstThirtyProgress | null;
+  inviteSummary?: OutlawInviteMemberSummary | null;
+  errors?: {
+    firstThirty?: boolean;
+    inviteSummary?: boolean;
+  };
   error?: string;
 };
 
@@ -35,7 +44,7 @@ type FennAuthContextValue = {
   /** True while resolving FENN profile for an authenticated Privy session. */
   profileLoading: boolean;
   meLoading: boolean;
-  /** True after /api/auth/me finished (success or handled error) for current session. */
+  /** True after bootstrap finished (success or handled error) for current session. */
   profileResolved: boolean;
   /**
    * Authenticated, unregistered, and still waiting for a verified EVM wallet
@@ -49,6 +58,21 @@ type FennAuthContextValue = {
   error: string | null;
   /** Privy not ready, or authenticated and FENN profile still resolving. */
   loading: boolean;
+  /**
+   * Changes when bootstrap identity state resets (logout / re-register).
+   * Consumers should clear stale private snapshots when this changes.
+   */
+  bootstrapGeneration: number;
+  /** Initial First Thirty from bootstrap (null when ineligible / unregistered). */
+  firstThirtySnapshot: SafeFirstThirtyProgress | null;
+  firstThirtyBootstrapFailed: boolean;
+  /** Initial invite summary from bootstrap. */
+  inviteSnapshot: OutlawInviteMemberSummary | null;
+  inviteBootstrapFailed: boolean;
+  /**
+   * Refresh authenticated world snapshot (bootstrap).
+   * quiet: update without full loading flash.
+   */
   refreshMe: (opts?: { quiet?: boolean }) => Promise<void>;
   login: () => void;
   logout: () => Promise<void>;
@@ -83,7 +107,17 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
   const [registered, setRegistered] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [walletWaitExhausted, setWalletWaitExhausted] = useState(false);
+  const [bootstrapGeneration, setBootstrapGeneration] = useState(0);
+  const [firstThirtySnapshot, setFirstThirtySnapshot] =
+    useState<SafeFirstThirtyProgress | null>(null);
+  const [firstThirtyBootstrapFailed, setFirstThirtyBootstrapFailed] =
+    useState(false);
+  const [inviteSnapshot, setInviteSnapshot] =
+    useState<OutlawInviteMemberSummary | null>(null);
+  const [inviteBootstrapFailed, setInviteBootstrapFailed] = useState(false);
   const fetchGeneration = useRef(0);
+  const profileIdRef = useRef<string | null>(null);
+  const registeredRef = useRef(false);
 
   const getAuthHeaders = useCallback(async (): Promise<HeadersInit | null> => {
     const accessToken = await waitForAccessToken();
@@ -93,7 +127,16 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const clearMemberSnapshots = useCallback(() => {
+    setFirstThirtySnapshot(null);
+    setFirstThirtyBootstrapFailed(false);
+    setInviteSnapshot(null);
+    setInviteBootstrapFailed(false);
+  }, []);
+
   const clearFennProfileState = useCallback(() => {
+    profileIdRef.current = null;
+    registeredRef.current = false;
     setProfile(null);
     setApplication(null);
     setWallets([]);
@@ -102,83 +145,115 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     setProfileLoading(false);
     setWalletWaitExhausted(false);
-  }, []);
+    clearMemberSnapshots();
+    setBootstrapGeneration((g) => g + 1);
+  }, [clearMemberSnapshots]);
 
-  const refreshMe = useCallback(async (opts?: { quiet?: boolean }) => {
-    if (!ready) return;
+  const refreshMe = useCallback(
+    async (opts?: { quiet?: boolean }) => {
+      if (!ready) return;
 
-    if (!authenticated) {
-      clearFennProfileState();
-      return;
-    }
-
-    const quiet = Boolean(opts?.quiet);
-    const generation = ++fetchGeneration.current;
-    if (!quiet) {
-      setProfileLoading(true);
-      setProfileResolved(false);
-      setError(null);
-    }
-
-    try {
-      const headers = await getAuthHeaders();
-      if (generation !== fetchGeneration.current) return;
-
-      if (!headers) {
-        if (!quiet) {
-          setProfile(null);
-          setApplication(null);
-          setWallets([]);
-          setRegistered(false);
-          setProfileResolved(true);
-          setError("Could not obtain Privy access token");
-        }
+      if (!authenticated) {
+        clearFennProfileState();
         return;
       }
 
-      const response = await fetch("/api/auth/me", {
-        method: "GET",
-        headers,
-        cache: "no-store",
-      });
-
-      if (generation !== fetchGeneration.current) return;
-
-      const data = (await response.json()) as MeResponse;
-
-      if (!response.ok) {
-        if (!quiet) {
-          setProfile(null);
-          setApplication(null);
-          setWallets([]);
-          setRegistered(false);
-          setProfileResolved(true);
-          setError(data.error ?? "Failed to load FENN identity");
-        }
-        return;
-      }
-
-      setProfile(data.profile);
-      setApplication(data.application);
-      setWallets(data.wallets ?? []);
-      setRegistered(Boolean(data.registered && data.profile));
-      setProfileResolved(true);
-      setError(null);
-      if ((data.wallets ?? []).length > 0) {
-        setWalletWaitExhausted(false);
-      }
-    } catch {
-      if (generation !== fetchGeneration.current) return;
+      const quiet = Boolean(opts?.quiet);
+      const generation = ++fetchGeneration.current;
       if (!quiet) {
+        setProfileLoading(true);
+        setProfileResolved(false);
+        setError(null);
+      }
+
+      try {
+        const headers = await getAuthHeaders();
+        if (generation !== fetchGeneration.current) return;
+
+        if (!headers) {
+          if (!quiet) {
+            profileIdRef.current = null;
+            registeredRef.current = false;
+            setProfile(null);
+            setApplication(null);
+            setWallets([]);
+            setRegistered(false);
+            clearMemberSnapshots();
+            setProfileResolved(true);
+            setError("Could not obtain Privy access token");
+            setBootstrapGeneration((g) => g + 1);
+          }
+          return;
+        }
+
+        const response = await fetch("/api/auth/bootstrap", {
+          method: "GET",
+          headers,
+          cache: "no-store",
+        });
+
+        if (generation !== fetchGeneration.current) return;
+
+        const data = (await response.json()) as BootstrapResponse;
+
+        if (!response.ok) {
+          if (!quiet) {
+            profileIdRef.current = null;
+            registeredRef.current = false;
+            setProfile(null);
+            setApplication(null);
+            setWallets([]);
+            setRegistered(false);
+            clearMemberSnapshots();
+            setProfileResolved(true);
+            setError(data.error ?? "Failed to load FENN identity");
+            setBootstrapGeneration((g) => g + 1);
+          }
+          return;
+        }
+
+        const nextRegistered = Boolean(data.registered && data.profile);
+        const nextProfileId = data.profile?.id ?? null;
+        const identityChanged =
+          profileIdRef.current !== nextProfileId ||
+          registeredRef.current !== nextRegistered;
+
+        profileIdRef.current = nextProfileId;
+        registeredRef.current = nextRegistered;
+
+        setProfile(data.profile);
+        setApplication(data.application);
+        setWallets(data.wallets ?? []);
+        setRegistered(nextRegistered);
+        setFirstThirtySnapshot(data.firstThirty ?? null);
+        setFirstThirtyBootstrapFailed(Boolean(data.errors?.firstThirty));
+        setInviteSnapshot(data.inviteSummary ?? null);
+        setInviteBootstrapFailed(Boolean(data.errors?.inviteSummary));
         setProfileResolved(true);
-        setError("Failed to load FENN identity");
+        setError(null);
+        if ((data.wallets ?? []).length > 0) {
+          setWalletWaitExhausted(false);
+        }
+
+        if (!quiet || identityChanged) {
+          setBootstrapGeneration((g) => g + 1);
+        }
+      } catch {
+        if (generation !== fetchGeneration.current) return;
+        if (!quiet) {
+          setProfileResolved(true);
+          setError("Failed to load FENN identity");
+          clearMemberSnapshots();
+          setBootstrapGeneration((g) => g + 1);
+        }
+      } finally {
+        if (!quiet && generation === fetchGeneration.current) {
+          setProfileLoading(false);
+        }
       }
-    } finally {
-      if (!quiet && generation === fetchGeneration.current) {
-        setProfileLoading(false);
-      }
-    }
-  }, [authenticated, clearFennProfileState, getAuthHeaders, ready]);
+    },
+    [authenticated, clearFennProfileState, clearMemberSnapshots, getAuthHeaders, ready],
+  );
 
   useEffect(() => {
     if (!ready) return;
@@ -188,7 +263,7 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [ready, authenticated, refreshMe]);
 
-  // World Pulse: quiet profile refresh when returning to a visible tab.
+  // World Pulse: quiet bootstrap refresh when returning to a visible tab.
   useEffect(() => {
     if (!ready || !authenticated) return;
 
@@ -272,6 +347,11 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
           ? "No verified EVM wallet is available yet"
           : error,
       loading: !ready || (authenticated && !profileResolved),
+      bootstrapGeneration,
+      firstThirtySnapshot,
+      firstThirtyBootstrapFailed,
+      inviteSnapshot,
+      inviteBootstrapFailed,
       refreshMe,
       login: () => {
         if (authenticated) return;
@@ -296,6 +376,11 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
       application,
       wallets,
       error,
+      bootstrapGeneration,
+      firstThirtySnapshot,
+      firstThirtyBootstrapFailed,
+      inviteSnapshot,
+      inviteBootstrapFailed,
       refreshMe,
       login,
       logout,

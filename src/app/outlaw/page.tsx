@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { OutlawFirstThirty } from "@/components/outlaw/outlaw-first-thirty";
+import { OutlawInvite } from "@/components/outlaw/outlaw-invite";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 import { abbreviateEvmAddress } from "@/lib/wallet/evm";
@@ -44,20 +45,28 @@ export default function OutlawPage() {
     login,
   } = useFennAuth();
 
+  // Single intentional full-content gate while bootstrap resolves.
+  // No fake Outlaw number / LEAF zeros.
   if (!privyReady || loading || walletResolving) {
     return (
-      <article className="place">
+      <article className="place outlaw-page outlaw-page--resolving">
         <OutlawTitle
           subtitle={
-            <p className="muted">
+            <p className="muted" aria-live="polite">
               {walletResolving
                 ? "the wood is preparing a place for you."
                 : authenticated
-                  ? "the wood is checking its books."
+                  ? "the road is being read..."
                   : "looking..."}
             </p>
           }
         />
+        {authenticated && !walletResolving ? (
+          <div className="outlaw-page__resolve-frame" aria-hidden>
+            <div className="outlaw-ft-region outlaw-ft-region--placeholder" />
+            <div className="outlaw-invite outlaw-invite--stable outlaw-invite--placeholder" />
+          </div>
+        ) : null}
       </article>
     );
   }
@@ -117,6 +126,7 @@ export default function OutlawPage() {
     );
   }
 
+  // Identity, journey, invite, and account from one bootstrap snapshot.
   return (
     <article className="place outlaw-page">
       <OutlawTitle
@@ -136,6 +146,8 @@ export default function OutlawPage() {
       </div>
 
       <OutlawFirstThirty />
+
+      <OutlawInvite />
 
       <div className="place__body profile-block outlaw-page__account">
         <p>

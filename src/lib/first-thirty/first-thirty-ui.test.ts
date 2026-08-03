@@ -403,7 +403,7 @@ describe("THE FIRST THIRTY — UI source contracts", () => {
 
   it("progress fetch failures leave CAMP usable", () => {
     const hook = read("src/hooks/use-first-thirty.ts");
-    assert.match(hook, /visibleProgress/);
+    assert.match(hook, /bootstrapSeed|firstThirtySnapshot/);
     assert.match(hook, /\/api\/first-thirty/);
     const camp = read("src/components/camp/camp-conversation.tsx");
     assert.match(camp, /fetchedProgress/);
@@ -634,7 +634,7 @@ describe("THE FIRST THIRTY — homepage and outlaw journey", () => {
   it("hook never invents progress and reports failed without killing hosts", () => {
     const hook = read("src/hooks/use-first-thirty.ts");
     assert.match(hook, /failed/);
-    assert.match(hook, /visibleProgress/);
+    assert.match(hook, /bootstrapSeed|Never invents zero progress/);
     assert.match(hook, /\/api\/first-thirty/);
     assert.doesNotMatch(hook, /localStorage|sessionStorage/);
     assert.doesNotMatch(hook, /leaf_balance\s*<\s*30|leafBalance\s*<\s*30/);

@@ -90,6 +90,18 @@ export type DeskRegisterFirstThirty = {
   greenwoodOpen: boolean;
 };
 
+export type DeskRegisterInviteSummary = {
+  registeredInviteCount: number;
+  rewardedInviteCount: number;
+  inviteLeafGranted: number;
+  rewardedInvitesRemaining: number;
+  recentArrivals: Array<{
+    outlawLabel: string;
+    arrivedAt: string;
+    rewarded: boolean;
+  }>;
+};
+
 export type DeskRegisterMemberDetail = {
   profileId: string;
   outlawNumber: number;
@@ -119,4 +131,5 @@ export type DeskRegisterMemberDetail = {
   recentLedger: DeskRegisterLedgerActivity[];
   camp: DeskRegisterCampSummary;
   firstThirty: DeskRegisterFirstThirty;
+  invite: DeskRegisterInviteSummary;
 };

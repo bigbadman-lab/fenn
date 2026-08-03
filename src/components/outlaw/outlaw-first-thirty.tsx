@@ -6,10 +6,12 @@ import { useFirstThirtyProgress } from "@/hooks/use-first-thirty";
 import { shouldShowFirstThirtyJourneySurface } from "@/lib/first-thirty/presentation";
 
 /**
- * Personal journey record on /outlaw — after identity, before account LEAF block.
+ * Personal journey record on /outlaw — after identity, before invite.
+ * Uses shared bootstrap First Thirty snapshot.
  */
 export function OutlawFirstThirty() {
-  const { authenticated, registered, profile } = useFennAuth();
+  const { authenticated, registered, profile, loading: authLoading } =
+    useFennAuth();
   const greenwoodMember = Boolean(profile?.greenwoodEnteredAt);
   const showSurface = shouldShowFirstThirtyJourneySurface({
     authenticated,
@@ -17,18 +19,23 @@ export function OutlawFirstThirty() {
     greenwoodMember,
   });
 
-  const { progress, loading, failed } = useFirstThirtyProgress(showSurface);
+  const { progress, loading, failed } = useFirstThirtyProgress({
+    enabled: showSurface,
+    useBootstrapSnapshot: true,
+  });
 
   if (!showSurface) {
     return null;
   }
 
   return (
-    <FirstThirtyJourney
-      progress={progress}
-      loading={loading}
-      failed={failed}
-      surface="outlaw"
-    />
+    <div className="outlaw-ft-region">
+      <FirstThirtyJourney
+        progress={progress}
+        loading={authLoading || loading}
+        failed={failed}
+        surface="outlaw"
+      />
+    </div>
   );
 }

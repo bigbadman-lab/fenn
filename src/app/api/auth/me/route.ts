@@ -5,6 +5,11 @@ import {
   getVerifiedPrivyUser,
 } from "@/lib/auth/get-verified-privy-user";
 import {
+  clearInviteCookie,
+  processInviteRetryForProfile,
+  readInviteCookie,
+} from "@/lib/invites";
+import {
   findApplicationForProfile,
   findProfileByPrivyUserId,
   profileDto,
@@ -31,6 +36,23 @@ export async function GET(request: Request) {
 
     // Preserve stored wallet anchor — do not rewrite from active Privy wallets.
     const application = await findApplicationForProfile(admin, profile.id);
+
+    // Durable invite retry only (never attribute from bare cookie for existing members).
+    try {
+      await processInviteRetryForProfile(profile.id, admin);
+    } catch (err) {
+      console.error("[api/auth/me invite retry]", err);
+    }
+
+    // If a registered member merely opened an invite link, drop the cookie.
+    try {
+      const cookieCode = await readInviteCookie();
+      if (cookieCode) {
+        await clearInviteCookie();
+      }
+    } catch {
+      // ignore
+    }
 
     return NextResponse.json({
       authenticated: true,

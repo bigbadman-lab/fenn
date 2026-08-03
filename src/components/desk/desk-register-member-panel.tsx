@@ -278,6 +278,26 @@ export function DeskRegisterMemberPanel({ profileId }: { profileId: string }) {
           {member.firstThirty.greenwoodOpen ? "yes" : "no"}
         </li>
       </ul>
+
+      <h3 className="desk-overview__group-title">INVITES</h3>
+      <ul className="desk-member__facts">
+        <li>Arrived: {member.invite.registeredInviteCount}</li>
+        <li>Rewarded: {member.invite.rewardedInviteCount}</li>
+        <li>Invite LEAF: {member.invite.inviteLeafGranted}</li>
+        <li>Remaining cap: {member.invite.rewardedInvitesRemaining}</li>
+      </ul>
+      {member.invite.recentArrivals.length === 0 ? (
+        <p className="muted">No arrivals yet.</p>
+      ) : (
+        <ul className="desk-member__list">
+          {member.invite.recentArrivals.map((a) => (
+            <li key={`${a.outlawLabel}-${a.arrivedAt}`}>
+              {a.outlawLabel} · {a.arrivedAt.slice(0, 10)}
+              {a.rewarded ? " · LEAF" : ""}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

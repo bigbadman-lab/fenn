@@ -7,6 +7,11 @@ import {
   AuthError,
   type VerifiedPrivyIdentity,
 } from "@/lib/auth/get-verified-privy-user";
+import {
+  clearInviteCookie,
+  readInviteCookie,
+  tryConsumeInviteAfterRegistration,
+} from "@/lib/invites";
 import { CONTRIBUTION_TYPES } from "@/lib/profiles/constants";
 import { profileDto } from "@/lib/profiles/queries";
 import type { SafeApplicationSummary, SafeProfile } from "@/lib/profiles/types";
@@ -220,9 +225,39 @@ export async function registerOutlaw(
     submittedAt: row.submitted_at,
   };
 
+  const created = Boolean(row.created);
+
+  // Invite attribution only on genuine new registration. Failures never
+  // roll back registration; retry is durable via outlaw_invite_retries.
+  if (created) {
+    try {
+      const inviteCode = await readInviteCookie();
+      const inviteResult = await tryConsumeInviteAfterRegistration({
+        invitedProfileId: profile.id,
+        inviteCode,
+        admin,
+      });
+      if (
+        inviteResult.outcome !== "failed" &&
+        inviteResult.outcome !== "skipped"
+      ) {
+        await clearInviteCookie();
+      }
+    } catch (err) {
+      console.error("[register_outlaw invite]", err);
+    }
+  } else {
+    // Existing profile re-register: never re-attribute; drop cookie quietly.
+    try {
+      await clearInviteCookie();
+    } catch {
+      // ignore cookie errors outside request context
+    }
+  }
+
   return {
     profile,
     application,
-    created: Boolean(row.created),
+    created,
   };
 }

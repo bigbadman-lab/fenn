@@ -1180,12 +1180,208 @@ a.fenn-map__link:focus-visible {
   margin: 1rem 0 1.25rem;
 }
 
+/* Stable journey / outlaw regions — reduce CLS without skeleton cards */
+.home-first-thirty--stable {
+  min-height: 5.5rem;
+}
+
+.outlaw-ft-region {
+  min-height: 4.5rem;
+}
+
+.outlaw-ft-region--placeholder {
+  min-height: 4.5rem;
+}
+
+.outlaw-page--resolving .outlaw-page__resolve-frame {
+  margin-top: 0.75rem;
+}
+
+.outlaw-invite--stable {
+  min-height: 8rem;
+}
+
+.outlaw-invite--placeholder {
+  min-height: 8rem;
+}
+
+@media (max-width: 360px) {
+  .home-first-thirty--stable {
+    min-height: 4.75rem;
+  }
+
+  .outlaw-invite--stable {
+    min-height: 7rem;
+  }
+}
+
+@media (forced-colors: active) {
+  .home-first-thirty--stable,
+  .outlaw-ft-region,
+  .outlaw-invite--stable {
+    outline: 1px solid CanvasText;
+  }
+}
+
 .outlaw-page__identity {
   margin-bottom: 0.25rem;
 }
 
 .outlaw-page__account {
   margin-top: 0.5rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Outlaw Invite                                                       */
+/* ------------------------------------------------------------------ */
+
+.outlaw-invite {
+  margin: 1rem 0 1.25rem;
+  max-width: 36rem;
+}
+
+.outlaw-invite__rule {
+  margin: 0.65rem 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--color-muted, #8a8074);
+  overflow-wrap: anywhere;
+}
+
+.outlaw-invite__title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-leaf, #6b8f71);
+}
+
+.outlaw-invite__copy {
+  margin: 0 0 0.85rem;
+}
+
+.outlaw-invite__copy p {
+  margin: 0 0 0.55rem;
+  line-height: 1.5;
+}
+
+.outlaw-invite__policy {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  line-height: 1.55;
+  color: var(--color-leaf, #6b8f71);
+}
+
+.outlaw-invite__actions {
+  margin: 0 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.outlaw-invite__feedback {
+  margin: 0;
+  min-height: 1.25em;
+  font-size: 0.9rem;
+}
+
+.outlaw-invite__url-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: var(--color-muted, #8a8074);
+}
+
+.outlaw-invite__url {
+  margin: 0 0 0.5rem;
+}
+
+.outlaw-invite__url-text {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.outlaw-invite__summary-title,
+.outlaw-invite__recent-title {
+  margin: 0.5rem 0 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.outlaw-invite__stats {
+  margin: 0 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.outlaw-invite__stats p,
+.outlaw-invite__summary p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.outlaw-invite__recent {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.outlaw-invite__recent li {
+  margin: 0 0 0.3rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.invite-landing {
+  margin: 0 0 1rem;
+  padding-bottom: 0.75rem;
+}
+
+.invite-landing__kicker {
+  margin: 0 0 0.4rem;
+  letter-spacing: 0.06em;
+  color: var(--color-leaf, #6b8f71);
+}
+
+.invite-landing p {
+  margin: 0 0 0.35rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 360px) {
+  .outlaw-invite__title {
+    letter-spacing: 0.05em;
+  }
+
+  .outlaw-invite__policy {
+    font-size: 0.8rem;
+  }
+}
+
+@media (forced-colors: active) {
+  .outlaw-invite__title,
+  .outlaw-invite__policy,
+  .invite-landing__kicker {
+    color: CanvasText;
+  }
+
+  .outlaw-invite__rule {
+    color: CanvasText;
+  }
+
+  .outlaw-invite__url-text {
+    color: CanvasText;
+  }
 }
 
 @media (max-width: 640px) {

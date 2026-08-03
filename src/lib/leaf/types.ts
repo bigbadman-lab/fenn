@@ -6,7 +6,8 @@ export type LeafAwardSourceType =
   | "deed"
   | "system"
   | "hollow"
-  | "onboarding";
+  | "onboarding"
+  | "invite";
 export type LeafAdminSourceType = "admin_adjustment";
 export type LeafSourceType = LeafAwardSourceType | LeafAdminSourceType;
 

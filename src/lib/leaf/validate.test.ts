@@ -75,6 +75,10 @@ describe("LEAF validate — keys and metadata", () => {
       leafIdempotencyKeys.system("evt-1", "bonus"),
       "system:evt-1:bonus",
     );
+    assert.equal(
+      leafIdempotencyKeys.outlawInviteReward("prof-1"),
+      "outlaw_invite:prof-1:reward",
+    );
   });
 
   it("requires reason", () => {

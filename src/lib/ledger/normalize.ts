@@ -27,6 +27,8 @@ export function toLedgerPublicCategory(
       return "CAMP";
     case "onboarding":
       return "SYSTEM";
+    case "invite":
+      return "SYSTEM";
     case "admin_adjustment":
       return "ADJUSTMENT";
     case "system":
@@ -114,7 +116,10 @@ export function isKnownLeafSourceType(value: string): value is LeafSourceType {
     value === "camp" ||
     value === "deed" ||
     value === "admin_adjustment" ||
-    value === "system"
+    value === "system" ||
+    value === "hollow" ||
+    value === "onboarding" ||
+    value === "invite"
   );
 }
 

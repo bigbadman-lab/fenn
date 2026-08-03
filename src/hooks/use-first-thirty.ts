@@ -1,43 +1,93 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import type { SafeFirstThirtyProgress } from "@/lib/first-thirty/types";
 
+export type UseFirstThirtyProgressOptions = {
+  enabled?: boolean;
+  /**
+   * When true (default), use bootstrap snapshot and skip immediate
+   * /api/first-thirty when a trusted seed is available.
+   */
+  useBootstrapSnapshot?: boolean;
+};
+
 /**
- * Fetches trusted First Thirty status (read-only, no row invent).
- * Failures leave progress null — callers must not invent zero progress.
+ * Trusted First Thirty status (read-only, no row invent).
+ * Never invents zero progress.
  *
- * While loading for the current auth key, progress stays null so surfaces
- * never flash a fake checklist. Loading is derived (key mismatch), not
- * optimistic milestone state.
+ * Freshness policy:
+ * - Initial paint: bootstrap snapshot when available.
+ * - No immediate duplicate GET when bootstrap seeded.
+ * - Explicit refresh() hits GET /api/first-thirty.
+ * - Soft refresh failure preserves last trusted progress.
  */
-export function useFirstThirtyProgress(enabled = true): {
+export function useFirstThirtyProgress(
+  enabledOrOptions: boolean | UseFirstThirtyProgressOptions = true,
+): {
   progress: SafeFirstThirtyProgress | null;
   loading: boolean;
   failed: boolean;
   refresh: () => Promise<void>;
 } {
-  const { authenticated, registered, getAuthHeaders, privyReady } =
-    useFennAuth();
-  const canFetch = Boolean(enabled && authenticated && registered);
-  const fetchKey = canFetch ? "active" : "";
+  const options: UseFirstThirtyProgressOptions =
+    typeof enabledOrOptions === "boolean"
+      ? { enabled: enabledOrOptions, useBootstrapSnapshot: true }
+      : {
+          enabled: enabledOrOptions.enabled ?? true,
+          useBootstrapSnapshot: enabledOrOptions.useBootstrapSnapshot ?? true,
+        };
 
-  const [resolvedKey, setResolvedKey] = useState("");
-  const [progress, setProgress] = useState<SafeFirstThirtyProgress | null>(
+  const enabled = options.enabled !== false;
+  const useBootstrap = options.useBootstrapSnapshot !== false;
+
+  const {
+    authenticated,
+    registered,
+    getAuthHeaders,
+    privyReady,
+    profileResolved,
+    bootstrapGeneration,
+    firstThirtySnapshot,
+    firstThirtyBootstrapFailed,
+  } = useFennAuth();
+
+  const canFetch = Boolean(enabled && authenticated && registered);
+
+  const bootstrapSeed = useMemo(() => {
+    if (!useBootstrap || !canFetch || !profileResolved) return null;
+    return {
+      progress: firstThirtySnapshot,
+      failed: Boolean(firstThirtyBootstrapFailed && firstThirtySnapshot == null),
+    };
+  }, [
+    useBootstrap,
+    canFetch,
+    profileResolved,
+    firstThirtySnapshot,
+    firstThirtyBootstrapFailed,
+  ]);
+
+  const [remoteProgress, setRemoteProgress] =
+    useState<SafeFirstThirtyProgress | null>(null);
+  const [remoteFailed, setRemoteFailed] = useState(false);
+  const [remoteGeneration, setRemoteGeneration] = useState<number | null>(
     null,
   );
-  const [failed, setFailed] = useState(false);
-  const [nonce, setNonce] = useState(0);
+  const [remotePending, setRemotePending] = useState(false);
+  const [preferRemoteGeneration, setPreferRemoteGeneration] = useState<
+    number | null
+  >(null);
 
-  const load = useCallback(async () => {
-    if (!canFetch) {
-      return { ok: false as const, progress: null, failed: false };
-    }
+  const loadRemote = useCallback(async (): Promise<{
+    progress: SafeFirstThirtyProgress | null;
+    failed: boolean;
+  }> => {
     const headers = await getAuthHeaders();
     if (!headers) {
-      return { ok: false as const, progress: null, failed: true };
+      return { progress: null, failed: true };
     }
     try {
       const response = await fetch("/api/first-thirty", {
@@ -45,58 +95,105 @@ export function useFirstThirtyProgress(enabled = true): {
         cache: "no-store",
       });
       if (!response.ok) {
-        return { ok: false as const, progress: null, failed: true };
+        return { progress: null, failed: true };
       }
       const data = (await response.json()) as {
         firstThirty?: SafeFirstThirtyProgress;
       };
-      return {
-        ok: true as const,
-        progress: data.firstThirty ?? null,
-        failed: false,
-      };
+      return { progress: data.firstThirty ?? null, failed: false };
     } catch {
-      return { ok: false as const, progress: null, failed: true };
+      return { progress: null, failed: true };
     }
-  }, [canFetch, getAuthHeaders]);
+  }, [getAuthHeaders]);
 
+  // Fallback remote load when bootstrap seed is unavailable.
   useEffect(() => {
-    if (!privyReady || !canFetch) {
-      return;
-    }
+    if (!privyReady || !canFetch) return;
+    if (bootstrapSeed) return;
+    if (useBootstrap && !profileResolved) return;
+    if (remoteGeneration === bootstrapGeneration) return;
+
     let cancelled = false;
-    void (async () => {
-      const result = await load();
-      if (cancelled) return;
-      setProgress(result.progress);
-      setFailed(result.failed);
-      setResolvedKey(fetchKey);
-    })();
+    const timer = window.setTimeout(() => {
+      setRemotePending(true);
+      void (async () => {
+        const result = await loadRemote();
+        if (cancelled) return;
+        if (!result.failed) {
+          setRemoteProgress(result.progress);
+          setRemoteFailed(false);
+        } else {
+          setRemoteFailed(true);
+        }
+        setRemoteGeneration(bootstrapGeneration);
+        setRemotePending(false);
+      })();
+    }, 0);
+
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [privyReady, canFetch, fetchKey, load, nonce]);
+  }, [
+    privyReady,
+    canFetch,
+    bootstrapSeed,
+    useBootstrap,
+    profileResolved,
+    remoteGeneration,
+    bootstrapGeneration,
+    loadRemote,
+  ]);
 
   const refresh = useCallback(async () => {
     if (!canFetch) return;
-    const result = await load();
-    setProgress(result.progress);
-    setFailed(result.failed);
-    setResolvedKey(fetchKey);
-    setNonce((n) => n + 1);
-  }, [canFetch, fetchKey, load]);
+    setRemotePending(true);
+    const result = await loadRemote();
+    setPreferRemoteGeneration(bootstrapGeneration);
+    if (!result.failed) {
+      setRemoteProgress(result.progress);
+      setRemoteFailed(false);
+    } else {
+      setRemoteFailed((prev) => prev || remoteProgress == null);
+    }
+    setRemoteGeneration(bootstrapGeneration);
+    setRemotePending(false);
+  }, [canFetch, loadRemote, remoteProgress, bootstrapGeneration]);
 
-  // Key mismatch ⇒ still loading for this credentials; never expose stale progress.
-  const loading = Boolean(privyReady && canFetch && resolvedKey !== fetchKey);
-  const visibleProgress =
-    canFetch && resolvedKey === fetchKey ? progress : null;
-  const visibleFailed =
-    canFetch && resolvedKey === fetchKey && failed && !loading;
+  const useRemote = preferRemoteGeneration === bootstrapGeneration;
+
+  const progress = !canFetch
+    ? null
+    : useRemote
+      ? remoteProgress
+      : bootstrapSeed
+        ? bootstrapSeed.progress
+        : remoteGeneration === bootstrapGeneration
+          ? remoteProgress
+          : null;
+
+  const failed = !canFetch
+    ? false
+    : useRemote
+      ? remoteFailed && remoteProgress == null
+      : bootstrapSeed
+        ? bootstrapSeed.failed
+        : remoteGeneration === bootstrapGeneration
+          ? remoteFailed && remoteProgress == null
+          : false;
+
+  const loading = Boolean(
+    canFetch &&
+      privyReady &&
+      (remotePending ||
+        (useBootstrap && !profileResolved) ||
+        (!bootstrapSeed && remoteGeneration !== bootstrapGeneration)),
+  );
 
   return {
-    progress: visibleProgress,
+    progress: loading && !progress ? null : progress,
     loading,
-    failed: visibleFailed,
+    failed: failed && !loading,
     refresh,
   };
 }

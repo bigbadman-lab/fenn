@@ -10,7 +10,7 @@ import {
 } from "@/lib/profiles/types";
 
 const PROFILE_SELECT =
-  "id, outlaw_number, alias, wallet_address, joined_at, leaf_balance, leaf_lifetime_earned, deeds_completed_count, greenwood_entered_at, privy_user_id";
+  "id, outlaw_number, alias, wallet_address, joined_at, leaf_balance, leaf_lifetime_earned, deeds_completed_count, greenwood_entered_at, privy_user_id, invite_code";
 
 export type ProfileRecord = {
   id: string;
@@ -23,6 +23,8 @@ export type ProfileRecord = {
   deeds_completed_count: number;
   greenwood_entered_at: string | null;
   privy_user_id: string | null;
+  /** Server-only; never include on SafeProfile client DTO. */
+  invite_code?: string | null;
 };
 
 export async function findProfileByPrivyUserId(
