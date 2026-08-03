@@ -15,10 +15,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "../..");
 
 describe("commons format helpers", () => {
-  it("formats observedAt as last seen UTC", () => {
+  it("formats observedAt as last seen UTC with seconds", () => {
     assert.equal(
+      formatTreasuryObservedAt("2026-07-23T14:32:07.000Z"),
+      "last seen 14:32:07 UTC",
+    );
+    // Distinct second proves a 60s pulse is visible within the same minute.
+    assert.notEqual(
       formatTreasuryObservedAt("2026-07-23T14:32:00.000Z"),
-      "last seen 14:32 UTC",
+      formatTreasuryObservedAt("2026-07-23T14:32:45.000Z"),
     );
   });
 

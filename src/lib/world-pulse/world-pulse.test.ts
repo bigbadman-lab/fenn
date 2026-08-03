@@ -41,8 +41,49 @@ describe("World Pulse wiring", () => {
     assert.match(page, /PagePulse/);
     assert.match(page, /WORLD_PULSE_COMMONS_MS/);
     assert.match(page, /force-dynamic/);
+    assert.match(page, /loadCommonsPageData/);
+    // Exactly one client pulse mount — no duplicate intervals.
+    assert.equal((page.match(/<PagePulse/g) ?? []).length, 1);
     assert.doesNotMatch(page, /^["']use client["']/m);
     assert.doesNotMatch(page, /createRobinhoodPublicClient|ROBINHOOD_CHAIN_RPC/);
+    assert.doesNotMatch(page, /WebSocket|useSWR|setInterval/);
+  });
+
+  it("PagePulse refreshes RSC via router without browser RPC", () => {
+    const pulse = read("src/components/world-pulse/page-pulse.tsx");
+    assert.match(pulse, /router\.refresh\(\)/);
+    assert.match(pulse, /refreshOnVisible:\s*true/);
+    assert.match(pulse, /usePagePulse/);
+    assert.doesNotMatch(pulse, /getBalance|balanceOf|ROBINHOOD_CHAIN|viem/);
+    assert.doesNotMatch(pulse, /mock|fixture|placeholder.*balance/i);
+  });
+
+  it("usePagePulse skips hidden tabs, resumes, and avoids overlap", () => {
+    const hook = read("src/hooks/use-page-pulse.ts");
+    assert.match(hook, /document\.hidden/);
+    assert.match(hook, /visibilitychange/);
+    assert.match(hook, /clearInterval/);
+    assert.match(hook, /removeEventListener/);
+    assert.match(hook, /refreshOnVisible/);
+    assert.match(hook, /pulsing/);
+    assert.doesNotMatch(hook, /postgres_changes|useSWR|React Query|WebSocket/);
+  });
+
+  it("commons treasury path stays live on each SSR pass", () => {
+    const loader = read("src/lib/commons/page-data.ts");
+    const snapshot = read("src/lib/treasury/snapshot.ts");
+    const chain = read("src/lib/treasury/chain.ts");
+    const api = read("src/app/api/treasury/route.ts");
+    const readout = read("src/components/commons/treasury-readout.tsx");
+    assert.match(loader, /getPublicTreasurySnapshot/);
+    assert.match(snapshot, /readNativeBalance/);
+    assert.match(snapshot, /readErc20Balance/);
+    assert.match(chain, /getBalance/);
+    assert.match(chain, /balanceOf/);
+    assert.match(api, /no-store|force-dynamic/);
+    assert.match(readout, /formatTreasuryObservedAt/);
+    assert.match(readout, /dateTime=\{treasury\.observedAt\}/);
+    assert.doesNotMatch(snapshot, /mockBalance|fixtureBalance|SAMPLE_/);
   });
 
   it("wall mounts a 25s page pulse and stays SSR", () => {
@@ -66,15 +107,6 @@ describe("World Pulse wiring", () => {
     assert.match(deedsPulse, /WORLD_PULSE_DEEDS_MS/);
     assert.match(deedsPulse, /visibilitychange/);
     assert.match(deedsPulse, /Preserves submission form/);
-  });
-
-  it("usePagePulse skips hidden tabs and cleans up listeners", () => {
-    const hook = read("src/hooks/use-page-pulse.ts");
-    assert.match(hook, /document\.hidden/);
-    assert.match(hook, /visibilitychange/);
-    assert.match(hook, /clearInterval/);
-    assert.match(hook, /removeEventListener/);
-    assert.doesNotMatch(hook, /postgres_changes|useSWR|React Query/);
   });
 
   it("greenwood and profile refresh quietly on visibility", () => {

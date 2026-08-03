@@ -17,14 +17,17 @@ const MONTHS_UTC = [
 
 /**
  * Restrained freshness line from Treasury `observedAt`.
- * Not realtime — observation time of the server read.
+ * Includes seconds so a 60s World Pulse refresh is visibly trustworthy
+ * even when balances are unchanged within the same minute.
+ * Not realtime branding — observation time of the server read.
  */
 export function formatTreasuryObservedAt(iso: string): string | null {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   const hh = String(d.getUTCHours()).padStart(2, "0");
   const mm = String(d.getUTCMinutes()).padStart(2, "0");
-  return `last seen ${hh}:${mm} UTC`;
+  const ss = String(d.getUTCSeconds()).padStart(2, "0");
+  return `last seen ${hh}:${mm}:${ss} UTC`;
 }
 
 /**
