@@ -9,10 +9,13 @@ import {
 } from "@/lib/chronicle";
 import { ChronicleError } from "@/lib/chronicle/errors";
 import type { PublicChronicleEntry } from "@/lib/chronicle/types";
+import { buildPublicMetadata } from "@/lib/site/metadata";
 
-export const metadata: Metadata = {
-  title: "The Book",
-};
+export const metadata: Metadata = buildPublicMetadata({
+  title: "THE BOOK",
+  description: "What happened in the wood, kept one day at a time.",
+  path: "/book",
+});
 
 export const dynamic = "force-dynamic";
 

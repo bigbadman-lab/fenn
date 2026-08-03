@@ -5,11 +5,14 @@ import { LedgerRegister } from "@/components/ledger/ledger-register";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { PagePulse } from "@/components/world-pulse/page-pulse";
 import { loadLedgerPageData } from "@/lib/ledger/page-data";
+import { buildPublicMetadata } from "@/lib/site/metadata";
 import { WORLD_PULSE_LEDGER_MS } from "@/lib/world-pulse/intervals";
 
-export const metadata: Metadata = {
-  title: "The Ledger",
-};
+export const metadata: Metadata = buildPublicMetadata({
+  title: "THE LEDGER",
+  description: "Recognition accumulates here. Every LEAF has a source.",
+  path: "/ledger",
+});
 
 export const dynamic = "force-dynamic";
 

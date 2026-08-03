@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import { DeskGatheringDetailPanel } from "@/components/desk/desk-gathering-detail-panel";
 
 export const metadata: Metadata = {
-  title: "Gathering | THE DESK | FENN",
-  robots: { index: false, follow: false },
+  title: "GATHERING",
 };
 
 type PageProps = {

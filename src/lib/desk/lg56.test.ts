@@ -183,6 +183,6 @@ describe("LG5.6 discovery", () => {
     assert.doesNotMatch(read("src/content/home-world-map.ts"), /\/desk/);
     assert.doesNotMatch(read("src/lib/home/fenn-map-path.ts"), /\/desk/);
     const layout = read("src/app/desk/layout.tsx");
-    assert.match(layout, /index:\s*false|robots/);
+    assert.match(layout, /index:\s*false|robots|buildPrivateMetadata/);
   });
 });

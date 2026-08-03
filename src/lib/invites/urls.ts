@@ -1,12 +1,12 @@
+import { resolveAppSiteOrigin } from "@/lib/site/origin";
+
 /**
- * Resolve site origin without throwing at module load (tests / partial env).
+ * Resolve site origin for invite tooling.
  * Prefer NEXT_PUBLIC_SITE_URL; fall back only for non-production tooling.
+ * Forbidden hosts (amfenn, *.vercel.app) are rejected by the shared normaliser.
  */
 export function siteUrlOrigin(siteUrl?: string | null): string {
-  const fromArg = siteUrl?.trim();
-  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  const raw = fromArg || fromEnv || "http://localhost:3000";
-  return raw.replace(/\/$/, "");
+  return resolveAppSiteOrigin(siteUrl);
 }
 
 /**

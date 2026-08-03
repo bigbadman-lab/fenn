@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import { DeskDeedDetailPanel } from "@/components/desk/desk-deed-detail-panel";
 
 export const metadata: Metadata = {
-  title: "DEED SUBMISSION | THE DESK | FENN",
-  robots: { index: false, follow: false },
+  title: "DEED SUBMISSION",
 };
 
 type PageProps = { params: Promise<{ submissionId: string }> };

@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import { AdminDeedsBoard } from "@/components/admin/admin-deeds-board";
 
 export const metadata: Metadata = {
-  title: "Admin · Deeds",
-  robots: { index: false, follow: false },
+  title: "ADMIN · DEEDS",
 };
 
 /**

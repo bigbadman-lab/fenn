@@ -2,13 +2,11 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 
 import { DeskGate } from "@/components/desk/desk-gate";
+import { buildPrivateMetadata } from "@/lib/site/metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "THE DESK | FENN",
-  robots: { index: false, follow: false },
-};
+export const metadata: Metadata = buildPrivateMetadata("THE DESK");
 
 /**
  * Shared shell for /desk and future /desk/* pages.

@@ -17,6 +17,7 @@ function htmlPage(title: string, body: string, status = 200): NextResponse {
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
+<meta name="robots" content="noindex, nofollow"/>
 <title>${title}</title>
 <style>
   body { font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;

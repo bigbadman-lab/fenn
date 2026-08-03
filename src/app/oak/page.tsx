@@ -8,10 +8,14 @@ import {
   OAK_LEDE,
   OAK_SECTIONS,
 } from "@/content/oak";
+import { buildPublicMetadata } from "@/lib/site/metadata";
 
-export const metadata: Metadata = {
-  title: "The Oak",
-};
+export const metadata: Metadata = buildPublicMetadata({
+  title: "THE OAK",
+  description:
+    "What is true here. Doctrine, memory and the laws beneath the wood.",
+  path: "/oak",
+});
 
 export default function OakPage() {
   return (

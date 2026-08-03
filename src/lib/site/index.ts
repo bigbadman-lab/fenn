@@ -1,0 +1,32 @@
+export {
+  PRODUCTION_SITE_HOST,
+  PRODUCTION_SITE_ORIGIN,
+  isForbiddenCanonicalHost,
+  isPreviewDeployment,
+  isProductionDeployment,
+  normalizeSiteOrigin,
+  resolveAppSiteOrigin,
+  resolveMetadataSiteOrigin,
+  shouldNoIndexDeployment,
+  type SiteRuntimeHints,
+} from "@/lib/site/origin";
+
+export {
+  DEED_METADATA_DESCRIPTION_FALLBACK,
+  FENN_DEFAULT_DESCRIPTION,
+  FENN_FAVICON,
+  FENN_FAVICON_PATH,
+  FENN_OG_IMAGE,
+  FENN_OG_IMAGE_PATH,
+  FENN_X_HANDLE,
+  PRIVATE_ROBOTS,
+  PUBLIC_SITEMAP_PATHS,
+  ROBOTS_DISALLOW_PATHS,
+  buildHomeMetadata,
+  buildPrivateMetadata,
+  buildPublicMetadata,
+  buildRootMetadata,
+  normalizePublicDescription,
+  socialTitleFromSegment,
+  type PublicMetadataInput,
+} from "@/lib/site/metadata";

@@ -5,10 +5,13 @@ import { FirstThirtyDeedSurface } from "@/components/first-thirty/first-thirty-d
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { DeedsBoardPulse } from "@/components/world-pulse/deeds-pulse";
 import { listPublicDeeds } from "@/lib/deeds/queries";
+import { buildPublicMetadata } from "@/lib/site/metadata";
 
-export const metadata: Metadata = {
-  title: "Deeds",
-};
+export const metadata: Metadata = buildPublicMetadata({
+  title: "DEEDS",
+  description: "Work worth doing. Offer proof and let the world witness it.",
+  path: "/deeds",
+});
 
 export const dynamic = "force-dynamic";
 

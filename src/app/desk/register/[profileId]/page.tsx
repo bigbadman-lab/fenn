@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import { DeskRegisterMemberPanel } from "@/components/desk/desk-register-member-panel";
 
 export const metadata: Metadata = {
-  title: "Member | THE REGISTER | FENN",
-  robots: { index: false, follow: false },
+  title: "MEMBER",
 };
 
 type PageProps = {

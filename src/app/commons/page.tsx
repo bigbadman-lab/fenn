@@ -8,11 +8,15 @@ import { TreasuryReadout } from "@/components/commons/treasury-readout";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { PagePulse } from "@/components/world-pulse/page-pulse";
 import { loadCommonsPageData } from "@/lib/commons/page-data";
+import { buildPublicMetadata } from "@/lib/site/metadata";
 import { WORLD_PULSE_COMMONS_MS } from "@/lib/world-pulse/intervals";
 
-export const metadata: Metadata = {
-  title: "The Commons",
-};
+export const metadata: Metadata = buildPublicMetadata({
+  title: "THE COMMONS",
+  description:
+    "The FENN Treasury, public commitments and the official contract in full view.",
+  path: "/commons",
+});
 
 export const dynamic = "force-dynamic";
 

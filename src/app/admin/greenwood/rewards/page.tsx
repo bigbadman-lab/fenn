@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import { AdminRewardsBoard } from "@/components/admin/admin-rewards-board";
 
 export const metadata: Metadata = {
-  title: "Admin · Greenwood Rewards",
-  robots: { index: false, follow: false },
+  title: "ADMIN · REWARDS",
 };
 
 export default function AdminGreenwoodRewardsPage() {

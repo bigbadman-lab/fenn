@@ -3,14 +3,17 @@ import type { Metadata } from "next";
 import { WallInscriptions } from "@/components/wall/wall-inscriptions";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { PagePulse } from "@/components/world-pulse/page-pulse";
+import { buildPublicMetadata } from "@/lib/site/metadata";
 import { WallError } from "@/lib/wall/errors";
 import { listPublicWallEntries } from "@/lib/wall/read";
 import type { PublicWallEntry } from "@/lib/wall/types";
 import { WORLD_PULSE_WALL_MS } from "@/lib/world-pulse/intervals";
 
-export const metadata: Metadata = {
-  title: "The Wall",
-};
+export const metadata: Metadata = buildPublicMetadata({
+  title: "THE WALL",
+  description: "Marks left by FENN for the world to read.",
+  path: "/wall",
+});
 
 export const dynamic = "force-dynamic";
 

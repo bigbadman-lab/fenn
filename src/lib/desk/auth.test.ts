@@ -195,9 +195,7 @@ describe("Desk surface privacy and architecture", () => {
   it("layout is dynamic, noindex, and documents API independence", () => {
     const layout = readFileSync(join(repo, "src/app/desk/layout.tsx"), "utf8");
     assert.match(layout, /force-dynamic/);
-    assert.match(layout, /index:\s*false/);
-    assert.match(layout, /follow:\s*false/);
-    assert.match(layout, /THE DESK \| FENN/);
+    assert.match(layout, /buildPrivateMetadata\("THE DESK"\)/);
     assert.match(layout, /independently/);
   });
 

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
+import { cache } from "react";
 
 import { isDeedPubliclyListable, toSafeDeed } from "@/lib/deeds/rules";
 import type { DeedRow, SafeDeed } from "@/lib/deeds/types";
@@ -89,3 +90,10 @@ export async function getPublicDeedBySlug(
   }
   return deed;
 }
+
+/**
+ * Request-memoised public deed load for page + generateMetadata.
+ */
+export const getPublicDeedBySlugCached = cache(
+  async (slug: string): Promise<SafeDeed | null> => getPublicDeedBySlug(slug),
+);
