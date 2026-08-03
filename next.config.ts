@@ -9,6 +9,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
+  // Privy optional peers (Farcaster/Solana mini-app) are not used; stub so
+  // Webpack does not fail production builds that only need ethereum auth.
+  webpack: (config) => {
+    config.resolve = config.resolve ?? {};
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@farcaster/mini-app-solana": false,
+    };
+    return config;
+  },
 };
 
 export default nextConfig;

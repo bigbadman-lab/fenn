@@ -522,20 +522,24 @@ describe("getPublicTreasurySnapshot", () => {
 
 describe("GET /api/treasury route", () => {
   it("is public with no-store / force-dynamic", () => {
-    const source = readFileSync(
+    const route = readFileSync(
       join(here, "../../app/api/treasury/route.ts"),
       "utf8",
     );
-    assert.match(source, /getPublicTreasurySnapshot/);
-    assert.doesNotMatch(source, /getVerifiedPrivyUser|from ["']@\/lib\/auth/);
-    assert.doesNotMatch(source, /Authorization/);
-    assert.match(source, /No Privy authentication/);
-    assert.match(source, /force-dynamic/);
-    assert.match(source, /no-store/);
+    const handler = readFileSync(join(here, "route-handler.ts"), "utf8");
+    assert.match(handler, /getPublicTreasurySnapshot/);
+    assert.doesNotMatch(route, /getVerifiedPrivyUser|from ["']@\/lib\/auth/);
+    assert.doesNotMatch(handler, /getVerifiedPrivyUser|from ["']@\/lib\/auth/);
+    assert.doesNotMatch(route, /Authorization/);
+    assert.doesNotMatch(handler, /Authorization/);
+    assert.match(route, /No Privy authentication/);
+    assert.match(route, /force-dynamic/);
+    assert.match(route, /no-store/);
+    assert.match(handler, /no-store/);
   });
 
   it("returns unconfigured as 200", async () => {
-    const { handleTreasuryGet } = await import("../../app/api/treasury/route");
+    const { handleTreasuryGet } = await import("./route-handler");
     const response = await handleTreasuryGet(async () => ({
       state: "unconfigured",
       officialToken: null,
@@ -549,7 +553,7 @@ describe("GET /api/treasury route", () => {
   });
 
   it("returns ready snapshot as 200 with safe official token fields", async () => {
-    const { handleTreasuryGet } = await import("../../app/api/treasury/route");
+    const { handleTreasuryGet } = await import("./route-handler");
     const officialToken = {
       symbol: "FENN" as const,
       chainId: ROBINHOOD_CHAIN_ID,
@@ -596,7 +600,7 @@ describe("GET /api/treasury route", () => {
   });
 
   it("keeps officialToken when FENN balance is rpc-unavailable", async () => {
-    const { handleTreasuryGet } = await import("../../app/api/treasury/route");
+    const { handleTreasuryGet } = await import("./route-handler");
     const officialToken = {
       symbol: "FENN" as const,
       chainId: ROBINHOOD_CHAIN_ID,
@@ -627,7 +631,7 @@ describe("GET /api/treasury route", () => {
   });
 
   it("returns unavailable as 200", async () => {
-    const { handleTreasuryGet } = await import("../../app/api/treasury/route");
+    const { handleTreasuryGet } = await import("./route-handler");
     const response = await handleTreasuryGet(async () => ({
       state: "unavailable",
       treasuryAddress: TREASURY,
@@ -652,7 +656,7 @@ describe("GET /api/treasury route", () => {
   });
 
   it("maps unexpected service failure to non-2xx", async () => {
-    const { handleTreasuryGet } = await import("../../app/api/treasury/route");
+    const { handleTreasuryGet } = await import("./route-handler");
     const response = await handleTreasuryGet(async () => {
       throw new TreasuryError(
         "treasury_config_failed",

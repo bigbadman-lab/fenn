@@ -206,19 +206,22 @@ describe("Commons allocation history limit", () => {
 
 describe("GET /api/commons route", () => {
   it("is public with no-store / force-dynamic", () => {
-    const source = readFileSync(
+    const route = readFileSync(
       join(here, "../../app/api/commons/route.ts"),
       "utf8",
     );
-    assert.match(source, /getPublicCommonsSnapshot/);
-    assert.doesNotMatch(source, /getVerifiedPrivyUser|from ["']@\/lib\/auth/);
-    assert.match(source, /No Privy authentication/);
-    assert.match(source, /force-dynamic/);
-    assert.match(source, /no-store/);
+    const handler = readFileSync(join(here, "route-handler.ts"), "utf8");
+    assert.match(handler, /getPublicCommonsSnapshot/);
+    assert.doesNotMatch(route, /getVerifiedPrivyUser|from ["']@\/lib\/auth/);
+    assert.doesNotMatch(handler, /getVerifiedPrivyUser|from ["']@\/lib\/auth/);
+    assert.match(route, /No Privy authentication/);
+    assert.match(route, /force-dynamic/);
+    assert.match(route, /no-store/);
+    assert.match(handler, /no-store/);
   });
 
   it("returns ready empty as 200", async () => {
-    const { handleCommonsGet } = await import("../../app/api/commons/route");
+    const { handleCommonsGet } = await import("./route-handler");
     const response = await handleCommonsGet(async () => ({
       state: "ready",
       observedAt: OBSERVED.toISOString(),
@@ -239,7 +242,7 @@ describe("GET /api/commons route", () => {
   });
 
   it("returns ready with data as 200", async () => {
-    const { handleCommonsGet } = await import("../../app/api/commons/route");
+    const { handleCommonsGet } = await import("./route-handler");
     const response = await handleCommonsGet(async () => ({
       state: "ready",
       observedAt: OBSERVED.toISOString(),
@@ -256,7 +259,7 @@ describe("GET /api/commons route", () => {
   });
 
   it("returns history partial failure as 200", async () => {
-    const { handleCommonsGet } = await import("../../app/api/commons/route");
+    const { handleCommonsGet } = await import("./route-handler");
     const response = await handleCommonsGet(async () => ({
       state: "ready",
       observedAt: OBSERVED.toISOString(),
@@ -270,7 +273,7 @@ describe("GET /api/commons route", () => {
   });
 
   it("maps authoritative commitment failure to non-2xx", async () => {
-    const { handleCommonsGet } = await import("../../app/api/commons/route");
+    const { handleCommonsGet } = await import("./route-handler");
     const response = await handleCommonsGet(async () => {
       throw new CommonsError(
         "commons_read_failed",
