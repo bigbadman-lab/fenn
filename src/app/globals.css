@@ -288,6 +288,55 @@ button.btn-text:disabled {
   text-underline-offset: 0.18em;
 }
 
+/* Leave session confirm — hard-border dialog, shell language */
+.shell-leave-dialog {
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--color-night);
+  color: var(--color-bone);
+  max-width: min(22rem, calc(100vw - 2rem));
+  width: 100%;
+}
+
+.shell-leave-dialog::backdrop {
+  background: color-mix(in srgb, var(--color-night) 78%, transparent);
+}
+
+.shell-leave-dialog__panel {
+  padding: 1.25rem 1.35rem 1.1rem;
+}
+
+.shell-leave-dialog__title {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: var(--color-bone);
+}
+
+.shell-leave-dialog__body {
+  margin: 0 0 0.65rem;
+  color: var(--color-bone);
+  line-height: 1.55;
+}
+
+.shell-leave-dialog__hint {
+  margin: 0 0 1.15rem;
+  font-size: 0.86rem;
+}
+
+.shell-leave-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.shell-leave-dialog__actions .btn-text:disabled {
+  opacity: 0.55;
+}
+
 .fenn-form {
   display: flex;
   flex-direction: column;
