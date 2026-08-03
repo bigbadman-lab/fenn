@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 
-export type DeskDeedsView = "definitions" | "submissions";
+import type { DeskDeedsView } from "@/lib/desk/deeds-view";
+
+export type { DeskDeedsView };
 
 export function DeskDeedsWorkspaceNav({
   activeView,
@@ -10,7 +12,7 @@ export function DeskDeedsWorkspaceNav({
   activeView: DeskDeedsView;
 }) {
   return (
-    <header className="desk-deeds-workspace">
+    <header className="desk-deeds-workspace-nav">
       <div className="desk-hollow__head">
         <h2 className="desk-section-title">DEEDS</h2>
       </div>

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { DeskDeedsWorkspaceNav } from "@/components/desk/desk-deeds-workspace-nav";
 import { useDeskGate } from "@/components/desk/desk-gate";
 import type {
   DeskDeedListItem,
@@ -60,7 +59,6 @@ export function DeskDeedsBoard() {
 
   return (
     <section className="desk-deeds" aria-label="Deed submissions">
-      <DeskDeedsWorkspaceNav activeView="submissions" />
       <div className="desk-hollow__head">
         <button type="button" className="btn-text" onClick={() => void load()}>
           [ refresh ]

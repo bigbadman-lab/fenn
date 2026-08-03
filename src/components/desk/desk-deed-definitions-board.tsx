@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { DeskDeedsWorkspaceNav } from "@/components/desk/desk-deeds-workspace-nav";
 import { useDeskGate } from "@/components/desk/desk-gate";
 import type {
   DeedDefinitionFilter,
@@ -190,7 +189,6 @@ export function DeskDeedDefinitionsBoard() {
 
   return (
     <section className="desk-deeds" aria-label="Deed definitions">
-      <DeskDeedsWorkspaceNav activeView="definitions" />
       <div className="desk-hollow__head">
         <button
           type="button"
@@ -232,7 +230,13 @@ export function DeskDeedDefinitionsBoard() {
       {filtered === null ? (
         <p className="muted">…</p>
       ) : filtered.length === 0 ? (
-        <p className="muted">No deeds in this filter.</p>
+        <p className="muted">
+          {query.trim()
+            ? "No deeds match this search."
+            : filter === "all"
+              ? "NO DEEDS HAVE BEEN WRITTEN."
+              : "No deeds in this filter."}
+        </p>
       ) : (
         <ul className="desk-member__list">
           {filtered.map((item) => (

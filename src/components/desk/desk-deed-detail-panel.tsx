@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { DeskDeedsWorkspaceNav } from "@/components/desk/desk-deeds-workspace-nav";
 import { useDeskGate } from "@/components/desk/desk-gate";
 import { buildDefaultDeedWallInscription } from "@/lib/desk/deed-inscription";
 import type { DeskDeedDetail } from "@/lib/desk/deeds-types";
@@ -260,7 +259,6 @@ export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) 
 
   return (
     <section className="desk-deed-detail" aria-label={detail.deedTitle}>
-      <DeskDeedsWorkspaceNav activeView="submissions" />
       <p>
         <Link href="/desk/deeds?view=submissions" className="btn-text">
           [ back to submissions ]

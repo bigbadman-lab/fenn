@@ -1,26 +1,22 @@
-"use client";
-
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-
 import { DeskDeedDefinitionsBoard } from "@/components/desk/desk-deed-definitions-board";
 import { DeskDeedsBoard } from "@/components/desk/desk-deeds-board";
+import { DeskDeedsWorkspaceNav } from "@/components/desk/desk-deeds-workspace-nav";
+import type { DeskDeedsView } from "@/lib/desk/deeds-view";
 
-function DeskDeedsWorkspaceInner() {
-  const search = useSearchParams();
-  const view =
-    search.get("view") === "submissions" ? "submissions" : "definitions";
-
-  if (view === "submissions") {
-    return <DeskDeedsBoard />;
-  }
-  return <DeskDeedDefinitionsBoard />;
-}
-
-export function DeskDeedsWorkspace() {
+/**
+ * Unified Deeds workspace shell.
+ * View is chosen by the server from `?view=` so refreshes and deep links
+ * always render the correct section without client-only query state.
+ */
+export function DeskDeedsWorkspace({ view }: { view: DeskDeedsView }) {
   return (
-    <Suspense fallback={<p className="muted">…</p>}>
-      <DeskDeedsWorkspaceInner />
-    </Suspense>
+    <section className="desk-deeds-workspace" aria-label="Deeds workspace">
+      <DeskDeedsWorkspaceNav activeView={view} />
+      {view === "submissions" ? (
+        <DeskDeedsBoard />
+      ) : (
+        <DeskDeedDefinitionsBoard />
+      )}
+    </section>
   );
 }
