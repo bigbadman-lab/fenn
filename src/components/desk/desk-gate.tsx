@@ -55,6 +55,7 @@ function DeskNav() {
   const deedsActive = pathname.startsWith("/desk/deeds");
   const treasuryActive = pathname.startsWith("/desk/treasury");
   const bookActive = pathname.startsWith("/desk/book");
+  const editorialActive = pathname.startsWith("/desk/editorial");
   const speaksActive = pathname.startsWith("/desk/speaks");
   const agentActive = pathname.startsWith("/desk/agent");
 
@@ -115,6 +116,16 @@ function DeskNav() {
         className={bookActive ? "desk__nav-link desk__nav-link--active" : "desk__nav-link"}
       >
         The Book
+      </Link>
+      <Link
+        href="/desk/editorial"
+        className={
+          editorialActive
+            ? "desk__nav-link desk__nav-link--active"
+            : "desk__nav-link"
+        }
+      >
+        THE EDITORIAL ROOM
       </Link>
       <Link
         href="/desk/speaks"

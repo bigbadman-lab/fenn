@@ -136,6 +136,8 @@ describe("LG5.5 Overview and nav", () => {
     assert.match(gate, /\/desk\/deeds/);
     assert.match(gate, /\/desk\/treasury/);
     assert.match(gate, /\/desk\/book/);
+    assert.match(gate, /\/desk\/editorial/);
+    assert.match(gate, /THE EDITORIAL ROOM/);
     assert.match(gate, /\/desk\/agent/);
     assert.doesNotMatch(gate, /\/desk\/memory|\/desk\/camp|\/desk\/audit/);
   });

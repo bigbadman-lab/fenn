@@ -3,6 +3,7 @@ import { DeskAuthError } from "@/lib/desk/auth";
 import { deskJson } from "@/lib/desk/http";
 import { ChronicleError } from "@/lib/chronicle/errors";
 import { CommonsError } from "@/lib/commons/errors";
+import { EditorialError } from "@/lib/editorial/errors";
 import { GreenwoodError } from "@/lib/greenwood/errors";
 import { TreasuryError } from "@/lib/treasury/errors";
 import { XError } from "@/lib/x/errors";
@@ -40,6 +41,12 @@ export function mapDeskError(error: unknown, label: string): Response {
     );
   }
   if (error instanceof ChronicleError) {
+    return deskJson(
+      { ok: false, error: error.message, code: error.code },
+      { status: error.status },
+    );
+  }
+  if (error instanceof EditorialError) {
     return deskJson(
       { ok: false, error: error.message, code: error.code },
       { status: error.status },

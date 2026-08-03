@@ -1,0 +1,468 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+import { useDeskGate } from "@/components/desk/desk-gate";
+import type {
+  EditorialDailyOverview,
+  EditorialRoomSnapshot,
+  SafeEditorialRun,
+  SafeEditorialTransmission,
+} from "@/lib/editorial/types";
+
+async function copyText(value: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function OverviewBlock({ overview }: { overview: EditorialDailyOverview }) {
+  return (
+    <div className="desk-editorial__overview">
+      <p className="muted">Today&apos;s world has been read.</p>
+      <ul className="desk-member__facts">
+        <li>
+          Book
+          <br />
+          {overview.bookWritten ? "✓" : "—"}
+        </li>
+        <li>
+          Fire
+          <br />
+          {overview.fireWaitingCount} waiting
+        </li>
+        <li>
+          Gathering
+          <br />
+          {overview.gatheringLabel}
+        </li>
+        <li>
+          New Outlaws
+          <br />
+          {overview.newOutlaws}
+        </li>
+        <li>
+          New Deeds
+          <br />
+          {overview.newDeedsApproved}
+        </li>
+        <li>
+          Greenwood arrivals
+          <br />
+          {overview.greenwoodArrivals}
+        </li>
+        <li>
+          Wall
+          <br />
+          {overview.wallMarks} new marks
+        </li>
+        <li>
+          Treasury
+          <br />
+          {overview.treasuryLabel}
+        </li>
+        <li>
+          Robinhood Chain
+          <br />
+          {overview.robinhoodLabel}
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+function TransmissionCard({
+  item,
+  busyId,
+  onCopy,
+  onEdit,
+  onRegenerate,
+  onApprove,
+}: {
+  item: SafeEditorialTransmission;
+  busyId: string | null;
+  onCopy: (t: SafeEditorialTransmission) => void;
+  onEdit: (t: SafeEditorialTransmission, body: string) => void;
+  onRegenerate: (t: SafeEditorialTransmission) => void;
+  onApprove: (t: SafeEditorialTransmission) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(item.body);
+  const busy = busyId === item.id;
+
+  return (
+    <article className="desk-editorial__tx" aria-label={item.categoryLabel}>
+      <h3 className="desk-editorial__tx-cat">
+        {item.categoryLabel}
+        {item.approvalState === "approved" ? " · APPROVED" : ""}
+      </h3>
+      <p className="desk-editorial__tx-title muted">{item.title}</p>
+      {editing ? (
+        <textarea
+          className="desk-editorial__editor"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={6}
+          aria-label="Edit transmission body"
+        />
+      ) : (
+        <pre className="desk-editorial__body ascii">{item.body}</pre>
+      )}
+      <p className="muted desk-editorial__meta">
+        Operator note: {item.operatorRationale}
+      </p>
+      <p className="muted desk-editorial__meta">
+        Sources:{" "}
+        {item.sourceSignals.length > 0
+          ? item.sourceSignals.join(", ")
+          : "—"}
+      </p>
+      <p className="muted desk-editorial__meta">
+        Confidence: {item.confidence}
+        {item.copyCount > 0 ? ` · copied ${item.copyCount}` : ""}
+      </p>
+      <div className="desk-editorial__actions">
+        {editing ? (
+          <>
+            <button
+              type="button"
+              className="btn-text"
+              disabled={busy}
+              onClick={() => {
+                onEdit(item, draft);
+                setEditing(false);
+              }}
+            >
+              [ SAVE ]
+            </button>
+            <button
+              type="button"
+              className="btn-text"
+              disabled={busy}
+              onClick={() => {
+                setDraft(item.body);
+                setEditing(false);
+              }}
+            >
+              [ CANCEL ]
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="btn-text"
+              disabled={busy}
+              onClick={() => onCopy(item)}
+            >
+              [ COPY ]
+            </button>
+            <button
+              type="button"
+              className="btn-text"
+              disabled={busy}
+              onClick={() => {
+                setDraft(item.body);
+                setEditing(true);
+              }}
+            >
+              [ EDIT ]
+            </button>
+            <button
+              type="button"
+              className="btn-text"
+              disabled={busy}
+              onClick={() => onRegenerate(item)}
+            >
+              [ REGENERATE ]
+            </button>
+            <button
+              type="button"
+              className="btn-text"
+              disabled={busy || item.approvalState === "approved"}
+              onClick={() => onApprove(item)}
+            >
+              [ APPROVE ]
+            </button>
+          </>
+        )}
+      </div>
+    </article>
+  );
+}
+
+/**
+ * THE EDITORIAL ROOM — Desk operator surface for daily transmission drafts.
+ * No automatic X posting.
+ */
+export function DeskEditorialPanel() {
+  const { getAuthHeaders } = useDeskGate();
+  const [room, setRoom] = useState<EditorialRoomSnapshot | null>(null);
+  const [run, setRun] = useState<SafeEditorialRun | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState("");
+
+  const load = useCallback(async () => {
+    setError(null);
+    const headers = await getAuthHeaders();
+    if (!headers) {
+      setError("Could not open The Editorial Room.");
+      setRoom(null);
+      return;
+    }
+    const response = await fetch("/api/desk/editorial", {
+      headers,
+      cache: "no-store",
+    });
+    const data = (await response.json()) as {
+      ok?: boolean;
+      room?: EditorialRoomSnapshot;
+      error?: string;
+    };
+    if (!response.ok || !data.room) {
+      setError(data.error ?? "Editorial Room could not be read.");
+      setRoom(null);
+      return;
+    }
+    setRoom(data.room);
+    setRun(data.room.latestRun);
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+
+  function patchTransmission(next: SafeEditorialTransmission) {
+    setRun((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        transmissions: prev.transmissions.map((t) =>
+          t.id === next.id ? next : t,
+        ),
+        approvedCount: prev.transmissions
+          .map((t) => (t.id === next.id ? next : t))
+          .filter((t) => t.approvalState === "approved").length,
+        draftCount: prev.transmissions
+          .map((t) => (t.id === next.id ? next : t))
+          .filter((t) => t.approvalState === "draft").length,
+      };
+    });
+  }
+
+  async function prepare() {
+    setBusy(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      const response = await fetch("/api/desk/editorial/generate", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+        cache: "no-store",
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        run?: SafeEditorialRun;
+        error?: string;
+      };
+      if (!response.ok || !data.run) {
+        setError(data.error ?? "Generation failed.");
+        return;
+      }
+      setRun(data.run);
+      setStatus("Twenty-four transmissions prepared.");
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onCopy(item: SafeEditorialTransmission) {
+    const ok = await copyText(item.body);
+    setFeedback(ok ? "copied." : "could not copy.");
+    window.setTimeout(() => setFeedback(""), 2000);
+    if (!ok) return;
+    const headers = await getAuthHeaders();
+    if (!headers) return;
+    void fetch(`/api/desk/editorial/transmissions/${item.id}/copy`, {
+      method: "POST",
+      headers,
+      cache: "no-store",
+    }).then(async (response) => {
+      if (!response.ok) return;
+      const data = (await response.json()) as { copyCount?: number };
+      if (typeof data.copyCount === "number") {
+        patchTransmission({ ...item, copyCount: data.copyCount });
+      }
+    });
+  }
+
+  async function onEdit(item: SafeEditorialTransmission, body: string) {
+    setBusyId(item.id);
+    setError(null);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      const response = await fetch(
+        `/api/desk/editorial/transmissions/${item.id}`,
+        {
+          method: "PATCH",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ editedBody: body }),
+          cache: "no-store",
+        },
+      );
+      const data = (await response.json()) as {
+        transmission?: SafeEditorialTransmission;
+        error?: string;
+      };
+      if (!response.ok || !data.transmission) {
+        setError(data.error ?? "Edit failed.");
+        return;
+      }
+      patchTransmission(data.transmission);
+      setStatus("Transmission edited.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function onRegenerate(item: SafeEditorialTransmission) {
+    setBusyId(item.id);
+    setError(null);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      const response = await fetch(
+        `/api/desk/editorial/transmissions/${item.id}/regenerate`,
+        {
+          method: "POST",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ confirm: true }),
+          cache: "no-store",
+        },
+      );
+      const data = (await response.json()) as {
+        transmission?: SafeEditorialTransmission;
+        error?: string;
+      };
+      if (!response.ok || !data.transmission) {
+        setError(data.error ?? "Regeneration failed.");
+        return;
+      }
+      patchTransmission(data.transmission);
+      setStatus("Transmission regenerated.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function onApprove(item: SafeEditorialTransmission) {
+    setBusyId(item.id);
+    setError(null);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      const response = await fetch(
+        `/api/desk/editorial/transmissions/${item.id}/approve`,
+        {
+          method: "POST",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ confirm: true }),
+          cache: "no-store",
+        },
+      );
+      const data = (await response.json()) as {
+        transmission?: SafeEditorialTransmission;
+        error?: string;
+      };
+      if (!response.ok || !data.transmission) {
+        setError(data.error ?? "Approve failed.");
+        return;
+      }
+      patchTransmission(data.transmission);
+      setStatus("Transmission approved for manual posting.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <section className="desk-editorial" aria-label="The Editorial Room">
+      <div className="desk-hollow__head">
+        <h2 className="desk-section-title">THE EDITORIAL ROOM</h2>
+        <button type="button" className="btn-text" onClick={() => void load()}>
+          [ refresh ]
+        </button>
+      </div>
+      <p className="muted">
+        Drafts for the road. Nothing leaves this room unless you carry it.
+      </p>
+
+      {status ? <p>{status}</p> : null}
+      {error ? <p className="muted">{error}</p> : null}
+      <p className="desk-editorial__feedback" aria-live="polite">
+        {feedback}
+      </p>
+      {!room && !error ? <p className="muted">…</p> : null}
+
+      {room ? (
+        <>
+          <OverviewBlock overview={room.overview} />
+
+          <div className="desk-editorial__prepare">
+            <button
+              type="button"
+              className="btn-text"
+              disabled={busy}
+              onClick={() => void prepare()}
+            >
+              [ PREPARE TODAY&apos;S TRANSMISSIONS ]
+            </button>
+            <p className="muted">
+              One reading of the world. Twenty-four drafts. Manual posting only.
+            </p>
+          </div>
+
+          {run ? (
+            <>
+              <h3 className="desk-overview__group-title">
+                TODAY&apos;S PACKAGE · {run.coveredDate}
+              </h3>
+              <p className="muted">
+                {run.approvedCount} approved · {run.draftCount} draft
+              </p>
+              <div className="desk-editorial__list">
+                {run.transmissions.map((item) => (
+                  <TransmissionCard
+                    key={item.id}
+                    item={item}
+                    busyId={busyId}
+                    onCopy={(t) => void onCopy(t)}
+                    onEdit={(t, body) => void onEdit(t, body)}
+                    onRegenerate={(t) => void onRegenerate(t)}
+                    onApprove={(t) => void onApprove(t)}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="muted">No package prepared for today yet.</p>
+          )}
+        </>
+      ) : null}
+    </section>
+  );
+}
