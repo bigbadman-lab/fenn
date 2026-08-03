@@ -29,6 +29,8 @@ export type DeskDeedListItem = {
   evidenceTypes: string[];
   requiresEvidenceReview: boolean;
   ageLabel: string;
+  /** True when approved submission was inscribed on the Wall. */
+  wallShared: boolean;
 };
 
 export type DeskDeedListPage = {
@@ -56,6 +58,11 @@ export type DeskDeedDetail = DeskDeedListItem & {
   leafAwarded: number | null;
   startsAt: string | null;
   endsAt: string | null;
+  wallShare: {
+    shared: boolean;
+    wallEntryId: string | null;
+    wallPath: string | null;
+  };
   rewardPreview: {
     kind: "fixed" | "range" | "none";
     fixedAmount: number | null;

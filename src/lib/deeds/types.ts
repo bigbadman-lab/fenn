@@ -125,6 +125,7 @@ export type DeedSubmissionRow = {
   review_note: string | null;
   leaf_awarded: number | null;
   leaf_ledger_id?: string | null;
+  wall_entry_id?: string | null;
 };
 
 export type DeedSubmissionErrorCode =

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { DeskDeedsWorkspaceNav } from "@/components/desk/desk-deeds-workspace-nav";
 import { useDeskGate } from "@/components/desk/desk-gate";
+import { buildDefaultDeedWallInscription } from "@/lib/desk/deed-inscription";
 import type { DeskDeedDetail } from "@/lib/desk/deeds-types";
 
 export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) {
@@ -16,6 +18,9 @@ export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) 
   const [confirmReject, setConfirmReject] = useState(false);
   const [rangeAmount, setRangeAmount] = useState("");
   const [rejectNote, setRejectNote] = useState("");
+  const [composeWall, setComposeWall] = useState(false);
+  const [wallBody, setWallBody] = useState("");
+  const [wallPreview, setWallPreview] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -38,6 +43,18 @@ export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) 
       return;
     }
     setDetail(data.submission);
+    if (
+      data.submission.status === "approved" &&
+      !data.submission.wallShare?.shared
+    ) {
+      setWallBody(
+        buildDefaultDeedWallInscription({
+          deedTitle: data.submission.deedTitle,
+          displayName: data.submission.displayName,
+          leafAwarded: data.submission.leafAwarded,
+        }),
+      );
+    }
   }, [getAuthHeaders, submissionId]);
 
   useEffect(() => {
@@ -54,7 +71,10 @@ export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) 
       `/api/desk/deeds/submissions/${submissionId}/image`,
       { headers, cache: "no-store" },
     );
-    const data = (await response.json()) as { signedUrl?: string; error?: string };
+    const data = (await response.json()) as {
+      signedUrl?: string;
+      error?: string;
+    };
     if (response.ok && data.signedUrl) {
       window.open(data.signedUrl, "_blank", "noopener,noreferrer");
     } else {
@@ -146,12 +166,81 @@ export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) 
     }
   }
 
+  async function shareToWall() {
+    if (!wallBody.trim()) {
+      setError("Inscription body is required.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        setError("Could not open Desk session.");
+        return;
+      }
+      let response: Response;
+      try {
+        response = await fetch(
+          `/api/desk/deeds/submissions/${submissionId}/share-to-wall`,
+          {
+            method: "POST",
+            headers: { ...headers, "Content-Type": "application/json" },
+            body: JSON.stringify({ body: wallBody }),
+            cache: "no-store",
+          },
+        );
+      } catch {
+        setError("Network failure while inscribing.");
+        return;
+      }
+      let data: {
+        error?: string;
+        created?: boolean;
+        code?: string;
+      } | null = null;
+      try {
+        data = (await response.json()) as {
+          error?: string;
+          created?: boolean;
+          code?: string;
+        };
+      } catch {
+        data = null;
+      }
+      if (!response.ok) {
+        setError(
+          data?.code === "schema_not_ready"
+            ? (data.error ??
+                "Wall link migration is not applied yet.")
+            : (data?.error ??
+                (response.status === 401
+                  ? "Sign in required."
+                  : response.status === 403
+                    ? "Desk access denied."
+                    : "Could not inscribe on the Wall.")),
+        );
+        return;
+      }
+      setStatus(
+        data?.created === false
+          ? "Already inscribed on the Wall."
+          : "INSCRIBED ON THE WALL",
+      );
+      setComposeWall(false);
+      setWallPreview(false);
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!detail && !error) return <p className="muted">…</p>;
   if (error && !detail) {
     return (
       <section>
         <p className="muted">{error}</p>
-        <Link href="/desk/deeds" className="btn-text">
+        <Link href="/desk/deeds?view=submissions" className="btn-text">
           [ back ]
         </Link>
       </section>
@@ -166,11 +255,15 @@ export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) 
         ? rangeAmount || `${detail.reward.min}–${detail.reward.max}`
         : 0;
 
+  const canInscribe =
+    detail.status === "approved" && !detail.wallShare?.shared;
+
   return (
     <section className="desk-deed-detail" aria-label={detail.deedTitle}>
+      <DeskDeedsWorkspaceNav activeView="submissions" />
       <p>
-        <Link href="/desk/deeds" className="btn-text">
-          [ back to Deeds ]
+        <Link href="/desk/deeds?view=submissions" className="btn-text">
+          [ back to submissions ]
         </Link>
         <button type="button" className="btn-text" onClick={() => void load()}>
           [ refresh ]
@@ -238,7 +331,11 @@ export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) 
         <li>
           Image:{" "}
           {detail.hasImageEvidence ? (
-            <button type="button" className="btn-text" onClick={() => void viewImage()}>
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => void viewImage()}
+            >
               [ view evidence ]
             </button>
           ) : (
@@ -265,6 +362,74 @@ export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) 
         ) : null}
         <li>Source: {detail.rewardPreview.expectedSource}</li>
       </ul>
+
+      {detail.status === "approved" ? (
+        <div className="desk-gatherings__actions">
+          <p>
+            APPROVED
+            {detail.leafAwarded != null
+              ? ` · LEAF AWARDED: ${detail.leafAwarded}`
+              : ""}
+          </p>
+          {detail.wallShare?.shared ? (
+            <>
+              <p>INSCRIBED ON THE WALL</p>
+              <Link href="/wall" className="btn-text">
+                [ VIEW INSCRIPTION ]
+              </Link>
+            </>
+          ) : null}
+          {canInscribe && !composeWall ? (
+            <button
+              type="button"
+              className="btn-text"
+              disabled={busy}
+              onClick={() => setComposeWall(true)}
+            >
+              [ INSCRIBE ON THE WALL ]
+            </button>
+          ) : null}
+          {canInscribe && composeWall ? (
+            <div className="desk-gatherings__confirm">
+              <p>WALL INSCRIPTION</p>
+              <label className="desk-register__field">
+                Body
+                <textarea
+                  rows={12}
+                  value={wallBody}
+                  onChange={(e) => setWallBody(e.target.value)}
+                />
+              </label>
+              {wallPreview ? <pre className="ascii">{wallBody}</pre> : null}
+              <button
+                type="button"
+                className="btn-text"
+                onClick={() => setWallPreview((v) => !v)}
+              >
+                [ PREVIEW ]
+              </button>
+              <button
+                type="button"
+                className="btn-text"
+                disabled={busy}
+                onClick={() => void shareToWall()}
+              >
+                [ INSCRIBE ]
+              </button>
+              <button
+                type="button"
+                className="btn-text"
+                onClick={() => {
+                  setComposeWall(false);
+                  setWallPreview(false);
+                }}
+              >
+                [ CANCEL ]
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {detail.status === "pending" ? (
         <div className="desk-gatherings__actions">
@@ -325,7 +490,8 @@ export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) 
             <div className="desk-gatherings__confirm">
               <p>REJECT THIS DEED</p>
               <p className="muted">
-                {detail.deedTitle} · {detail.displayName}. No LEAF will be awarded.
+                {detail.deedTitle} · {detail.displayName}. No LEAF will be
+                awarded.
               </p>
               <label className="desk-register__field">
                 Reason
@@ -353,9 +519,9 @@ export function DeskDeedDetailPanel({ submissionId }: { submissionId: string }) 
             </div>
           )}
         </div>
-      ) : (
-        <p className="muted">This submission is already {detail.status}.</p>
-      )}
+      ) : detail.status === "rejected" ? (
+        <p className="muted">This submission is already rejected.</p>
+      ) : null}
     </section>
   );
 }

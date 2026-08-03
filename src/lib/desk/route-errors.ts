@@ -1,3 +1,4 @@
+import { DeedAuthoringError } from "@/lib/deeds/authoring-validation";
 import { DeedModerationError } from "@/lib/deeds/moderation";
 import { DeskAuthError } from "@/lib/desk/auth";
 import { deskJson } from "@/lib/desk/http";
@@ -6,6 +7,7 @@ import { CommonsError } from "@/lib/commons/errors";
 import { EditorialError } from "@/lib/editorial/errors";
 import { GreenwoodError } from "@/lib/greenwood/errors";
 import { TreasuryError } from "@/lib/treasury/errors";
+import { WallError } from "@/lib/wall/errors";
 import { XError } from "@/lib/x/errors";
 
 /** Shared Desk API error mapper. */
@@ -22,7 +24,19 @@ export function mapDeskError(error: unknown, label: string): Response {
       { status: error.status === 500 ? 500 : error.status },
     );
   }
+  if (error instanceof DeedAuthoringError) {
+    return deskJson(
+      { ok: false, error: error.message, code: error.code },
+      { status: error.status },
+    );
+  }
   if (error instanceof DeedModerationError) {
+    return deskJson(
+      { ok: false, error: error.message, code: error.code },
+      { status: error.status },
+    );
+  }
+  if (error instanceof WallError) {
     return deskJson(
       { ok: false, error: error.message, code: error.code },
       { status: error.status },

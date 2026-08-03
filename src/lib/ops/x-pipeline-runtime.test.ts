@@ -300,7 +300,7 @@ describe("x-pipeline-runtime", () => {
     assert.match(pkg.scripts["agent:run-x"] ?? "", /agent-run-x-pipeline/);
     assert.match(pkg.scripts["agent:run-x"] ?? "", /scripts\/load-env\.ts/);
     assert.doesNotMatch(pkg.scripts["agent:run-x"] ?? "", /--env-file=/);
-    assert.match(pkg.engines?.node ?? "", /20/);
+    assert.match(pkg.engines?.node ?? "", /24/);
     assert.match(pkg.scripts.test, /src\/lib\/ops\/\*\*\/\*\.test\.ts/);
   });
 });

@@ -41,7 +41,23 @@ function assertSubmissionId(id: string): string {
 }
 
 const SUBMISSION_SELECT =
+  "id, deed_id, profile_id, status, evidence_text, evidence_url, evidence_image_path, evidence_other, submitted_at, reviewed_at, review_note, leaf_awarded, leaf_ledger_id, wall_entry_id";
+
+const SUBMISSION_SELECT_WITHOUT_WALL =
   "id, deed_id, profile_id, status, evidence_text, evidence_url, evidence_image_path, evidence_other, submitted_at, reviewed_at, review_note, leaf_awarded, leaf_ledger_id";
+
+function isMissingWallEntryColumn(error: {
+  code?: string;
+  message?: string;
+}): boolean {
+  return (
+    error.code === "42703" ||
+    Boolean(
+      error.message?.includes("wall_entry_id") &&
+        error.message?.toLowerCase().includes("does not exist"),
+    )
+  );
+}
 
 const DEED_SELECT =
   "id, slug, title, lore_description, instructions, category, access_scope, status, reward_leaf_fixed, reward_leaf_min, reward_leaf_max, evidence_requirements, starts_at, ends_at, max_completions, completions_count, is_public, is_repeatable, sponsor_name, external_reward_note, published_at";
@@ -155,6 +171,7 @@ function toListItem(
     evidenceTypes: types,
     requiresEvidenceReview: types.length > 0 || status === "pending",
     ageLabel: ageLabel(row.submitted_at),
+    wallShared: Boolean(row.wall_entry_id),
   };
 }
 
@@ -176,10 +193,43 @@ export async function listDeskDeedSubmissions(
   }
   q = q.order("submitted_at", { ascending: query.sort !== "newest" });
 
-  const { data, error, count } = await q.range(
-    from,
-    postFilter ? from + limit * 5 - 1 : to,
-  );
+  let data: unknown[] | null = null;
+  let error: { code?: string; message?: string } | null = null;
+  let count: number | null = null;
+
+  {
+    const result = await q.range(
+      from,
+      postFilter ? from + limit * 5 - 1 : to,
+    );
+    data = (result.data as unknown[] | null) ?? null;
+    error = result.error;
+    count = result.count ?? null;
+  }
+
+  // Pre-migration safety: queue still loads if wall_entry_id is not applied yet.
+  if (error && isMissingWallEntryColumn(error)) {
+    let fallback = db
+      .from("deed_submissions")
+      .select(SUBMISSION_SELECT_WITHOUT_WALL, { count: "exact" });
+    if (query.status !== "all") {
+      fallback = fallback.eq("status", query.status);
+    }
+    fallback = fallback.order("submitted_at", {
+      ascending: query.sort !== "newest",
+    });
+    const result = await fallback.range(
+      from,
+      postFilter ? from + limit * 5 - 1 : to,
+    );
+    data = ((result.data as unknown[] | null) ?? []).map((row) => ({
+      ...(row as Record<string, unknown>),
+      wall_entry_id: null,
+    }));
+    error = result.error;
+    count = result.count ?? null;
+  }
+
   if (error) {
     throw new DeedModerationError("queue_failed", "Failed to load queue", 500);
   }
@@ -249,11 +299,30 @@ export async function getDeskDeedSubmission(
     .select(SUBMISSION_SELECT)
     .eq("id", id)
     .maybeSingle();
-  if (error) {
+  let row: DeedSubmissionRow | null = null;
+  if (error && isMissingWallEntryColumn(error)) {
+    const fallback = await db
+      .from("deed_submissions")
+      .select(SUBMISSION_SELECT_WITHOUT_WALL)
+      .eq("id", id)
+      .maybeSingle();
+    if (fallback.error) {
+      throw new DeedModerationError(
+        "read_failed",
+        "Failed to load submission",
+        500,
+      );
+    }
+    if (!fallback.data) return null;
+    row = { ...(fallback.data as DeedSubmissionRow), wall_entry_id: null };
+  } else if (error) {
     throw new DeedModerationError("read_failed", "Failed to load submission", 500);
+  } else if (!subRow) {
+    return null;
+  } else {
+    row = subRow as DeedSubmissionRow;
   }
-  if (!subRow) return null;
-  const row = subRow as DeedSubmissionRow;
+  if (!row) return null;
 
   const { data: deedRow } = await db
     .from("deeds")
@@ -316,6 +385,11 @@ export async function getDeskDeedSubmission(
     leafAwarded: row.leaf_awarded,
     startsAt: deed.startsAt,
     endsAt: deed.endsAt,
+    wallShare: {
+      shared: Boolean(row.wall_entry_id),
+      wallEntryId: row.wall_entry_id ?? null,
+      wallPath: row.wall_entry_id ? "/wall" : null,
+    },
     rewardPreview,
   };
 }

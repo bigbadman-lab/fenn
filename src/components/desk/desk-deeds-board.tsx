@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { DeskDeedsWorkspaceNav } from "@/components/desk/desk-deeds-workspace-nav";
 import { useDeskGate } from "@/components/desk/desk-gate";
 import type {
   DeskDeedListItem,
@@ -58,14 +59,13 @@ export function DeskDeedsBoard() {
   }, [load]);
 
   return (
-    <section className="desk-deeds" aria-label="Deeds">
+    <section className="desk-deeds" aria-label="Deed submissions">
+      <DeskDeedsWorkspaceNav activeView="submissions" />
       <div className="desk-hollow__head">
-        <h2 className="desk-section-title">DEEDS</h2>
         <button type="button" className="btn-text" onClick={() => void load()}>
           [ refresh ]
         </button>
       </div>
-      <p className="muted">Moderate submissions. LEAF awards go through the ledger.</p>
       {error ? <p className="muted">{error}</p> : null}
 
       <div className="desk-register__filters">
@@ -121,6 +121,7 @@ export function DeskDeedsBoard() {
                 {item.ageLabel}
                 {item.greenwoodOnly ? " · Greenwood" : ""}
                 {item.hasImageEvidence ? " · image" : ""}
+                {item.wallShared ? " · WALL" : ""}
                 {" · "}
                 <Link
                   href={`/desk/register/${item.profileId}`}
