@@ -70,12 +70,55 @@ export type PublicTreasuryContribution = {
 };
 
 /**
+ * Official public $FENN token asset (server definition).
+ * Source: treasury_assets row with trusted metadata flags — not env.
+ */
+export type OfficialFennTokenAsset = {
+  symbol: string;
+  name: string | null;
+  chainId: number;
+  contractAddress: string;
+  decimals: number;
+};
+
+/** Public safe official-token fields for UI and GET /api/treasury. */
+export type PublicOfficialFennToken = {
+  symbol: "FENN";
+  chainId: number;
+  contractAddress: string;
+  explorerUrl: string;
+};
+
+/** DB candidate row for official-token resolution (includes metadata). */
+export type OfficialTokenCandidateRow = {
+  id: string;
+  symbol: string;
+  name: string | null;
+  chain_id: number;
+  contract_address: string | null;
+  decimals: number;
+  is_tracked: boolean;
+  metadata: Record<string, unknown> | null;
+};
+
+export type OfficialFennTokenLookup =
+  | { status: "none" }
+  | { status: "ok"; token: OfficialFennTokenAsset }
+  | { status: "ambiguous"; count: number }
+  | {
+      status: "invalid";
+      reason: "symbol_mismatch" | "invalid_address" | "invalid_decimals";
+    };
+
+/**
  * Public Treasury snapshot for Stage 9.2+.
  * Holdings come only from live chain reads — never contribution sums.
+ * officialToken is independent of wallet balances (null before launch).
  */
 export type PublicTreasurySnapshot =
   | {
       state: "unconfigured";
+      officialToken: PublicOfficialFennToken | null;
     }
   | {
       state: "ready";
@@ -83,6 +126,7 @@ export type PublicTreasurySnapshot =
       observedAt: string;
       assets: PublicTreasuryAssetRead[];
       contributions: PublicTreasuryContribution[];
+      officialToken: PublicOfficialFennToken | null;
     }
   | {
       state: "unavailable";
@@ -90,4 +134,5 @@ export type PublicTreasurySnapshot =
       observedAt: string;
       assets: PublicTreasuryAssetRead[];
       contributions: PublicTreasuryContribution[];
+      officialToken: PublicOfficialFennToken | null;
     };

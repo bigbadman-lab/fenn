@@ -6,8 +6,15 @@ import {
   robinhoodAddressExplorerUrl,
   shortenWallet,
 } from "@/lib/greenwood/hollow/explorer";
+import {
+  getOfficialFennTokenLookup,
+} from "@/lib/treasury/official-token";
 import { getPublicTreasurySnapshot } from "@/lib/treasury/snapshot";
-import type { PublicTreasurySnapshot } from "@/lib/treasury/types";
+import type {
+  OfficialFennTokenLookup,
+  PublicTreasurySnapshot,
+} from "@/lib/treasury/types";
+import { abbreviateEvmAddress } from "@/lib/wallet/evm";
 
 export type DeskTreasuryStatus =
   | "readable"
@@ -24,6 +31,14 @@ export type DeskTreasuryAsset = {
   reason: "rpc_failed" | "configuration_error" | null;
 };
 
+export type DeskOfficialFennToken = {
+  status: "not_configured" | "configured" | "needs_attention";
+  contractAddress: string | null;
+  contractShort: string | null;
+  explorerUrl: string | null;
+  detail: string | null;
+};
+
 export type DeskTreasurySnapshot = {
   status: DeskTreasuryStatus;
   rpcConfigured: boolean;
@@ -32,6 +47,7 @@ export type DeskTreasurySnapshot = {
   explorerUrl: string | null;
   observedAt: string | null;
   assets: DeskTreasuryAsset[];
+  officialFenn: DeskOfficialFennToken;
   commons: PublicCommonsCommitment[];
   commonsAvailable: boolean;
   warnings: string[];
@@ -52,11 +68,66 @@ function toDeskStatus(
   return "readable";
 }
 
+function deskOfficialFromLookup(
+  lookup: OfficialFennTokenLookup,
+): DeskOfficialFennToken {
+  if (lookup.status === "none") {
+    return {
+      status: "not_configured",
+      contractAddress: null,
+      contractShort: null,
+      explorerUrl: null,
+      detail: "not configured",
+    };
+  }
+  if (lookup.status === "ok") {
+    const address = lookup.token.contractAddress;
+    return {
+      status: "configured",
+      contractAddress: address,
+      contractShort: abbreviateEvmAddress(address),
+      explorerUrl: robinhoodAddressExplorerUrl(address),
+      detail: "tracked · public",
+    };
+  }
+  return {
+    status: "needs_attention",
+    contractAddress: null,
+    contractShort: null,
+    explorerUrl: null,
+    detail: "CONTRACT CONFIGURATION NEEDS ATTENTION",
+  };
+}
+
 export async function getDeskTreasurySnapshot(): Promise<DeskTreasurySnapshot> {
   const snapshot = await getPublicTreasurySnapshot();
   const warnings: string[] = [];
   const rpcOk = rpcConfigured();
   if (!rpcOk) warnings.push("RPC is not configured.");
+
+  let officialFenn: DeskOfficialFennToken;
+  try {
+    const lookup = await getOfficialFennTokenLookup();
+    officialFenn = deskOfficialFromLookup(lookup);
+    if (lookup.status === "ambiguous") {
+      warnings.push(
+        "Official FENN contract is ambiguous — multiple public official rows.",
+      );
+    } else if (lookup.status === "invalid") {
+      warnings.push(
+        `Official FENN contract is invalid (${lookup.reason}).`,
+      );
+    }
+  } catch {
+    officialFenn = {
+      status: "needs_attention",
+      contractAddress: null,
+      contractShort: null,
+      explorerUrl: null,
+      detail: "CONTRACT CONFIGURATION NEEDS ATTENTION",
+    };
+    warnings.push("Official FENN contract could not be loaded.");
+  }
 
   if (snapshot.state === "unconfigured") {
     warnings.push("Treasury wallet is not configured.");
@@ -68,6 +139,7 @@ export async function getDeskTreasurySnapshot(): Promise<DeskTreasurySnapshot> {
       explorerUrl: null,
       observedAt: null,
       assets: [],
+      officialFenn,
       commons: [],
       commonsAvailable: false,
       warnings,
@@ -125,6 +197,7 @@ export async function getDeskTreasurySnapshot(): Promise<DeskTreasurySnapshot> {
     explorerUrl: robinhoodAddressExplorerUrl(snapshot.treasuryAddress),
     observedAt: snapshot.observedAt,
     assets,
+    officialFenn,
     commons,
     commonsAvailable,
     warnings: [...new Set(warnings)],

@@ -71,9 +71,11 @@ describe("LG5.5 Desk Treasury", () => {
     assert.match(route, /getDeskTreasurySnapshot/);
     assert.doesNotMatch(route, /requireFennAdmin|POST|PATCH|DELETE/);
     assert.match(lib, /getPublicTreasurySnapshot/);
+    assert.match(lib, /getOfficialFennTokenLookup|officialFenn/);
     assert.doesNotMatch(lib, /ROBINHOOD_CHAIN_RPC_URL\}|privateKey|sign/i);
     assert.match(ui, /REFRESH TREASURY/);
     assert.match(ui, /Read-only\. No transfers\./);
+    assert.match(ui, /OFFICIAL FENN CONTRACT/);
     assert.doesNotMatch(ui, /private key|walletClient|signTransaction/i);
   });
 });

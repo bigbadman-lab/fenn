@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CommonsCommitments } from "@/components/commons/commons-commitments";
 import { CommonsHistory } from "@/components/commons/commons-history";
+import { OfficialFennContract } from "@/components/commons/official-fenn-contract";
 import { TreasuryReadout } from "@/components/commons/treasury-readout";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { PagePulse } from "@/components/world-pulse/page-pulse";
@@ -20,7 +21,7 @@ export const dynamic = "force-dynamic";
  * Holdings and commitments are separate facts — no available/remaining calc.
  */
 export default async function CommonsPage() {
-  const { treasury, commons } = await loadCommonsPageData();
+  const { treasury, commons, officialToken } = await loadCommonsPageData();
 
   return (
     <article className="place commons">
@@ -53,6 +54,9 @@ export default async function CommonsPage() {
 
       <div className="commons-sheet" aria-label="treasury and commons accounts">
         <TreasuryReadout treasury={treasury} />
+        {officialToken ? (
+          <OfficialFennContract token={officialToken} variant="commons" />
+        ) : null}
         <CommonsCommitments commons={commons} />
         <CommonsHistory commons={commons} />
 

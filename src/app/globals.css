@@ -1664,6 +1664,77 @@ a.fenn-map__link:focus-visible {
   font-size: 0.88rem;
 }
 
+.home-official-token {
+  max-width: 28rem;
+}
+
+.home-official-token__chain {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-official-token__title {
+  margin: 0 0 0.55rem;
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-hoard);
+}
+
+.home-official-token__address-line {
+  margin: 0 0 0.25rem;
+}
+
+.home-official-token__address {
+  font-family: inherit;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.home-official-token__full {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+}
+
+.home-official-token__full-code {
+  display: block;
+  font-family: inherit;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.home-official-token__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+}
+
+.home-official-token__feedback {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+}
+
+@media (forced-colors: active) {
+  .commons-official-token__address,
+  .commons-official-token__chain,
+  .home-official-token__title,
+  .home-official-token__address,
+  .home-official-token__full-code {
+    color: CanvasText;
+  }
+
+  .commons-official-token__actions .btn-text:focus-visible,
+  .home-official-token__actions .btn-text:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
+}
+
 /* THE OLD DIRECTORY — hard-edged terminal index */
 .old-dir__panel {
   border: 1px solid color-mix(in srgb, var(--color-bone) 32%, transparent);
@@ -2855,6 +2926,39 @@ a.fenn-map__link:focus-visible {
   font-family: inherit;
   font-size: 0.88rem;
   word-break: break-all;
+}
+
+.commons-official-token__chain {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.commons-official-token__address-line {
+  margin: 0 0 0.75rem;
+}
+
+.commons-official-token__address {
+  display: block;
+  font-family: inherit;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.commons-official-token__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  margin: 0 0 0.35rem;
+}
+
+.commons-official-token__feedback {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
 }
 
 .commons-observed {

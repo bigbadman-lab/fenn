@@ -88,8 +88,9 @@ describe("getPublicTreasurySnapshot", () => {
         throw new Error("no");
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
-    assert.deepEqual(snapshot, { state: "unconfigured" });
+    assert.deepEqual(snapshot, { state: "unconfigured", officialToken: null });
     assert.equal(chainCalls, 0);
   });
 
@@ -112,6 +113,7 @@ describe("getPublicTreasurySnapshot", () => {
         throw new Error("ERC-20 should not run");
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.equal(snapshot.state, "ready");
     if (snapshot.state !== "ready") return;
@@ -148,6 +150,7 @@ describe("getPublicTreasurySnapshot", () => {
         return toTreasuryAmount(raw, 18);
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.equal(snapshot.state, "ready");
     if (snapshot.state !== "ready") return;
@@ -171,6 +174,7 @@ describe("getPublicTreasurySnapshot", () => {
       readNative: async () => toTreasuryAmount(BigInt(1) * BigInt(10) ** BigInt(18), 18),
       readErc20: async () => toTreasuryAmount(BigInt(2_000_000), 6),
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.equal(snapshot.state, "ready");
     if (snapshot.state !== "ready") return;
@@ -203,6 +207,7 @@ describe("getPublicTreasurySnapshot", () => {
         throw new Error("no");
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.equal(snapshot.state, "ready");
     if (snapshot.state !== "ready") return;
@@ -227,6 +232,7 @@ describe("getPublicTreasurySnapshot", () => {
         throw new TreasuryError("treasury_read_failed", "boom", 502);
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.equal(snapshot.state, "ready");
     if (snapshot.state !== "ready") return;
@@ -257,6 +263,7 @@ describe("getPublicTreasurySnapshot", () => {
         throw new Error("rpc down");
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.equal(snapshot.state, "unavailable");
     if (snapshot.state !== "unavailable") return;
@@ -289,6 +296,7 @@ describe("getPublicTreasurySnapshot", () => {
         return toTreasuryAmount(BigInt(0), 6);
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.equal(snapshot.state, "unavailable");
     assert.equal(readCalls, 0);
@@ -318,6 +326,7 @@ describe("getPublicTreasurySnapshot", () => {
         throw new Error("no");
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.equal(snapshot.state, "ready");
     if (snapshot.state !== "ready") return;
@@ -348,6 +357,7 @@ describe("getPublicTreasurySnapshot", () => {
         return toTreasuryAmount(BigInt(0), 6);
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.deepEqual(holders, [TREASURY, TREASURY]);
   });
@@ -367,6 +377,7 @@ describe("getPublicTreasurySnapshot", () => {
         throw new Error("no");
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.equal(snapshot.state, "ready");
     if (snapshot.state !== "ready") return;
@@ -401,6 +412,7 @@ describe("getPublicTreasurySnapshot", () => {
         throw new Error("no");
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     assert.deepEqual(snapshot, {
       state: "ready",
@@ -408,8 +420,82 @@ describe("getPublicTreasurySnapshot", () => {
       observedAt: OBSERVED.toISOString(),
       assets: [],
       contributions: [],
+      officialToken: null,
     });
     assert.equal(chainCalls, 0);
+  });
+
+  it("includes officialToken independently of wallet balances", async () => {
+    const official = {
+      symbol: "FENN" as const,
+      chainId: ROBINHOOD_CHAIN_ID,
+      contractAddress: TOKEN,
+      explorerUrl: `https://explorer.robinhood.com/address/${TOKEN}`,
+    };
+    const snapshot = await getPublicTreasurySnapshot({
+      getConfig: async () => ({ configured: false }),
+      listAssetRows: async () => {
+        throw new Error("should not load assets");
+      },
+      getContributions: async () => {
+        throw new Error("should not load contributions");
+      },
+      getOfficialToken: async () => official,
+      createClient: () => {
+        throw new Error("should not create client");
+      },
+      readNative: async () => {
+        throw new Error("no");
+      },
+      readErc20: async () => {
+        throw new Error("no");
+      },
+      now: () => OBSERVED,
+    });
+    assert.deepEqual(snapshot, {
+      state: "unconfigured",
+      officialToken: official,
+    });
+  });
+
+  it("keeps officialToken when asset RPC fails", async () => {
+    const official = {
+      symbol: "FENN" as const,
+      chainId: ROBINHOOD_CHAIN_ID,
+      contractAddress: TOKEN,
+      explorerUrl: `https://explorer.robinhood.com/address/${TOKEN}`,
+    };
+    const snapshot = await getPublicTreasurySnapshot({
+      getConfig: async () => ({
+        configured: true,
+        walletAddress: TREASURY,
+      }),
+      listAssetRows: async () => [
+        erc20Row({
+          id: "fenn",
+          symbol: "FENN",
+          name: "FENN",
+          contract_address: TOKEN,
+          decimals: 18,
+        }),
+      ],
+      getContributions: async () => [],
+      getOfficialToken: async () => official,
+      createClient: () => ({}) as never,
+      readNative: async () => {
+        throw new Error("native should not run");
+      },
+      readErc20: async () => {
+        throw new Error("rpc down");
+      },
+      now: () => OBSERVED,
+    });
+    assert.equal(snapshot.state, "unavailable");
+    if (snapshot.state !== "unavailable") {
+      throw new Error("expected unavailable snapshot");
+    }
+    assert.deepEqual(snapshot.officialToken, official);
+    assert.equal(snapshot.assets[0].state, "unavailable");
   });
 
   it("public DTO omits notes, actor IDs, and RPC URL", async () => {
@@ -426,6 +512,7 @@ describe("getPublicTreasurySnapshot", () => {
         throw new Error("no");
       },
       now: () => OBSERVED,
+      getOfficialToken: async () => null,
     });
     const json = JSON.stringify(snapshot);
     assert.doesNotMatch(json, /notes|verified_by|rpcUrl|ROBINHOOD_CHAIN_RPC/i);
@@ -451,17 +538,24 @@ describe("GET /api/treasury route", () => {
     const { handleTreasuryGet } = await import("../../app/api/treasury/route");
     const response = await handleTreasuryGet(async () => ({
       state: "unconfigured",
+      officialToken: null,
     }));
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.deepEqual(body, {
       ok: true,
-      treasury: { state: "unconfigured" },
+      treasury: { state: "unconfigured", officialToken: null },
     });
   });
 
-  it("returns ready snapshot as 200", async () => {
+  it("returns ready snapshot as 200 with safe official token fields", async () => {
     const { handleTreasuryGet } = await import("../../app/api/treasury/route");
+    const officialToken = {
+      symbol: "FENN" as const,
+      chainId: ROBINHOOD_CHAIN_ID,
+      contractAddress: TOKEN,
+      explorerUrl: `https://explorer.robinhood.com/address/${TOKEN}`,
+    };
     const response = await handleTreasuryGet(async () => ({
       state: "ready",
       treasuryAddress: TREASURY,
@@ -473,17 +567,63 @@ describe("GET /api/treasury route", () => {
           chainId: ROBINHOOD_CHAIN_ID,
           contractAddress: null,
           decimals: 18,
-          state: "available",
+          state: "available" as const,
           balance: "5",
+        },
+        {
+          symbol: "FENN",
+          name: "FENN",
+          chainId: ROBINHOOD_CHAIN_ID,
+          contractAddress: TOKEN,
+          decimals: 18,
+          state: "available" as const,
+          balance: "0",
         },
       ],
       contributions: [],
+      officialToken,
     }));
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.equal(body.ok, true);
     assert.equal(body.treasury.state, "ready");
     assert.equal(body.treasury.assets[0].balance, "5");
+    assert.equal(body.treasury.assets[1].balance, "0");
+    assert.deepEqual(body.treasury.officialToken, officialToken);
+    const json = JSON.stringify(body);
+    assert.doesNotMatch(json, /metadata|public_contract|"decimals":18,"official/);
+    assert.doesNotMatch(json, /ROBINHOOD_CHAIN_RPC|rpcUrl/i);
+  });
+
+  it("keeps officialToken when FENN balance is rpc-unavailable", async () => {
+    const { handleTreasuryGet } = await import("../../app/api/treasury/route");
+    const officialToken = {
+      symbol: "FENN" as const,
+      chainId: ROBINHOOD_CHAIN_ID,
+      contractAddress: TOKEN,
+      explorerUrl: `https://explorer.robinhood.com/address/${TOKEN}`,
+    };
+    const response = await handleTreasuryGet(async () => ({
+      state: "ready",
+      treasuryAddress: TREASURY,
+      observedAt: OBSERVED.toISOString(),
+      assets: [
+        {
+          symbol: "FENN",
+          name: "FENN",
+          chainId: ROBINHOOD_CHAIN_ID,
+          contractAddress: TOKEN,
+          decimals: 18,
+          state: "unavailable" as const,
+          reason: "rpc_failed" as const,
+        },
+      ],
+      contributions: [],
+      officialToken,
+    }));
+    const body = await response.json();
+    assert.deepEqual(body.treasury.officialToken, officialToken);
+    assert.equal(body.treasury.assets[0].state, "unavailable");
   });
 
   it("returns unavailable as 200", async () => {
@@ -504,6 +644,7 @@ describe("GET /api/treasury route", () => {
         },
       ],
       contributions: [],
+      officialToken: null,
     }));
     assert.equal(response.status, 200);
     const body = await response.json();

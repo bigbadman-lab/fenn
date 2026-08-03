@@ -1,0 +1,109 @@
+-- FENN — Launch-day official $FENN public contract (ops EXAMPLE, non-migration)
+--
+-- This file is documentation / ops scaffolding only.
+-- Do NOT apply as a migration.
+-- Do NOT commit a real production contract address.
+--
+-- Preconditions:
+--   1. Migration 44 applied (treasury_assets_one_official_public_4663_uidx)
+--   2. ROBINHOOD_CHAIN_RPC_URL set on the server (for live Treasury balanceOf)
+--   3. No existing official public row on chain 4663 (see verification below)
+--
+-- After insert, no Vercel redeploy is required:
+--   * /commons — next request or 60s PagePulse
+--   * homepage — next load or within ISR revalidate (60s)
+--   * GET /api/treasury — no-store, immediate
+
+-- ---------------------------------------------------------------------------
+-- 0) Safe verification before insert
+-- ---------------------------------------------------------------------------
+-- SELECT id, symbol, chain_id, contract_address, is_tracked, metadata
+-- FROM public.treasury_assets
+-- WHERE chain_id = 4663
+--   AND (metadata->>'official') = 'true'
+--   AND (metadata->>'public_contract') = 'true';
+--
+-- Expect 0 rows before launch. If 1+ rows exist, stop and fix manually.
+-- Multiple rows should already be blocked by the partial unique index.
+
+-- ---------------------------------------------------------------------------
+-- 1) Insert official public FENN token (replace address + decimals)
+-- ---------------------------------------------------------------------------
+-- Address must be lowercase 0x + 40 hex (is_normalized_evm_address).
+-- Use the real token decimals from deployment — do not invent 18 if wrong.
+--
+-- INSERT INTO public.treasury_assets (
+--   symbol,
+--   name,
+--   chain_id,
+--   contract_address,
+--   decimals,
+--   is_tracked,
+--   display_order,
+--   metadata
+-- )
+-- VALUES (
+--   'FENN',
+--   'FENN',
+--   4663,
+--   lower('0xREPLACE_WITH_OFFICIAL_CONTRACT'),
+--   18,
+--   true,
+--   10,
+--   jsonb_build_object(
+--     'asset_type', 'erc20',
+--     'network', 'robinhood_chain',
+--     'official', true,
+--     'public_contract', true
+--   )
+-- );
+
+-- ---------------------------------------------------------------------------
+-- 2) Idempotent alternative (only if you know zero official rows exist)
+-- ---------------------------------------------------------------------------
+-- INSERT INTO public.treasury_assets (
+--   symbol, name, chain_id, contract_address, decimals, is_tracked, display_order, metadata
+-- )
+-- SELECT
+--   'FENN',
+--   'FENN',
+--   4663,
+--   lower('0xREPLACE_WITH_OFFICIAL_CONTRACT'),
+--   18,
+--   true,
+--   10,
+--   jsonb_build_object(
+--     'asset_type', 'erc20',
+--     'network', 'robinhood_chain',
+--     'official', true,
+--     'public_contract', true
+--   )
+-- WHERE NOT EXISTS (
+--   SELECT 1
+--   FROM public.treasury_assets
+--   WHERE chain_id = 4663
+--     AND (metadata->>'official') = 'true'
+--     AND (metadata->>'public_contract') = 'true'
+-- );
+
+-- ---------------------------------------------------------------------------
+-- 3) Post-insert check
+-- ---------------------------------------------------------------------------
+-- SELECT symbol, chain_id, contract_address, is_tracked,
+--        metadata->>'official' AS official,
+--        metadata->>'public_contract' AS public_contract
+-- FROM public.treasury_assets
+-- WHERE chain_id = 4663
+--   AND upper(symbol) = 'FENN'
+--   AND contract_address IS NOT NULL;
+--
+-- Then open /desk/treasury — expect OFFICIAL FENN CONTRACT + tracked · public.
+-- Open /commons and the homepage — expect the public contract block.
+
+-- ---------------------------------------------------------------------------
+-- Notes
+-- ---------------------------------------------------------------------------
+-- * Do not store the token on treasury_config.
+-- * Do not add NEXT_PUBLIC_FENN_TOKEN_ADDRESS or hardcode the address in app code.
+-- * Untrack (is_tracked = false) hides balances and the public contract surface.
+-- * Clearing official/public_contract flags hides the public block without deleting the row.

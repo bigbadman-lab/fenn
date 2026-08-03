@@ -1,4 +1,6 @@
 export type {
+  OfficialFennTokenAsset,
+  PublicOfficialFennToken,
   PublicTreasuryAssetRead,
   PublicTreasuryConfig,
   PublicTreasuryContribution,

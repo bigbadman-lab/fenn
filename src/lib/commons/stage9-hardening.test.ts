@@ -155,7 +155,13 @@ describe("Stage 9.5 Treasury + Commons hardening", () => {
       f.endsWith(".tsx"),
     )) {
       const source = readFileSync(join(componentsDir, file), "utf8");
-      assert.doesNotMatch(source, /"use client"/);
+      // Official FENN copy/clipboard is the only intentional client island.
+      if (file === "official-fenn-contract.tsx") {
+        assert.match(source, /"use client"/);
+        assert.match(source, /navigator\.clipboard/);
+      } else {
+        assert.doesNotMatch(source, /"use client"/);
+      }
       assert.doesNotMatch(
         source,
         /from ["']@\/lib\/circulation|circulation_recipients|\.from\(["']circulations["']\)/,

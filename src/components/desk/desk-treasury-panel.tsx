@@ -109,6 +109,34 @@ export function DeskTreasuryPanel() {
             ) : null}
           </ul>
 
+          <h3 className="desk-overview__group-title">OFFICIAL FENN CONTRACT</h3>
+          <ul className="desk-member__facts">
+            {treasury.officialFenn.status === "configured" ? (
+              <>
+                <li>
+                  <code>{treasury.officialFenn.contractAddress}</code>
+                </li>
+                <li>{treasury.officialFenn.detail}</li>
+                {treasury.officialFenn.explorerUrl ? (
+                  <li>
+                    <a
+                      href={treasury.officialFenn.explorerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-text"
+                    >
+                      [ explorer ]
+                    </a>
+                  </li>
+                ) : null}
+              </>
+            ) : treasury.officialFenn.status === "needs_attention" ? (
+              <li>{treasury.officialFenn.detail}</li>
+            ) : (
+              <li>{treasury.officialFenn.detail ?? "not configured"}</li>
+            )}
+          </ul>
+
           <h3 className="desk-overview__group-title">ASSETS</h3>
           {treasury.assets.length === 0 ? (
             <p className="muted">No tracked assets.</p>

@@ -74,3 +74,4 @@
 -- * Commons commitments are independent accounting facts.
 -- * Do not invent USD prices or sum assets into a fake Treasury total.
 -- * Circulations / Ledger remain Stage 10.
+-- * Official public $FENN contract: see official_fenn_token_ops_example.sql

@@ -15,7 +15,9 @@ import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
 import { getTreasuryConfig } from "@/lib/treasury/config";
 import { getVerifiedTreasuryContributions } from "@/lib/treasury/contributions-query";
 import { TreasuryError } from "@/lib/treasury/errors";
+import { getPublicOfficialFennToken } from "@/lib/treasury/official-token";
 import type {
+  PublicOfficialFennToken,
   PublicTreasuryAssetRead,
   PublicTreasuryContribution,
   PublicTreasurySnapshot,
@@ -28,6 +30,7 @@ export type TreasurySnapshotDeps = {
   getConfig: () => Promise<TreasuryConfigState>;
   listAssetRows: () => Promise<TreasuryAssetRow[]>;
   getContributions: () => Promise<PublicTreasuryContribution[]>;
+  getOfficialToken: () => Promise<PublicOfficialFennToken | null>;
   createClient: () => RobinhoodPublicClient;
   readNative: (
     holder: string,
@@ -46,6 +49,7 @@ const defaultDeps: TreasurySnapshotDeps = {
   getConfig: () => getTreasuryConfig(),
   listAssetRows: () => listTrackedTreasuryAssetRows(),
   getContributions: () => getVerifiedTreasuryContributions(),
+  getOfficialToken: () => getPublicOfficialFennToken(),
   createClient: () => createRobinhoodPublicClient(),
   readNative: readNativeBalance,
   readErc20: readErc20Balance,
@@ -167,9 +171,15 @@ export async function getPublicTreasurySnapshot(
 ): Promise<PublicTreasurySnapshot> {
   const deps: TreasurySnapshotDeps = { ...defaultDeps, ...overrides };
 
+  // Official token is independent of the Treasury wallet configuration.
+  const officialToken = await deps.getOfficialToken().catch((error: unknown) => {
+    console.error("[treasury] official token unavailable", error);
+    return null;
+  });
+
   const config = await deps.getConfig();
   if (!config.configured) {
-    return { state: "unconfigured" };
+    return { state: "unconfigured", officialToken };
   }
 
   const treasuryAddress = config.walletAddress;
@@ -215,6 +225,7 @@ export async function getPublicTreasurySnapshot(
       observedAt,
       assets: [],
       contributions,
+      officialToken,
     };
   }
 
@@ -228,6 +239,7 @@ export async function getPublicTreasurySnapshot(
         s.kind === "config_error" ? s.read : unavailableAsset(s.asset, "configuration_error"),
       ),
       contributions,
+      officialToken,
     };
   }
 
@@ -287,5 +299,6 @@ export async function getPublicTreasurySnapshot(
     observedAt,
     assets,
     contributions,
+    officialToken,
   };
 }
