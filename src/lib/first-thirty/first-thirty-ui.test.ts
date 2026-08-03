@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url";
 
 import {
   FIRST_THIRTY_CHECKLIST,
+  FIRST_THIRTY_MILESTONE_LABELS,
+  FIRST_THIRTY_REVEAL_TITLE,
+  firstThirtyChecklistMarkLabel,
+  firstThirtyChecklistMarks,
   firstThirtyThresholdTotal,
 } from "@/lib/first-thirty/copy";
 import {
@@ -219,14 +223,86 @@ describe("THE FIRST THIRTY — presentation helpers", () => {
   });
 
   it("checklist labels match THE FIRST THIRTY voice", () => {
-    assert.equal(FIRST_THIRTY_CHECKLIST.firstCamp, "THE FIRE HEARD YOU");
     assert.equal(
-      FIRST_THIRTY_CHECKLIST.thirdCamp,
-      "THE GREENWOOD REMEMBERED",
+      FIRST_THIRTY_MILESTONE_LABELS.firstCamp.completed,
+      "THE FIRE HEARD YOU",
     );
     assert.equal(
-      FIRST_THIRTY_CHECKLIST.firstDeed,
+      FIRST_THIRTY_MILESTONE_LABELS.thirdCamp.completed,
+      "YOUR WORDS WERE KEPT",
+    );
+    assert.equal(
+      FIRST_THIRTY_MILESTONE_LABELS.firstDeed.completed,
+      "A DEED WAS WITNESSED",
+    );
+    assert.equal(
+      FIRST_THIRTY_MILESTONE_LABELS.firstCamp.incomplete,
+      "SPEAK SO THE FIRE MAY HEAR YOU",
+    );
+    assert.equal(
+      FIRST_THIRTY_MILESTONE_LABELS.thirdCamp.incomplete,
+      "LET YOUR WORDS CARRY FURTHER",
+    );
+    assert.equal(
+      FIRST_THIRTY_MILESTONE_LABELS.firstDeed.incomplete,
       "A DEED MUST BE WITNESSED",
+    );
+    assert.equal(FIRST_THIRTY_CHECKLIST.firstCamp, "THE FIRE HEARD YOU");
+    assert.equal(FIRST_THIRTY_CHECKLIST.thirdCamp, "YOUR WORDS WERE KEPT");
+    assert.equal(FIRST_THIRTY_CHECKLIST.firstDeed, "A DEED WAS WITNESSED");
+    assert.equal(
+      firstThirtyChecklistMarkLabel("thirdCamp", false),
+      "LET YOUR WORDS CARRY FURTHER",
+    );
+    assert.equal(
+      firstThirtyChecklistMarkLabel("firstDeed", true),
+      "A DEED WAS WITNESSED",
+    );
+  });
+
+  it("zero-progress checklist is Camp → Camp → Deed, never Greenwood milestone", () => {
+    const marks = firstThirtyChecklistMarks({
+      firstCamp: false,
+      thirdCamp: false,
+      firstDeed: false,
+    });
+    assert.deepEqual(
+      marks.map((m) => m.label),
+      [
+        "SPEAK SO THE FIRE MAY HEAR YOU",
+        "LET YOUR WORDS CARRY FURTHER",
+        "A DEED MUST BE WITNESSED",
+      ],
+    );
+    assert.equal(marks.length, 3);
+    assert.ok(marks.every((m) => !m.done));
+  });
+
+  it("10-LEAF (first CAMP done) labels first complete and third incomplete", () => {
+    const marks = firstThirtyChecklistMarks({
+      firstCamp: true,
+      thirdCamp: false,
+      firstDeed: false,
+    });
+    assert.equal(marks[0]?.label, "THE FIRE HEARD YOU");
+    assert.equal(marks[0]?.done, true);
+    assert.equal(marks[1]?.label, "LET YOUR WORDS CARRY FURTHER");
+    assert.equal(marks[1]?.done, false);
+    assert.equal(marks[2]?.label, "A DEED MUST BE WITNESSED");
+  });
+
+  it("acknowledgement titles never say GREENWOOD REMEMBERED", () => {
+    assert.equal(
+      FIRST_THIRTY_REVEAL_TITLE.camp_three,
+      "YOUR WORDS WERE KEPT",
+    );
+    assert.equal(
+      FIRST_THIRTY_REVEAL_TITLE.first_deed_witnessed,
+      "A DEED WAS WITNESSED",
+    );
+    assert.equal(
+      FIRST_THIRTY_REVEAL_TITLE.first_deed_greenwood_open,
+      "THE GREENWOOD HAS OPENED",
     );
   });
 
@@ -297,6 +373,9 @@ describe("THE FIRST THIRTY — UI source contracts", () => {
     assert.match(ui, /FIRST_THIRTY_GREENWOOD_HREF/);
     assert.match(ui, /\[ FIND A DEED \]/);
     assert.match(ui, /FIRST_THIRTY_DEEDS_HREF/);
+    assert.match(ui, /firstThirtyChecklistMarks/);
+    assert.doesNotMatch(ui, /completed:|not yet:/);
+    assert.doesNotMatch(ui, /THE GREENWOOD REMEMBERED|GREENWOOD REMEMBERED/);
     assert.doesNotMatch(ui, /localStorage|messageCount|reward_recommendation/);
   });
 
@@ -309,7 +388,10 @@ describe("THE FIRST THIRTY — UI source contracts", () => {
     assert.match(ui, /prefers-reduced-motion/);
     assert.match(ui, /formatActualLeafGrantLine/);
     assert.match(ui, /FIRST_THIRTY_REVEAL_TITLE/);
-    assert.match(ui, /YOUR DEED WAS WITNESSED/);
+    assert.match(ui, /first_deed_witnessed/);
+    assert.match(ui, /first_deed_greenwood_open/);
+    assert.doesNotMatch(ui, /THE GREENWOOD REMEMBERED|GREENWOOD REMEMBERED/);
+    assert.doesNotMatch(ui, /YOUR DEED WAS WITNESSED/);
     assert.match(ui, /\[ WALK TO THE GREENWOOD \]/);
     assert.match(ui, /FIRST_THIRTY_GREENWOOD_HREF/);
     assert.match(ui, /\[ FIND A DEED \]/);
@@ -505,9 +587,10 @@ describe("THE FIRST THIRTY — homepage and outlaw journey", () => {
       }),
       "home",
     );
-    assert.equal(mid.length, 1);
-    assert.match(mid[0] ?? "", /remain/i);
-    assert.ok(!mid.some((l) => /Fire heard/i.test(l)));
+    assert.ok(mid.some((l) => /Return to Camp/i.test(l)));
+    assert.ok(mid.some((l) => /words carry further/i.test(l)));
+    assert.ok(mid.some((l) => /2 MEANINGFUL EXCHANGES REMAIN/i.test(l)));
+    assert.ok(!mid.some((l) => /Fire heard|Greenwood remembered/i.test(l)));
 
     const deed = firstThirtyNextDescription(
       activeProgress({
@@ -516,8 +599,11 @@ describe("THE FIRST THIRTY — homepage and outlaw journey", () => {
       }),
       "home",
     );
-    assert.deepEqual(deed, ["Offer a Deed to the world."]);
-    assert.ok(!deed.some((l) => /One Deed remains|Greenwood remembered/i.test(l)));
+    assert.deepEqual(deed, [
+      "Offer a Deed to the world.",
+      "The Greenwood opens when it is witnessed.",
+    ]);
+    assert.ok(!deed.some((l) => /Greenwood remembered/i.test(l)));
 
     // Alias still works
     assert.deepEqual(
@@ -536,7 +622,7 @@ describe("THE FIRST THIRTY — homepage and outlaw journey", () => {
     assert.ok(zero.bodyLines.some((l) => /first thirty leaves/i.test(l)));
     assert.deepEqual(zero.nextDescription, ["The road begins in Camp."]);
     assert.equal(zero.nextLabel, "NEXT");
-    assert.equal(zero.showMilestoneList, false);
+    assert.equal(zero.showMilestoneList, true);
     // No shared string between body and next
     for (const line of zero.nextDescription) {
       assert.ok(!zero.bodyLines.includes(line));
@@ -556,6 +642,7 @@ describe("THE FIRST THIRTY — homepage and outlaw journey", () => {
     );
     assert.equal(open.nextLabel, null);
     assert.deepEqual(open.nextDescription, []);
+    assert.equal(open.showMilestoneList, false);
   });
 
   it("journey surface hiders: unauthenticated, unregistered, Greenwood members", () => {
@@ -608,9 +695,12 @@ describe("THE FIRST THIRTY — homepage and outlaw journey", () => {
     );
     assert.match(journey, /surface:\s*"home"\s*\|\s*"outlaw"/);
     assert.match(journey, /firstThirtyJourneyPresentation/);
+    assert.match(journey, /firstThirtyChecklistMarks/);
     assert.match(journey, /formatFirstThirtyLeafLine/);
     assert.match(journey, /FIRST_THIRTY_JOURNEY_COPY\.loading/);
     assert.match(journey, /FIRST_THIRTY_JOURNEY_COPY\.fetchFail/);
+    assert.doesNotMatch(journey, /completed:|not yet:/);
+    assert.doesNotMatch(journey, /THE GREENWOOD REMEMBERED|GREENWOOD REMEMBERED/);
     assert.doesNotMatch(journey, /lastEvent|newlySatisfied|router\.push/);
     assert.doesNotMatch(journey, /reward_recommendation|\"terminated\"/);
     assert.doesNotMatch(journey, /zeroBody|ft-journey__zero/);

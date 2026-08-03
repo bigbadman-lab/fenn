@@ -128,7 +128,7 @@ describe("THE FIRST THIRTY — pure progress helpers", () => {
   it("locks nominal grant and ack copy", () => {
     assert.equal(FIRST_THIRTY_NOMINAL_GRANT, 10);
     assert.equal(FIRST_THIRTY_ACK.camp_first, "THE FIRE LEFT SOMETHING BEHIND");
-    assert.equal(FIRST_THIRTY_ACK.camp_three, "THE GREENWOOD REMEMBERED");
+    assert.equal(FIRST_THIRTY_ACK.camp_three, "YOUR WORDS WERE KEPT");
     assert.equal(FIRST_THIRTY_ACK.first_deed, "THE GREENWOOD OPENS");
   });
 });

@@ -22,7 +22,7 @@ export type FirstThirtyNextMilestone =
 /** In-world acknowledgements only when actualGrant path still separate. */
 export const FIRST_THIRTY_ACK = {
   camp_first: "THE FIRE LEFT SOMETHING BEHIND",
-  camp_three: "THE GREENWOOD REMEMBERED",
+  camp_three: "YOUR WORDS WERE KEPT",
   first_deed: "THE GREENWOOD OPENS",
 } as const;
 

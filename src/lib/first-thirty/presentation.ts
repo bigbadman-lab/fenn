@@ -175,6 +175,11 @@ export const FIRST_THIRTY_JOURNEY_COPY = {
   nextLabel: "NEXT",
   nextStepLabel: "NEXT STEP",
   zeroNext: "The road begins in Camp.",
+  returnToCampBody: "Return to Camp.",
+  returnToCampFurther: "Let your words carry further.",
+  oneExchangeRemains: "ONE MEANINGFUL EXCHANGE REMAINS",
+  offerDeed: "Offer a Deed to the world.",
+  deedOpensGreenwood: "The Greenwood opens when it is witnessed.",
   pathInactive: FIRST_THIRTY_DEEDS_COPY.pathInactive,
   visitCamp: "[ VISIT CAMP ]",
   visitDeeds: "[ VISIT DEEDS ]",
@@ -247,6 +252,8 @@ export function firstThirtyNextDescription(
   progress: SafeFirstThirtyProgress,
   surface: "home" | "outlaw" = "home",
 ): string[] {
+  // Surface kept for call sites; next-step voice is now shared.
+  void surface;
   if (progress.greenwoodOpen) {
     // Greenwood open is a self-explanatory block — no NEXT section.
     return [];
@@ -264,23 +271,24 @@ export function firstThirtyNextDescription(
     case "third_camp": {
       const done = Math.max(0, Math.trunc(progress.eligibleCampExchanges));
       const remain = Math.max(0, 3 - done);
-      if (progress.milestones.firstCamp && remain > 0) {
-        return [
-          remain === 1
-            ? "One meaningful exchange remains."
-            : `${remain} meaningful exchanges remain.`,
-        ];
+      const lines: string[] = [
+        FIRST_THIRTY_JOURNEY_COPY.returnToCampBody,
+        FIRST_THIRTY_JOURNEY_COPY.returnToCampFurther,
+      ];
+      if (progress.milestones.firstCamp && remain === 1) {
+        lines.push(FIRST_THIRTY_JOURNEY_COPY.oneExchangeRemains);
+      } else if (progress.milestones.firstCamp && remain > 1) {
+        lines.push(
+          `${remain} MEANINGFUL EXCHANGES REMAIN`,
+        );
       }
-      return ["Speak again in Camp."];
+      return lines;
     }
     case "first_deed":
-      if (surface === "outlaw") {
-        return [
-          "Offer a Deed to the world.",
-          "The Greenwood opens when it is witnessed.",
-        ];
-      }
-      return ["Offer a Deed to the world."];
+      return [
+        FIRST_THIRTY_JOURNEY_COPY.offerDeed,
+        FIRST_THIRTY_JOURNEY_COPY.deedOpensGreenwood,
+      ];
     default:
       return [];
   }
@@ -308,14 +316,9 @@ export function firstThirtyJourneyPresentation(
     FIRST_THIRTY_PRINCIPLE.line3,
   ];
 
-  const zeroStart =
-    progress.active &&
-    progress.nextMilestone === "first_camp" &&
-    !progress.milestones.firstCamp;
-
-  // Homepage zero: orient with principle + single next line (no empty checklist).
-  // Outlaw: always show checklist for personal journey record.
-  const showMilestoneList = surface === "outlaw" ? true : !zeroStart;
+  // Always show the three-step checklist when the path is active.
+  // Incomplete labels use active wording (Camp → Camp → Deed).
+  const showMilestoneList = progress.active;
 
   // Home desktop always shows principle when active; mobile CSS may hide it.
   const bodyLines =

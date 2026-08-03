@@ -7,6 +7,7 @@ import { FIRST_THIRTY_REVEAL_TITLE } from "@/lib/first-thirty/copy";
 import {
   FIRST_THIRTY_DEEDS_HREF,
   FIRST_THIRTY_GREENWOOD_HREF,
+  FIRST_THIRTY_JOURNEY_COPY,
   formatActualLeafGrantLine,
 } from "@/lib/first-thirty/presentation";
 import type {
@@ -35,6 +36,9 @@ function getReducedMotion() {
  * One-shot milestone reveal for a newlySatisfied event.
  * Staged CSS reveal; reduced-motion shows the full result immediately.
  * Replay suppressed by eventKey in parent session set.
+ *
+ * Distinguishes event (Deed witnessed) from consequence (Greenwood open)
+ * and only shows LEAF lines when actualGrant > 0.
  */
 export function FirstThirtyAcknowledge({
   event,
@@ -58,10 +62,9 @@ export function FirstThirtyAcknowledge({
   if (event.milestone === "camp_three") {
     title = FIRST_THIRTY_REVEAL_TITLE.camp_three;
   } else if (event.milestone === "first_deed") {
-    title =
-      actual > 0
-        ? FIRST_THIRTY_REVEAL_TITLE.first_deed_grant
-        : FIRST_THIRTY_REVEAL_TITLE.first_deed_zero;
+    title = greenwoodOpen
+      ? FIRST_THIRTY_REVEAL_TITLE.first_deed_greenwood_open
+      : FIRST_THIRTY_REVEAL_TITLE.first_deed_witnessed;
   }
 
   return (
@@ -80,9 +83,9 @@ export function FirstThirtyAcknowledge({
         {title}
       </p>
 
-      {event.milestone === "first_deed" && actual === 0 ? (
+      {event.milestone === "first_deed" && greenwoodOpen ? (
         <p className="ft-reveal__witness ft-reveal__step ft-reveal__step--2">
-          YOUR DEED WAS WITNESSED
+          {FIRST_THIRTY_REVEAL_TITLE.first_deed_witnessed}
         </p>
       ) : null}
 
@@ -106,11 +109,10 @@ export function FirstThirtyAcknowledge({
 
       {event.milestone === "camp_three" && !greenwoodOpen ? (
         <div className="ft-reveal__next ft-reveal__step ft-reveal__step--4">
-          <p>ONE DEED REMAINS</p>
           <p className="muted">
-            Offer a Deed to the world.
+            {FIRST_THIRTY_JOURNEY_COPY.offerDeed}
             <br />
-            The Greenwood opens when it is witnessed.
+            {FIRST_THIRTY_JOURNEY_COPY.deedOpensGreenwood}
           </p>
           <p>
             <Link href={FIRST_THIRTY_DEEDS_HREF} className="btn-text">
@@ -122,7 +124,7 @@ export function FirstThirtyAcknowledge({
 
       {(event.milestone === "first_deed" || greenwoodOpen) && greenwoodOpen ? (
         <div className="ft-reveal__next ft-reveal__step ft-reveal__step--4">
-          <p>THE ROAD NO LONGER ENDS HERE</p>
+          <p>{FIRST_THIRTY_JOURNEY_COPY.openBody}</p>
           <p>
             <Link href={FIRST_THIRTY_GREENWOOD_HREF} className="btn-text">
               [ WALK TO THE GREENWOOD ]

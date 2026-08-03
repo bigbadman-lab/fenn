@@ -3,12 +3,13 @@
 import Link from "next/link";
 
 import {
-  FIRST_THIRTY_CHECKLIST,
+  firstThirtyChecklistMarks,
   firstThirtyThresholdTotal,
 } from "@/lib/first-thirty/copy";
 import {
   FIRST_THIRTY_DEEDS_HREF,
   FIRST_THIRTY_GREENWOOD_HREF,
+  FIRST_THIRTY_JOURNEY_COPY,
 } from "@/lib/first-thirty/presentation";
 import type { SafeFirstThirtyProgress } from "@/lib/first-thirty/types";
 
@@ -30,6 +31,9 @@ export function FirstThirtyProgressPanel({
     return (
       <div className="ft-progress ft-progress--open">
         <p className="ft-progress__title">THE GREENWOOD IS OPEN</p>
+        <p className="ft-progress__open-body">
+          {FIRST_THIRTY_JOURNEY_COPY.openBody}
+        </p>
         <p className="ft-progress__cta">
           <Link href={FIRST_THIRTY_GREENWOOD_HREF} className="btn-text">
             [ WALK TO THE GREENWOOD ]
@@ -46,6 +50,7 @@ export function FirstThirtyProgressPanel({
   const total = firstThirtyThresholdTotal(progress);
   const lifetime = Math.max(0, Math.trunc(progress.lifetimeLeaf));
   const until = Math.max(0, Math.trunc(progress.leafUntilGreenwood));
+  const marks = firstThirtyChecklistMarks(progress.milestones);
 
   if (variant === "compact") {
     return (
@@ -54,21 +59,6 @@ export function FirstThirtyProgressPanel({
       </p>
     );
   }
-
-  const marks = [
-    {
-      done: progress.milestones.firstCamp,
-      label: FIRST_THIRTY_CHECKLIST.firstCamp,
-    },
-    {
-      done: progress.milestones.thirdCamp,
-      label: FIRST_THIRTY_CHECKLIST.thirdCamp,
-    },
-    {
-      done: progress.milestones.firstDeed,
-      label: FIRST_THIRTY_CHECKLIST.firstDeed,
-    },
-  ];
 
   return (
     <div
@@ -85,25 +75,22 @@ export function FirstThirtyProgressPanel({
       </p>
       <ul className="ft-progress__list">
         {marks.map((m) => (
-          <li key={m.label} className="ft-progress__item">
+          <li
+            key={m.key}
+            className="ft-progress__item"
+            aria-label={m.done ? `${m.label}, complete` : `${m.label}, incomplete`}
+          >
             <span className="ft-progress__mark" aria-hidden="true">
               {m.done ? "[x]" : "[ ]"}
             </span>
-            <span>
-              <span className="visually-hidden">
-                {m.done ? "completed: " : "not yet: "}
-              </span>
-              {m.label}
-            </span>
+            <span>{m.label}</span>
           </li>
         ))}
       </ul>
       {progress.nextMilestone === "first_deed" ? (
         <div className="ft-progress__next">
-          <p>Offer a Deed to the world.</p>
-          <p className="muted">
-            The Greenwood opens when it is witnessed.
-          </p>
+          <p>{FIRST_THIRTY_JOURNEY_COPY.offerDeed}</p>
+          <p className="muted">{FIRST_THIRTY_JOURNEY_COPY.deedOpensGreenwood}</p>
           <p>
             <Link href={FIRST_THIRTY_DEEDS_HREF} className="btn-text">
               [ FIND A DEED ]

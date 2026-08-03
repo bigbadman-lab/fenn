@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import {
-  FIRST_THIRTY_CHECKLIST,
+  firstThirtyChecklistMarks,
   firstThirtyThresholdTotal,
 } from "@/lib/first-thirty/copy";
 import {
@@ -202,20 +202,7 @@ function ActiveJourney({
   const lifetime = Math.max(0, Math.trunc(progress.lifetimeLeaf));
   const until = Math.max(0, Math.trunc(progress.leafUntilGreenwood));
 
-  const marks = [
-    {
-      done: progress.milestones.firstCamp,
-      label: FIRST_THIRTY_CHECKLIST.firstCamp,
-    },
-    {
-      done: progress.milestones.thirdCamp,
-      label: FIRST_THIRTY_CHECKLIST.thirdCamp,
-    },
-    {
-      done: progress.milestones.firstDeed,
-      label: FIRST_THIRTY_CHECKLIST.firstDeed,
-    },
-  ];
+  const marks = firstThirtyChecklistMarks(progress.milestones);
 
   const primaryHref =
     presentation.action?.href ?? FIRST_THIRTY_CAMP_HREF;
@@ -270,16 +257,17 @@ function ActiveJourney({
       {presentation.showMilestoneList ? (
         <ul className="ft-journey__list ft-progress__list">
           {marks.map((m) => (
-            <li key={m.label} className="ft-progress__item">
+            <li
+              key={m.key}
+              className="ft-progress__item"
+              aria-label={
+                m.done ? `${m.label}, complete` : `${m.label}, incomplete`
+              }
+            >
               <span className="ft-progress__mark" aria-hidden="true">
                 {m.done ? "[x]" : "[ ]"}
               </span>
-              <span>
-                <span className="visually-hidden">
-                  {m.done ? "completed: " : "not yet: "}
-                </span>
-                {m.label}
-              </span>
+              <span>{m.label}</span>
             </li>
           ))}
         </ul>
