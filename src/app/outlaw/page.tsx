@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { OutlawFirstThirty } from "@/components/outlaw/outlaw-first-thirty";
 import { OutlawInvite } from "@/components/outlaw/outlaw-invite";
+import { OutlawWallet } from "@/components/outlaw/outlaw-wallet";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { formatOutlawNumber } from "@/lib/profiles/types";
-import { abbreviateEvmAddress } from "@/lib/wallet/evm";
 import type { ReactNode } from "react";
 
 function formatJoinedDate(iso: string): string {
@@ -149,12 +149,9 @@ export default function OutlawPage() {
 
       <OutlawInvite />
 
+      <OutlawWallet />
+
       <div className="place__body profile-block outlaw-page__account">
-        <p>
-          wallet:
-          <br />
-          {abbreviateEvmAddress(profile.walletAddress)}
-        </p>
         <p>
           current leaf:
           <br />

@@ -622,13 +622,14 @@ describe("THE FIRST THIRTY — homepage and outlaw journey", () => {
     const page = read("src/app/outlaw/page.tsx");
     assert.match(page, /OutlawFirstThirty/);
     assert.match(page, /known as/);
-    assert.match(page, /wallet:/);
+    assert.match(page, /OutlawWallet/);
     assert.match(page, /lifetime leaf/);
-    assert.match(page, /abbreviateEvmAddress/);
     const identityKnown = page.indexOf("known as");
     const journey = page.indexOf("<OutlawFirstThirty");
-    const wallet = page.indexOf("wallet:");
+    const wallet = page.indexOf("<OutlawWallet");
+    const account = page.indexOf("outlaw-page__account");
     assert.ok(identityKnown >= 0 && journey > identityKnown && wallet > journey);
+    assert.ok(wallet < account);
   });
 
   it("hook never invents progress and reports failed without killing hosts", () => {

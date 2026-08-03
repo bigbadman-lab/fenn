@@ -191,7 +191,8 @@ describe("Outlaw Invite — application integration", () => {
     assert.ok(
       page.indexOf("OutlawFirstThirty") < page.indexOf("OutlawInvite"),
     );
-    assert.ok(page.indexOf("OutlawInvite") < page.indexOf("outlaw-page__account"));
+    assert.ok(page.indexOf("OutlawInvite") < page.indexOf("OutlawWallet"));
+    assert.ok(page.indexOf("OutlawWallet") < page.indexOf("outlaw-page__account"));
     assert.match(ui, /INVITE AN OUTLAW/);
     assert.match(ui, /5 LEAF FOR EACH OUTLAW WHO ARRIVES/);
     assert.match(ui, /UP TO 10 REWARDED INVITES/);

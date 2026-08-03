@@ -1232,6 +1232,113 @@ a.fenn-map__link:focus-visible {
 }
 
 /* ------------------------------------------------------------------ */
+/* Outlaw wallet ownership                                             */
+/* ------------------------------------------------------------------ */
+
+.outlaw-wallet {
+  margin: 1rem 0 1.25rem;
+  max-width: 36rem;
+}
+
+.outlaw-wallet__rule {
+  margin: 0.65rem 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--color-muted, #8a8074);
+  overflow-wrap: anywhere;
+}
+
+.outlaw-wallet__title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-leaf, #6b8f71);
+}
+
+.outlaw-wallet__copy {
+  margin: 0 0 0.85rem;
+}
+
+.outlaw-wallet__copy p {
+  margin: 0 0 0.45rem;
+  line-height: 1.5;
+}
+
+.outlaw-wallet__address-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted, #8a8074);
+}
+
+.outlaw-wallet__abbrev {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.04em;
+}
+
+.outlaw-wallet__full {
+  margin: 0 0 0.85rem;
+  max-width: 100%;
+}
+
+.outlaw-wallet__full-text {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.outlaw-wallet__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0 0 0.45rem;
+}
+
+.outlaw-wallet__btn {
+  max-width: 100%;
+}
+
+.outlaw-wallet__feedback {
+  min-height: 1.25rem;
+  margin: 0 0 0.55rem;
+  font-size: 0.9rem;
+  color: var(--color-muted, #8a8074);
+}
+
+.outlaw-wallet__safety {
+  margin: 0 0 0.25rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 360px) {
+  .outlaw-wallet__actions {
+    width: 100%;
+  }
+
+  .outlaw-wallet__btn {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+@media (forced-colors: active) {
+  .outlaw-wallet {
+    outline: 1px solid CanvasText;
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Outlaw Invite                                                       */
 /* ------------------------------------------------------------------ */
 
