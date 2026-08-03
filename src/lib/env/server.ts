@@ -4,11 +4,15 @@ import { z } from "zod";
 
 import { parseAdminWalletAllowlist } from "@/lib/admin/config";
 import { parseDeskWalletAllowlist } from "@/lib/desk/config";
-import { publicEnv } from "@/lib/env/public";
+import { getPublicEnv, type PublicEnv } from "@/lib/env/public";
 
 /**
  * Server-only credentials.
  * This module must never be imported from Client Components.
+ *
+ * Values are read lazily so `next build` can collect route modules without
+ * requiring secrets at import time. Secrets are still mandatory when code
+ * first touches `serverEnv` at request time.
  */
 const emptyToUndefined = (value: unknown) => {
   if (typeof value !== "string") return undefined;
@@ -105,6 +109,8 @@ const serverOnlySchema = z.object({
 
 export type ServerOnlyEnv = z.infer<typeof serverOnlySchema>;
 
+export type ServerEnv = PublicEnv & ServerOnlyEnv;
+
 function readServerOnlyEnv(): ServerOnlyEnv {
   const parsed = serverOnlySchema.safeParse({
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -135,13 +141,29 @@ function readServerOnlyEnv(): ServerOnlyEnv {
   return parsed.data;
 }
 
-const serverOnlyEnv = readServerOnlyEnv();
+let cachedServerEnv: ServerEnv | undefined;
+
+/** Validate and return full server env (memoized). */
+export function getServerEnv(): ServerEnv {
+  if (!cachedServerEnv) {
+    cachedServerEnv = {
+      ...getPublicEnv(),
+      ...readServerOnlyEnv(),
+    };
+  }
+  return cachedServerEnv;
+}
 
 /**
  * Server-side env access. Prefer `publicEnv` when only public values are needed.
  * Do not re-export this object into client modules.
+ * Property access triggers validation once.
  */
-export const serverEnv = {
-  ...publicEnv,
-  ...serverOnlyEnv,
-} as const;
+export const serverEnv: ServerEnv = new Proxy({} as ServerEnv, {
+  get(_target, prop) {
+    if (typeof prop !== "string") {
+      return undefined;
+    }
+    return getServerEnv()[prop as keyof ServerEnv];
+  },
+});
