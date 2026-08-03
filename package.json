@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "tsx --conditions=react-server --test src/lib/leaf/**/*.test.ts src/lib/deeds/**/*.test.ts src/lib/admin/**/*.test.ts src/lib/desk/**/*.test.ts src/lib/wallet/**/*.test.ts src/lib/camp/**/*.test.ts src/lib/greenwood/**/*.test.ts src/lib/treasury/**/*.test.ts src/lib/commons/**/*.test.ts src/lib/wall/**/*.test.ts src/lib/canon/**/*.test.ts src/lib/memory/**/*.test.ts src/lib/agent/**/*.test.ts src/lib/x/**/*.test.ts src/lib/world-pulse/**/*.test.ts src/lib/ledger/**/*.test.ts src/lib/home/**/*.test.ts src/lib/chronicle/**/*.test.ts src/lib/ops/**/*.test.ts src/lib/first-thirty/**/*.test.ts src/lib/invites/**/*.test.ts src/lib/auth/**/*.test.ts src/lib/editorial/**/*.test.ts src/lib/site/**/*.test.ts",
