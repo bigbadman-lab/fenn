@@ -157,16 +157,30 @@ describe("THE FIRST THIRTY — architecture wiring", () => {
     assert.match(sql, /CREATE TABLE public\.first_thirty_progress/);
     assert.match(sql, /apply_first_thirty_camp_exchange/);
     assert.match(sql, /apply_first_thirty_first_deed/);
-    assert.match(sql, /reward_recommendation.*>= 1|COALESCE\(v_msg\.reward_recommendation, 0\) >= 1/);
     assert.match(sql, /LEAST\(10, GREATEST\(0, v_threshold/);
     assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.apply_first_thirty_camp_exchange/);
   });
 
-  it("Camp send suppresses ordinary grants while First Thirty active", () => {
+  it("migration 41 uses first_thirty_eligible not reward_recommendation gate", () => {
+    const sql = read(
+      "supabase/migrations/20260803120000_41_first_thirty_camp_eligibility.sql",
+    );
+    assert.match(sql, /first_thirty_eligible boolean/);
+    assert.match(sql, /first_thirty_eligibility_reason/);
+    assert.match(sql, /COALESCE\(v_msg\.first_thirty_eligible, false\)/);
+    assert.doesNotMatch(
+      sql,
+      /COALESCE\(v_msg\.reward_recommendation, 0\) >= 1/,
+    );
+  });
+
+  it("Camp send derives First Thirty eligibility separately from ordinary reward", () => {
     const send = read("src/lib/camp/send-message.ts");
+    assert.match(send, /deriveFirstThirtyCampEligibility/);
+    assert.match(send, /first_thirty_eligible/);
+    assert.match(send, /firstThirtyEligibilityReason|first_thirty_eligibility_reason/);
     assert.match(send, /applyFirstThirty|apply_first_thirty/);
     assert.match(send, /suppressCamp|suppressOrdinaryCampReward|first_thirty_suppressed/);
-    assert.match(send, /grant_camp_message_reward|applyReward/);
   });
 
   it("Deed approval hooks first_deed after finalisation", () => {

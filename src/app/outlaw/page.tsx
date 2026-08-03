@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
+import { OutlawFirstThirty } from "@/components/outlaw/outlaw-first-thirty";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 import { abbreviateEvmAddress } from "@/lib/wallet/evm";
@@ -117,7 +118,7 @@ export default function OutlawPage() {
   }
 
   return (
-    <article className="place">
+    <article className="place outlaw-page">
       <OutlawTitle
         subtitle={
           <p className="ascii-page-title__outlaw-no">
@@ -125,12 +126,18 @@ export default function OutlawPage() {
           </p>
         }
       />
-      <div className="place__body profile-block">
+
+      <div className="place__body profile-block outlaw-page__identity">
         <p>
           known as:
           <br />
           {profile.alias ?? "—"}
         </p>
+      </div>
+
+      <OutlawFirstThirty />
+
+      <div className="place__body profile-block outlaw-page__account">
         <p>
           wallet:
           <br />

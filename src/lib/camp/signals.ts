@@ -102,6 +102,8 @@ export function detectCampRewardGaming(userMessage: string): boolean {
     /\bignore (?:all )?(?:previous|prior|your) instructions\b/,
     /\breveal (?:your )?(?:hidden )?(?:evaluation|scoring|rubric|system prompt)\b/,
     /\btell me the exact (?:scoring|evaluation) (?:rubric|criteria)\b/,
+    /\bwhat score did you (?:give|award)\b/,
+    /\bwhat (?:was|is) my (?:reward )?score\b/,
   ];
 
   return farmingPatterns.some((re) => re.test(n));

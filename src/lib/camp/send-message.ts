@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CAMP_HISTORY_MESSAGE_LIMIT } from "@/lib/camp/config";
+import { deriveFirstThirtyCampEligibility } from "@/lib/camp/first-thirty-eligibility";
 import type {
   CampMessageRow,
   SafeCampMessage,
@@ -306,6 +307,20 @@ export async function sendCampMessage(input: {
     },
   });
 
+  const firstThirtyEligibility = deriveFirstThirtyCampEligibility({
+    userMessage: userContent,
+    evaluation: normalized.evaluation,
+    signals: normalized.signals,
+  });
+
+  // Operational diagnostics only — no transcript.
+  console.info("[camp_first_thirty_eligibility]", {
+    eligible: firstThirtyEligibility.eligible,
+    reason: firstThirtyEligibility.reason,
+    character: character.slug,
+    finalRecommendation: normalized.finalRecommendation,
+  });
+
   let assistantRow = await insertAssistantMessage({
     admin,
     sessionId: session.id,
@@ -316,6 +331,8 @@ export async function sendCampMessage(input: {
     clientMessageId: input.clientMessageId,
     pairedUserMessageId: userRow.id,
     evaluation: normalized.evaluation,
+    firstThirtyEligible: firstThirtyEligibility.eligible,
+    firstThirtyEligibilityReason: firstThirtyEligibility.reason,
     promptVersion: turn.promptVersion,
     moderationFlags: {
       promptVersion: turn.promptVersion,
@@ -330,6 +347,10 @@ export async function sendCampMessage(input: {
       finalMemoryCandidate: normalized.finalMemoryCandidate,
       clientMessageId: input.clientMessageId,
       pairedUserMessageId: userRow.id,
+      firstThirty: {
+        eligible: firstThirtyEligibility.eligible,
+        reason: firstThirtyEligibility.reason,
+      },
     },
   });
 
@@ -545,6 +566,8 @@ async function insertAssistantMessage(input: {
   clientMessageId: string;
   pairedUserMessageId: string;
   evaluation: CampContributionEvaluation;
+  firstThirtyEligible: boolean;
+  firstThirtyEligibilityReason: string;
   promptVersion: string;
   moderationFlags: Record<string, unknown>;
 }): Promise<CampMessageRow> {
@@ -564,6 +587,8 @@ async function insertAssistantMessage(input: {
       relevance: input.evaluation.relevance,
       spam_probability: input.evaluation.spamProbability,
       memory_candidate_flag: input.evaluation.memoryCandidate,
+      first_thirty_eligible: input.firstThirtyEligible,
+      first_thirty_eligibility_reason: input.firstThirtyEligibilityReason,
       leaf_ledger_id: null,
       moderation_flags: {
         ...input.moderationFlags,

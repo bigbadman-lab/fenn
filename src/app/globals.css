@@ -1067,6 +1067,169 @@ a.fenn-map__link:focus-visible {
   outline-offset: 3px;
 }
 
+/* THE FIRST THIRTY — homepage / outlaw journey */
+.home-first-thirty {
+  padding: 0.65rem 0 0.85rem;
+  border-bottom: var(--line);
+}
+
+.ft-journey {
+  max-width: 36rem;
+}
+
+.ft-journey__eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+}
+
+.ft-journey__title {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: var(--color-leaf);
+}
+
+.ft-journey__leaf {
+  margin: 0 0 0.55rem;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.ft-journey__principle {
+  margin: 0 0 0.65rem;
+}
+
+.ft-journey__principle p {
+  margin: 0.15rem 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.ft-journey__list {
+  margin: 0 0 0.65rem;
+}
+
+.ft-journey__next {
+  margin: 0 0 0.55rem;
+}
+
+.ft-journey__next p {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.ft-journey__next-label {
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-leaf) 80%, var(--color-bone));
+}
+
+.ft-journey__compact-next {
+  display: none;
+  margin: 0 0 0.45rem;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+}
+
+.ft-journey__zero p {
+  margin: 0.2rem 0;
+}
+
+.ft-journey__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  margin: 0.45rem 0 0;
+}
+
+.ft-journey__loading {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+}
+
+.ft-journey__rule {
+  margin: 0.75rem 0;
+  overflow: hidden;
+  max-width: 100%;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--color-bone) 35%, var(--color-night));
+  letter-spacing: 0.02em;
+}
+
+.ft-journey__standing {
+  margin: 0.5rem 0 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.ft-journey__standing dt {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--color-bone) 65%, var(--color-night));
+}
+
+.ft-journey__standing dd {
+  margin: 0.15rem 0 0;
+  letter-spacing: 0.04em;
+}
+
+.ft-journey--outlaw {
+  margin: 1rem 0 1.25rem;
+}
+
+.outlaw-page__identity {
+  margin-bottom: 0.25rem;
+}
+
+.outlaw-page__account {
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .home-first-thirty {
+    padding: 0.5rem 0 0.65rem;
+  }
+
+  /* Home mobile compact: principle + checklist desktop-only */
+  .ft-journey--home .ft-journey__principle--home {
+    display: none;
+  }
+
+  .ft-journey--home .ft-journey__list {
+    display: none;
+  }
+
+  .ft-journey--home .ft-journey__next--desktop {
+    display: none;
+  }
+
+  .ft-journey--home .ft-journey__compact-next {
+    display: block;
+  }
+}
+
+@media (max-width: 360px) {
+  .ft-journey__title {
+    letter-spacing: 0.06em;
+  }
+
+  .ft-journey__actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (forced-colors: active) {
+  .ft-journey__title,
+  .ft-journey__next-label,
+  .ft-journey__leaf {
+    color: CanvasText;
+  }
+}
+
 .home-identity {
   border-top: none;
   padding-top: 1.1rem;
@@ -1686,7 +1849,8 @@ a.fenn-map__link:focus-visible {
 
 /* The Camp — three inhabitants */
 .camp__intro {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
+  max-width: 30rem;
 }
 
 .camp__fire-line {
@@ -1694,8 +1858,28 @@ a.fenn-map__link:focus-visible {
   letter-spacing: 0.03em;
 }
 
-.camp-readout {
+.camp__leaf-note {
+  margin: 0;
+  max-width: 28rem;
+  padding-top: 0.15rem;
+}
+
+.camp__leaf-note-title {
+  margin: 0 0 0.45rem;
+  letter-spacing: 0.04em;
+}
+
+.camp__leaf-note-line {
   margin: 0 0 0.25rem;
+  max-width: 26rem;
+}
+
+.camp__leaf-note-line + .camp-readout {
+  margin-top: 0.75rem;
+}
+
+.camp-readout {
+  margin: 0.75rem 0 0;
   padding: 0.55rem 0;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -1779,26 +1963,6 @@ a.fenn-map__link:focus-visible {
 }
 
 .camp__active {
-  margin-bottom: 0.25rem;
-}
-
-.camp__leaf-note {
-  margin: 1.75rem 0 0;
-  max-width: 28rem;
-}
-
-.camp__leaf-rule {
-  margin: 0 0 1rem;
-  border: none;
-  border-top: 1px solid var(--border);
-}
-
-.camp__leaf-note-title {
-  margin: 0 0 0.55rem;
-  letter-spacing: 0.04em;
-}
-
-.camp__leaf-note .muted {
   margin-bottom: 0.25rem;
 }
 
@@ -2184,11 +2348,6 @@ a.fenn-map__link:focus-visible {
 
 .camp-talk__ft-fail p {
   margin: 0.2rem 0;
-}
-
-.camp__ft-compact {
-  margin: 0.35rem 0 0;
-  letter-spacing: 0.06em;
 }
 
 .camp__ft-panel {

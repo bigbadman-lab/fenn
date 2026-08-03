@@ -72,6 +72,14 @@ export {
 } from "@/lib/camp/normalize-evaluation";
 
 export {
+  assessCampOnboardingSubstance,
+  deriveFirstThirtyCampEligibility,
+  FIRST_THIRTY_ELIGIBILITY_REASONS,
+  type FirstThirtyCampEligibility,
+  type FirstThirtyEligibilityReason,
+} from "@/lib/camp/first-thirty-eligibility";
+
+export {
   campTokenJaccardSimilarity,
   detectCampRepetition,
   detectCampRewardGaming,

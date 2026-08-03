@@ -16,12 +16,17 @@ import {
   FIRST_THIRTY_INELIGIBLE_COPY,
   firstDeedEventFromTransition,
   firstThirtyEventSessionKey,
+  firstThirtyJourneyPresentation,
+  firstThirtyNextDescription,
+  firstThirtyNextStepLines,
+  firstThirtyPrimaryAction,
   formatActualLeafGrantLine,
   formatCompactFirstThirtyLine,
   formatEligibleExchangeQuiet,
   formatFirstThirtyLeafLine,
   shouldAnnounceFirstThirtyEvent,
   shouldShowActiveFirstThirty,
+  shouldShowFirstThirtyJourneySurface,
   shouldShowGreenwoodOpenAction,
 } from "@/lib/first-thirty/presentation";
 import {
@@ -332,8 +337,15 @@ describe("THE FIRST THIRTY — UI source contracts", () => {
     assert.match(ground, /Speak with care/);
     assert.match(ground, /The Fire does not answer noise/);
     assert.match(ground, /Not every word leaves a mark/);
-    assert.match(ground, /formatCompactFirstThirtyLine/);
+    assert.match(ground, /LEAF CAN BE FOUND HERE/);
+    assert.match(ground, /CampLeafReadout/);
+    assert.match(ground, /FirstThirtyProgressPanel/);
     assert.match(ground, /useFirstThirtyProgress/);
+    // LEAF status + LEAF CAN BE FOUND HERE live once under the ASCII intro.
+    assert.equal((ground.match(/<CampLeafReadout/g) ?? []).length, 1);
+    assert.equal((ground.match(/LEAF CAN BE FOUND HERE/g) ?? []).length, 1);
+    assert.match(ground, /camp__intro[\s\S]*camp__leaf-note[\s\S]*CampLeafReadout/);
+    assert.doesNotMatch(ground, /camp__leaf-rule/);
   });
 
   it("send-message exposes firstThirtyUnavailable without blocking AI", () => {
@@ -391,7 +403,7 @@ describe("THE FIRST THIRTY — UI source contracts", () => {
 
   it("progress fetch failures leave CAMP usable", () => {
     const hook = read("src/hooks/use-first-thirty.ts");
-    assert.match(hook, /setProgress\(null\)/);
+    assert.match(hook, /visibleProgress/);
     assert.match(hook, /\/api\/first-thirty/);
     const camp = read("src/components/camp/camp-conversation.tsx");
     assert.match(camp, /fetchedProgress/);
@@ -417,5 +429,234 @@ describe("THE FIRST THIRTY — UI source contracts", () => {
     );
     assert.match(ceremony, /greenwood-arrival/);
     assert.doesNotMatch(ceremony, /FirstThirty|first_thirty/);
+  });
+});
+
+describe("THE FIRST THIRTY — homepage and outlaw journey", () => {
+  it("primary action maps from nextMilestone only (not raw LEAF)", () => {
+    assert.deepEqual(
+      firstThirtyPrimaryAction(
+        activeProgress({ nextMilestone: "first_camp" }),
+      ),
+      { href: "/camp", label: "[ GO TO CAMP ]" },
+    );
+    assert.deepEqual(
+      firstThirtyPrimaryAction(
+        activeProgress({
+          nextMilestone: "third_camp",
+          milestones: { firstCamp: true, thirdCamp: false, firstDeed: false },
+        }),
+      ),
+      { href: "/camp", label: "[ RETURN TO CAMP ]" },
+    );
+    assert.deepEqual(
+      firstThirtyPrimaryAction(
+        activeProgress({
+          nextMilestone: "first_deed",
+          milestones: { firstCamp: true, thirdCamp: true, firstDeed: false },
+        }),
+      ),
+      { href: "/deeds", label: "[ FIND A DEED ]" },
+    );
+    assert.deepEqual(
+      firstThirtyPrimaryAction(
+        activeProgress({
+          active: false,
+          greenwoodOpen: true,
+          nextMilestone: null,
+          lifetimeLeaf: 30,
+          leafUntilGreenwood: 0,
+        }),
+      ),
+      {
+        href: FIRST_THIRTY_GREENWOOD_HREF,
+        label: "[ WALK TO THE GREENWOOD ]",
+      },
+    );
+    // high leaf without greenwoodOpen/active must not invent CAMPness from balance
+    assert.equal(
+      firstThirtyPrimaryAction(
+        activeProgress({
+          active: false,
+          greenwoodOpen: false,
+          lifetimeLeaf: 5,
+          leafUntilGreenwood: 25,
+          nextMilestone: null,
+        }),
+      ),
+      null,
+    );
+  });
+
+  it("next-step lines follow trusted milestone stage without status duplication", () => {
+    const zero = firstThirtyNextDescription(
+      activeProgress({ nextMilestone: "first_camp" }),
+      "home",
+    );
+    assert.deepEqual(zero, ["The road begins in Camp."]);
+    assert.equal(zero.filter((l) => l === "The road begins in Camp.").length, 1);
+    assert.ok(!zero.some((l) => /Speak with care|Not every word/i.test(l)));
+
+    const mid = firstThirtyNextDescription(
+      activeProgress({
+        nextMilestone: "third_camp",
+        milestones: { firstCamp: true, thirdCamp: false, firstDeed: false },
+        eligibleCampExchanges: 1,
+      }),
+      "home",
+    );
+    assert.equal(mid.length, 1);
+    assert.match(mid[0] ?? "", /remain/i);
+    assert.ok(!mid.some((l) => /Fire heard/i.test(l)));
+
+    const deed = firstThirtyNextDescription(
+      activeProgress({
+        nextMilestone: "first_deed",
+        milestones: { firstCamp: true, thirdCamp: true, firstDeed: false },
+      }),
+      "home",
+    );
+    assert.deepEqual(deed, ["Offer a Deed to the world."]);
+    assert.ok(!deed.some((l) => /One Deed remains|Greenwood remembered/i.test(l)));
+
+    // Alias still works
+    assert.deepEqual(
+      firstThirtyNextStepLines(
+        activeProgress({ nextMilestone: "first_camp" }),
+      ),
+      ["The road begins in Camp."],
+    );
+  });
+
+  it("homepage presentation separates body principle from next action", () => {
+    const zero = firstThirtyJourneyPresentation(
+      activeProgress({ nextMilestone: "first_camp" }),
+      "home",
+    );
+    assert.ok(zero.bodyLines.some((l) => /first thirty leaves/i.test(l)));
+    assert.deepEqual(zero.nextDescription, ["The road begins in Camp."]);
+    assert.equal(zero.nextLabel, "NEXT");
+    assert.equal(zero.showMilestoneList, false);
+    // No shared string between body and next
+    for (const line of zero.nextDescription) {
+      assert.ok(!zero.bodyLines.includes(line));
+    }
+    assert.ok(!zero.bodyLines.some((l) => /Speak with care/i.test(l)));
+    assert.ok(!zero.nextDescription.some((l) => /Speak with care/i.test(l)));
+
+    const open = firstThirtyJourneyPresentation(
+      activeProgress({
+        active: false,
+        greenwoodOpen: true,
+        nextMilestone: null,
+        lifetimeLeaf: 30,
+        leafUntilGreenwood: 0,
+      }),
+      "home",
+    );
+    assert.equal(open.nextLabel, null);
+    assert.deepEqual(open.nextDescription, []);
+  });
+
+  it("journey surface hiders: unauthenticated, unregistered, Greenwood members", () => {
+    assert.equal(
+      shouldShowFirstThirtyJourneySurface({
+        authenticated: false,
+        registered: false,
+        greenwoodMember: false,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldShowFirstThirtyJourneySurface({
+        authenticated: true,
+        registered: true,
+        greenwoodMember: true,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldShowFirstThirtyJourneySurface({
+        authenticated: true,
+        registered: true,
+        greenwoodMember: false,
+      }),
+      true,
+    );
+  });
+
+  it("homepage places First Thirty after welcome and before map identity", () => {
+    const page = read("src/app/page.tsx");
+    assert.match(page, /HomeFirstThirty/);
+    const welcome = page.indexOf("<HomeWelcome");
+    const journey = page.indexOf("<HomeFirstThirty");
+    const identity = page.indexOf("<HomeIdentity");
+    assert.ok(welcome >= 0 && journey > welcome && identity > journey);
+  });
+
+  it("homepage journey uses trusted hook and never celebrations", () => {
+    const home = read("src/components/home/home-first-thirty.tsx");
+    assert.match(home, /useFirstThirtyProgress/);
+    assert.match(home, /greenwoodEnteredAt/);
+    assert.match(home, /shouldShowFirstThirtyJourneySurface/);
+    assert.doesNotMatch(home, /FirstThirtyAcknowledge|lastEvent|localStorage/);
+  });
+
+  it("shared journey component for home and outlaw", () => {
+    const journey = read(
+      "src/components/first-thirty/first-thirty-journey.tsx",
+    );
+    assert.match(journey, /surface:\s*"home"\s*\|\s*"outlaw"/);
+    assert.match(journey, /firstThirtyJourneyPresentation/);
+    assert.match(journey, /formatFirstThirtyLeafLine/);
+    assert.match(journey, /FIRST_THIRTY_JOURNEY_COPY\.loading/);
+    assert.match(journey, /FIRST_THIRTY_JOURNEY_COPY\.fetchFail/);
+    assert.doesNotMatch(journey, /lastEvent|newlySatisfied|router\.push/);
+    assert.doesNotMatch(journey, /reward_recommendation|\"terminated\"/);
+    assert.doesNotMatch(journey, /zeroBody|ft-journey__zero/);
+    assert.match(journey, /aria-labelledby/);
+    assert.match(journey, /\[x\]/);
+  });
+
+  it("/outlaw places journey after identity and before account LEAF", () => {
+    const page = read("src/app/outlaw/page.tsx");
+    assert.match(page, /OutlawFirstThirty/);
+    assert.match(page, /known as/);
+    assert.match(page, /wallet:/);
+    assert.match(page, /lifetime leaf/);
+    assert.match(page, /abbreviateEvmAddress/);
+    const identityKnown = page.indexOf("known as");
+    const journey = page.indexOf("<OutlawFirstThirty");
+    const wallet = page.indexOf("wallet:");
+    assert.ok(identityKnown >= 0 && journey > identityKnown && wallet > journey);
+  });
+
+  it("hook never invents progress and reports failed without killing hosts", () => {
+    const hook = read("src/hooks/use-first-thirty.ts");
+    assert.match(hook, /failed/);
+    assert.match(hook, /visibleProgress/);
+    assert.match(hook, /\/api\/first-thirty/);
+    assert.doesNotMatch(hook, /localStorage|sessionStorage/);
+    assert.doesNotMatch(hook, /leaf_balance\s*<\s*30|leafBalance\s*<\s*30/);
+  });
+
+  it("CSS journey compact mobile home and forced colours", () => {
+    const css = read("src/app/globals.css");
+    assert.match(css, /\.ft-journey/);
+    assert.match(css, /\.home-first-thirty/);
+    assert.match(css, /ft-journey__compact-next/);
+    assert.match(css, /forced-colors:\s*active[\s\S]*ft-journey__title/);
+    assert.doesNotMatch(css, /\.ft-journey[^{]*\{[^}]*border-radius:\s*[1-9]/);
+  });
+
+  it("does not auto-route on homepage or outlaw", () => {
+    const home = read("src/components/home/home-first-thirty.tsx");
+    const outlaw = read("src/components/outlaw/outlaw-first-thirty.tsx");
+    const journey = read(
+      "src/components/first-thirty/first-thirty-journey.tsx",
+    );
+    for (const source of [home, outlaw, journey]) {
+      assert.doesNotMatch(source, /router\.(push|replace)|window\.location|redirect\(/);
+    }
   });
 });

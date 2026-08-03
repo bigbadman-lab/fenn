@@ -13,7 +13,9 @@ export {
 
 export {
   FIRST_THIRTY_GREENWOOD_HREF,
+  firstThirtyPrimaryAction,
   formatActualLeafGrantLine,
   formatCompactFirstThirtyLine,
   shouldShowActiveFirstThirty,
+  shouldShowFirstThirtyJourneySurface,
 } from "@/lib/first-thirty/presentation";

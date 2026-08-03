@@ -48,6 +48,9 @@ export type CampMessageRow = {
   client_message_hash: string | null;
   moderation_flags: Record<string, unknown> | null;
   created_at: string;
+  /** Trusted First Thirty participation flag (assistant rows). */
+  first_thirty_eligible?: boolean | null;
+  first_thirty_eligibility_reason?: string | null;
 };
 
 export type CampSessionRow = {

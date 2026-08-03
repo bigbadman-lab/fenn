@@ -234,9 +234,14 @@ describe("living map does not couple to world systems", () => {
     assert.match(map, /id="the-map"/);
 
     const welcomeOrder = page.indexOf("<HomeWelcome");
+    const journeyOrder = page.indexOf("<HomeFirstThirty");
     const identityOrder = page.indexOf("<HomeIdentity");
     const voiceOrder = page.indexOf("<HomeFennVoice");
     assert.ok(welcomeOrder >= 0 && identityOrder > welcomeOrder);
+    assert.ok(
+      journeyOrder < 0 ||
+        (journeyOrder > welcomeOrder && journeyOrder < identityOrder),
+    );
     assert.ok(voiceOrder > identityOrder);
 
     const voice = readFileSync(
