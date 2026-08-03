@@ -23,6 +23,7 @@
     "agent:authorize-x": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-authorize-x.ts",
     "agent:execute-x": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-execute-x.ts",
     "agent:run-x": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-run-x-pipeline.ts",
+    "agent:test-wall": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-wall.ts",
     "chronicle:daily": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/chronicle-daily.ts"
   },
   "dependencies": {

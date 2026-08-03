@@ -105,13 +105,18 @@ describe("LG5.5 Desk Agent", () => {
   it("Agent health excludes tokens and OAuth start is Desk-gated", () => {
     const route = read("src/app/api/desk/agent/route.ts");
     const oauth = read("src/app/api/desk/agent/oauth/start/route.ts");
+    const wallTest = read("src/app/api/desk/agent/wall-test/route.ts");
     const lib = read("src/lib/desk/agent.ts");
     const ui = read("src/components/desk/desk-agent-panel.tsx");
     assert.match(route, /requireFennDeskAccess/);
     assert.match(oauth, /requireFennDeskAccess/);
     assert.match(oauth, /createPkceSession|buildXAuthorizationUrl/);
     assert.doesNotMatch(oauth, /requireFennAdmin/);
+    assert.match(wallTest, /requireFennDeskAccess/);
+    assert.match(wallTest, /runDeskAgentWallTest/);
+    assert.doesNotMatch(wallTest, /createXReplyAsFenn|executePendingXPerceptionEffects/);
     assert.doesNotMatch(lib, /access_token|refresh_token|accessToken/);
+    assert.match(ui, /WALL EFFECT TEST/);
     assert.doesNotMatch(ui, /run pipeline|post reply|retry effect/i);
     assert.doesNotMatch(route, /runXAgentPipeline|run-now/);
   });

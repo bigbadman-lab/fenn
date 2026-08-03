@@ -1,6 +1,11 @@
 import "server-only";
 
 import { X_OAUTH_CREDENTIAL_SLOT } from "@/lib/agent/execute-config";
+import {
+  DESK_WALL_TEST_VERSION,
+  getDeskWallTestLastState,
+  type DeskWallTestLastState,
+} from "@/lib/agent/desk-wall-test";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type DeskAgentStatusCounts = {
@@ -41,6 +46,7 @@ export type DeskAgentHealth = {
   effects: DeskAgentStatusCounts & {
     latestExternalResultId: string | null;
   };
+  lastWallTest: DeskWallTestLastState;
   warnings: string[];
   recentActions: DeskAgentRecentAction[];
   backlog: boolean;
@@ -210,6 +216,20 @@ export async function getDeskAgentHealth(): Promise<DeskAgentHealth> {
     },
   );
 
+  let lastWallTest: DeskWallTestLastState;
+  try {
+    lastWallTest = await getDeskWallTestLastState(db);
+  } catch {
+    lastWallTest = {
+      testVersion: DESK_WALL_TEST_VERSION,
+      status: "none",
+      wallEntryId: null,
+      effectId: null,
+      completedAt: null,
+      updatedAt: null,
+    };
+  }
+
   return {
     identity: {
       configuredUsername,
@@ -230,6 +250,7 @@ export async function getDeskAgentHealth(): Promise<DeskAgentHealth> {
       latestExternalResultId:
         recentActions.find((a) => a.externalResultId)?.externalResultId ?? null,
     },
+    lastWallTest,
     warnings,
     recentActions,
     backlog,
