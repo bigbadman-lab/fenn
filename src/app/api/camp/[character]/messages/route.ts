@@ -97,7 +97,11 @@ export async function POST(request: Request, context: RouteContext) {
         assistantMessage: result.assistantMessage,
         reward: result.reward,
         rewardUnavailable: result.rewardUnavailable,
+        ...(result.firstThirtyUnavailable
+          ? { firstThirtyUnavailable: true }
+          : {}),
         reused: result.reused,
+        ...(result.firstThirty ? { firstThirty: result.firstThirty } : {}),
       },
       { status: result.reused ? 200 : 201 },
     );

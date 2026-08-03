@@ -1998,6 +1998,247 @@ a.fenn-map__link:focus-visible {
   color: var(--color-leaf);
 }
 
+/* THE FIRST THIRTY — restrained presentation */
+.ft-progress {
+  margin: 0.75rem 0 1rem;
+  max-width: 100%;
+}
+
+.ft-progress--compact {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+}
+
+.ft-progress__title {
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.1em;
+  color: var(--color-leaf);
+}
+
+.ft-progress__leaf {
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.04em;
+}
+
+.ft-progress__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ft-progress__item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ft-progress__mark {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-bone) 70%, var(--color-night));
+}
+
+.ft-progress__next {
+  margin: 0.65rem 0 0;
+}
+
+.ft-progress__next p {
+  margin: 0.25rem 0;
+}
+
+.ft-progress__until {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+
+.ft-progress--open .ft-progress__cta {
+  margin: 0.45rem 0 0;
+}
+
+.ft-reveal {
+  margin: 0.85rem 0 0.5rem;
+  max-width: 100%;
+  letter-spacing: 0.06em;
+}
+
+.ft-reveal__step {
+  animation: ft-reveal-in 0.28s ease both;
+}
+
+.ft-reveal__step--1 {
+  animation-delay: 0ms;
+}
+
+.ft-reveal__step--2 {
+  animation-delay: 0.16s;
+}
+
+.ft-reveal__step--3 {
+  animation-delay: 0.32s;
+}
+
+.ft-reveal__step--4 {
+  animation-delay: 0.48s;
+}
+
+@keyframes ft-reveal-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ft-reveal--reduced .ft-reveal__step {
+  animation: none;
+  opacity: 1;
+}
+
+.ft-reveal__rule {
+  margin: 0.35rem 0;
+  overflow: hidden;
+  max-width: 100%;
+  color: color-mix(in srgb, var(--color-bone) 35%, var(--color-night));
+  white-space: nowrap;
+}
+
+.ft-reveal__title {
+  margin: 0.5rem 0;
+  text-align: center;
+  letter-spacing: 0.12em;
+  color: var(--color-leaf);
+}
+
+.ft-reveal__grant {
+  margin: 0.65rem 0;
+  text-align: center;
+  font-size: 1.05rem;
+  color: var(--color-leaf);
+}
+
+.ft-reveal__total {
+  margin: 0.35rem 0;
+  text-align: center;
+}
+
+.ft-reveal__witness {
+  margin: 0.5rem 0;
+  text-align: center;
+}
+
+.ft-reveal__next {
+  margin: 0.6rem 0 0.35rem;
+  text-align: center;
+}
+
+.ft-reveal__next p {
+  margin: 0.3rem 0;
+}
+
+.ft-deed-surface {
+  margin: 0.75rem 0 1rem;
+  max-width: 36rem;
+}
+
+.ft-deed-surface__lead {
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.1em;
+  color: var(--color-leaf);
+}
+
+.ft-deed-surface__hint,
+.ft-deed-surface__pending {
+  margin: 0.5rem 0;
+}
+
+.camp-talk__ft-header {
+  margin: 0 0 0.5rem;
+}
+
+.camp-talk__ft-quiet {
+  margin: 0.5rem 0;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--color-leaf) 75%, var(--color-bone));
+}
+
+.camp-talk__ft-quiet-line {
+  display: block;
+}
+
+.camp-talk__ft-ineligible {
+  margin: 0.35rem 0 0.55rem;
+  font-size: 0.9rem;
+}
+
+.camp-talk__ft-fail {
+  margin: 0.55rem 0;
+  color: color-mix(in srgb, var(--color-bone) 80%, var(--color-night));
+}
+
+.camp-talk__ft-fail p {
+  margin: 0.2rem 0;
+}
+
+.camp__ft-compact {
+  margin: 0.35rem 0 0;
+  letter-spacing: 0.06em;
+}
+
+.camp__ft-panel {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 360px) {
+  .ft-reveal__rule {
+    letter-spacing: -0.04em;
+  }
+
+  .ft-reveal__title {
+    letter-spacing: 0.06em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ft-reveal__step {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+@media (forced-colors: active) {
+  .ft-progress__title,
+  .ft-reveal__title,
+  .ft-reveal__grant,
+  .ft-deed-surface__lead,
+  .camp-talk__ft-quiet {
+    color: CanvasText;
+  }
+
+  .ft-progress__mark,
+  .ft-reveal__rule {
+    color: CanvasText;
+  }
+}
+
+.camp-talk__first-thirty-ack {
+  margin: 0.75rem 0 0.25rem;
+  letter-spacing: 0.08em;
+  color: var(--color-leaf);
+}
+
+.camp-talk__first-thirty-line {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
 .camp-talk__body {
   margin: 0;
   white-space: pre-wrap;
@@ -3184,73 +3425,158 @@ button.wall-mark__action:focus-visible {
   color: color-mix(in srgb, var(--color-leaf) 45%, var(--color-bone));
 }
 
+.greenwood-fire-presence {
+  /* Scene tones under the Fire; accents extend --gw-accent-fire. */
+  --gw-fire-ember: color-mix(in srgb, var(--gw-accent-fire) 70%, var(--color-leaf));
+  --gw-fire-ash: color-mix(in srgb, var(--color-bone) 45%, var(--color-greenwood));
+  --gw-fire-bone: color-mix(in srgb, var(--color-bone) 88%, var(--color-leaf));
+}
+
+.greenwood-fire-presence__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem 0.75rem;
+  font-size: clamp(1.05rem, 2.6vw, 1.22rem);
+  letter-spacing: 0.12em;
+  margin-bottom: 0.35rem;
+}
+
+.greenwood-fire-presence__heading-mark {
+  color: var(--gw-accent-fire, var(--color-leaf));
+  letter-spacing: 0.08em;
+}
+
+.greenwood-fire-presence__heading-text {
+  color: var(--gw-accent-fire, var(--color-leaf));
+}
+
+.greenwood-fire-presence__heading-rule {
+  margin: 0 0 1rem;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--gw-accent-fire, var(--color-leaf)) 45%, var(--color-bone));
+  font-family: inherit;
+  white-space: pre;
+  overflow-x: hidden;
+}
+
+.greenwood-fire-presence__purpose {
+  margin: 0 auto 1.1rem;
+  max-width: 36rem;
+  text-align: center;
+}
+
+.greenwood-fire-presence__purpose p {
+  margin: 0 0 0.4rem;
+}
+
 .greenwood-fire-presence--waiting .greenwood-fire-presence__clearing--waiting {
-  color: color-mix(in srgb, var(--color-leaf) 28%, var(--color-bone));
+  opacity: 0.95;
 }
 
 .greenwood-fire-presence--seated .greenwood-fire-presence__clearing--seated {
-  color: color-mix(in srgb, var(--color-leaf) 52%, var(--color-bone));
+  opacity: 1;
 }
 
 .greenwood-fire-presence--quiet .greenwood-fire-presence__clearing {
-  opacity: 0.92;
+  opacity: 0.9;
 }
 
 .greenwood-fire-presence--subdued .greenwood-fire-presence__clearing {
-  opacity: 0.55;
-  color: color-mix(in srgb, var(--color-greenwood) 40%, var(--color-bone));
+  opacity: 0.5;
 }
 
 .greenwood-fire-presence__scene {
-  margin: 0.35rem 0 0.95rem;
+  margin: 0.2rem 0 1rem;
   overflow-x: hidden;
   max-width: 100%;
 }
 
 .greenwood-fire-presence__clearing {
-  margin: 0;
+  margin: 0 auto;
   max-width: 100%;
   overflow-x: hidden;
-  white-space: pre;
   line-height: 1.12;
-  font-size: clamp(0.72rem, 2.4vw, 0.95rem);
+  font-size: clamp(0.68rem, 1.85vw, 0.9rem);
   text-align: center;
+}
+
+.greenwood-fire-presence__ascii-line {
+  white-space: pre;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.greenwood-fire-presence__ascii-line--ember {
+  color: var(--gw-fire-ember);
+}
+
+.greenwood-fire-presence__ascii-line--ash {
+  color: var(--gw-fire-ash);
+}
+
+.greenwood-fire-presence__ascii-line--greenwood {
+  color: color-mix(in srgb, var(--color-greenwood) 55%, var(--color-bone));
+}
+
+.greenwood-fire-presence__ascii-line--bone {
+  color: var(--gw-fire-bone);
+}
+
+.greenwood-fire-presence--seated .greenwood-fire-presence__ascii-line--ember {
+  color: color-mix(in srgb, var(--gw-accent-fire, var(--color-leaf)) 88%, var(--color-bone));
+}
+
+.greenwood-fire-presence--seated .greenwood-fire-presence__ascii-line--bone {
+  color: var(--color-bone);
 }
 
 .greenwood-fire-presence__clearing--listening {
-  color: color-mix(in srgb, var(--color-greenwood) 45%, var(--color-bone));
+  opacity: 0.75;
 }
 
 .greenwood-fire-presence__state-lead {
-  margin: 0 0 0.65rem;
-  letter-spacing: 0.1em;
-  color: color-mix(in srgb, var(--color-leaf) 58%, var(--color-bone));
+  margin: 0 0 0.55rem;
+  letter-spacing: 0.11em;
+  color: color-mix(in srgb, var(--gw-accent-fire, var(--color-leaf)) 70%, var(--color-bone));
+}
+
+.greenwood-fire-presence--seated .greenwood-fire-presence__state-lead {
+  color: color-mix(in srgb, var(--gw-accent-fire, var(--color-leaf)) 85%, var(--color-bone));
 }
 
 .greenwood-fire-presence__self {
-  margin: 1.1rem 0 0.85rem;
+  margin: 1.15rem auto 0.95rem;
   text-align: center;
+  max-width: 18rem;
 }
 
 .greenwood-fire-presence__self-sigil {
   margin: 0 auto 0.55rem;
-  max-width: min(100%, 18rem);
+  max-width: min(100%, 16rem);
   overflow-x: hidden;
   white-space: pre;
   line-height: 1.15;
-  font-size: clamp(0.85rem, 2.8vw, 1.05rem);
-  color: color-mix(in srgb, var(--color-leaf) 55%, var(--color-bone));
+  font-size: clamp(0.88rem, 2.9vw, 1.1rem);
+  color: color-mix(in srgb, var(--gw-accent-fire, var(--color-leaf)) 60%, var(--color-bone));
 }
 
 .greenwood-fire-presence__you-here {
   margin: 0.35rem 0 0.15rem;
-  letter-spacing: 0.1em;
-  color: var(--color-leaf);
+  letter-spacing: 0.12em;
+  color: var(--gw-accent-fire, var(--color-leaf));
 }
 
 .greenwood-fire-presence__self-name {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.2rem;
   letter-spacing: 0.05em;
+  overflow-wrap: anywhere;
+}
+
+.greenwood-fire-presence__self-outlaw {
+  margin: 0;
+  letter-spacing: 0.06em;
+  font-size: 0.85rem;
 }
 
 .greenwood-fire-presence__group-title {
@@ -3269,13 +3595,19 @@ button.wall-mark__action:focus-visible {
   margin: 0.55rem 0 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
-  gap: 0.85rem 0.75rem;
-  max-width: 36rem;
+  grid-template-columns: repeat(auto-fit, minmax(7.25rem, 1fr));
+  gap: 0.9rem 0.8rem;
+  max-width: 34rem;
+  justify-items: center;
+}
+
+.greenwood-fire-presence__ring-list > li {
+  margin: 0;
+  min-width: 0;
+  width: 100%;
 }
 
 .greenwood-fire-presence__ring-member {
-  margin: 0;
   text-align: center;
   min-width: 0;
 }
@@ -3286,25 +3618,61 @@ button.wall-mark__action:focus-visible {
   overflow-x: hidden;
   white-space: pre;
   line-height: 1.1;
-  font-size: clamp(0.62rem, 2vw, 0.78rem);
-  color: color-mix(in srgb, var(--color-greenwood) 55%, var(--color-bone));
+  font-size: clamp(0.58rem, 1.9vw, 0.75rem);
+  color: color-mix(in srgb, var(--color-greenwood) 50%, var(--color-bone));
+}
+
+.greenwood-fire-presence__open-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 4rem;
+  text-align: center;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--gw-accent-fire) 38%, var(--color-bone));
+  padding: 0.45rem 0.25rem;
+  max-width: 8rem;
+  width: 100%;
+  box-sizing: border-box;
+  opacity: 0.9;
+}
+
+.greenwood-fire-presence__open-place-mark {
+  margin: 0;
+  font-size: 0.78rem;
 }
 
 .greenwood-fire-presence__overflow {
-  margin: 0.65rem 0 0;
+  margin: 0.7rem 0 0;
   letter-spacing: 0.05em;
   font-size: 0.85rem;
-  color: color-mix(in srgb, var(--color-leaf) 45%, var(--color-bone));
+  color: color-mix(in srgb, var(--gw-accent-fire, var(--color-leaf)) 45%, var(--color-bone));
+}
+
+.greenwood-fire-presence__status-copy {
+  margin: 0.35rem 0 0;
 }
 
 .greenwood-fire-presence__action-error {
   margin: 0.75rem 0 0;
 }
 
+.greenwood-fire-presence__action-hint {
+  margin: 0 0 0.45rem;
+  letter-spacing: 0.04em;
+}
+
+.greenwood-fire-presence__closing {
+  margin: 1.25rem 0 0;
+  letter-spacing: 0.04em;
+  font-size: 0.9rem;
+}
+
 .greenwood-fire-presence__waiting-tag {
   margin: 0.2rem 0 0;
   letter-spacing: 0.05em;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .greenwood-fire-presence__list {
@@ -3313,31 +3681,36 @@ button.wall-mark__action:focus-visible {
   padding: 0;
 }
 
-.greenwood-fire-presence__member {
-  margin: 0 0 1rem;
-  padding-bottom: 0.75rem;
+.greenwood-fire-presence__list > li {
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.65rem;
   border-bottom: 1px solid
-    color-mix(in srgb, var(--color-greenwood) 28%, var(--border));
+    color-mix(in srgb, var(--color-greenwood) 22%, var(--border));
 }
 
-.greenwood-fire-presence__member:last-child {
+.greenwood-fire-presence__list > li:last-child {
   margin-bottom: 0;
   padding-bottom: 0;
   border-bottom: 0;
 }
 
+.greenwood-fire-presence__member {
+  text-align: left;
+}
+
 .greenwood-fire-presence__sigil {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.3rem;
   max-width: 100%;
   overflow-x: hidden;
   white-space: pre;
   line-height: 1.15;
-  font-size: clamp(0.65rem, 2vw, 0.82rem);
-  color: color-mix(in srgb, var(--color-greenwood) 55%, var(--color-bone));
+  font-size: clamp(0.6rem, 1.8vw, 0.78rem);
+  color: color-mix(in srgb, var(--color-greenwood) 48%, var(--color-bone));
+  opacity: 0.85;
 }
 
 .greenwood-fire-presence__sigil-fallback {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.3rem;
   letter-spacing: 0.06em;
 }
 
@@ -3347,21 +3720,16 @@ button.wall-mark__action:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.greenwood-fire-presence__count {
-  margin: 0.75rem 0 0;
-  letter-spacing: 0.05em;
-}
-
 .greenwood-fire-presence__actions {
-  margin-top: 1.1rem;
+  margin-top: 1.15rem;
 }
 
 .greenwood-fire-presence__btn {
   appearance: none;
   background: transparent;
   border: 1px solid
-    color-mix(in srgb, var(--color-greenwood) 55%, var(--border));
-  color: var(--color-leaf);
+    color-mix(in srgb, var(--gw-accent-fire, var(--color-greenwood)) 55%, var(--border));
+  color: var(--gw-accent-fire, var(--color-leaf));
   letter-spacing: 0.06em;
   padding: 0.45rem 0.7rem;
   cursor: pointer;
@@ -3369,17 +3737,32 @@ button.wall-mark__action:focus-visible {
 
 .greenwood-fire-presence__btn:hover:not(:disabled) {
   color: var(--color-bone);
-  border-color: var(--color-leaf);
+  border-color: var(--gw-accent-fire, var(--color-leaf));
 }
 
 .greenwood-fire-presence__btn:focus-visible {
-  outline: 1px solid var(--color-leaf);
+  outline: 1px solid var(--gw-accent-fire, var(--color-leaf));
   outline-offset: 3px;
 }
 
 .greenwood-fire-presence__btn:disabled {
   opacity: 0.55;
   cursor: wait;
+}
+
+@media (max-width: 40rem) {
+  .greenwood-fire-presence__clearing {
+    font-size: clamp(0.62rem, 3.1vw, 0.78rem);
+  }
+
+  .greenwood-fire-presence__ring-list {
+    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+    max-width: 100%;
+  }
+
+  .greenwood-fire-presence__heading-rule {
+    font-size: 0.78rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3392,10 +3775,18 @@ button.wall-mark__action:focus-visible {
 
 @media (forced-colors: active) {
   .greenwood-fire-presence__clearing,
+  .greenwood-fire-presence__ascii-line--ember,
+  .greenwood-fire-presence__ascii-line--ash,
+  .greenwood-fire-presence__ascii-line--greenwood,
+  .greenwood-fire-presence__ascii-line--bone,
   .greenwood-fire-presence__self-sigil,
   .greenwood-fire-presence__ring-sigil,
   .greenwood-fire-presence__state-lead,
   .greenwood-fire-presence__you-here,
+  .greenwood-fire-presence__heading-mark,
+  .greenwood-fire-presence__heading-text,
+  .greenwood-fire-presence__heading-rule,
+  .greenwood-fire-presence__open-place,
   .greenwood-fire-presence__btn {
     color: CanvasText;
     border-color: CanvasText;

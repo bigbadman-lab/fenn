@@ -1,7 +1,12 @@
 /** Safe LEAF integer for app DTOs (must fit Number.MAX_SAFE_INTEGER). */
 export type LeafAmount = number;
 
-export type LeafAwardSourceType = "camp" | "deed" | "system" | "hollow";
+export type LeafAwardSourceType =
+  | "camp"
+  | "deed"
+  | "system"
+  | "hollow"
+  | "onboarding";
 export type LeafAdminSourceType = "admin_adjustment";
 export type LeafSourceType = LeafAwardSourceType | LeafAdminSourceType;
 

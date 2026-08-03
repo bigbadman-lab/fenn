@@ -25,6 +25,8 @@ export function toLedgerPublicCategory(
       return "DEED";
     case "camp":
       return "CAMP";
+    case "onboarding":
+      return "SYSTEM";
     case "admin_adjustment":
       return "ADJUSTMENT";
     case "system":

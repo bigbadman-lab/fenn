@@ -184,6 +184,10 @@ export const leafIdempotencyKeys = {
     `deed_submission:${submissionId}:approval`,
   campMessageReward: (messageId: string) =>
     `camp_message:${messageId}:reward`,
+  firstThirty: (
+    profileId: string,
+    milestone: "camp_first" | "camp_three" | "first_deed",
+  ) => `first_thirty:${profileId}:${milestone}`,
   adminAdjustment: (adjustmentId: string) =>
     `admin_adjustment:${adjustmentId}`,
   system: (eventId: string, purpose: string) =>

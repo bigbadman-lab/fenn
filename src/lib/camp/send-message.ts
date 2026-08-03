@@ -40,6 +40,7 @@ import {
   safeRetrieveCampKnowledge,
   type CampKnowledgeRetriever,
 } from "@/lib/camp/knowledge";
+import type { SafeFirstThirtyProgress } from "@/lib/first-thirty/types";
 import { buildFennKnowledgeContext } from "@/lib/memory/context";
 import {
   detectCampRepetition,
@@ -57,13 +58,31 @@ export type SendCampMessageResult = {
   assistantMessage: SafeCampMessage;
   reward: SafeCampReward;
   rewardUnavailable: boolean;
+  /** First Thirty RPC failed; conversation still ok — never invent progress. */
+  firstThirtyUnavailable?: boolean;
   reused: boolean;
+  firstThirty?: SafeFirstThirtyProgress;
 };
 
 export type CampRewardApplicator = (input: {
   messageId: string;
   admin: SupabaseClient;
 }) => Promise<ApplyCampMessageRewardResult>;
+
+export type CampFirstThirtyApplicator = (input: {
+  messageId: string;
+  admin: SupabaseClient;
+}) => Promise<{
+  progress: SafeFirstThirtyProgress;
+  suppressOrdinaryCampReward: boolean;
+  lastEvent?: {
+    milestone: "camp_first" | "camp_three" | "first_deed";
+    newlySatisfied: boolean;
+    nominalGrant: number;
+    actualGrant: number;
+    greenwoodOpen: boolean;
+  };
+}>;
 
 export type CampMemoryCandidateApplicator = (input: {
   messageId: string;
@@ -87,12 +106,14 @@ export async function sendCampMessage(input: {
   admin?: SupabaseClient;
   callModel?: CampModelCaller;
   applyReward?: CampRewardApplicator;
+  applyFirstThirty?: CampFirstThirtyApplicator;
   applyMemoryCandidate?: CampMemoryCandidateApplicator;
   /** Test seam — defaults to safeRetrieveCampKnowledge (scope locked to camp). */
   retrieveCampKnowledge?: CampKnowledgeRetriever;
 }): Promise<SendCampMessageResult> {
   const admin = input.admin ?? (await defaultAdmin());
   const applyReward = input.applyReward ?? defaultApplyReward;
+  const applyFirstThirty = input.applyFirstThirty ?? defaultApplyFirstThirty;
   const applyMemoryCandidate =
     input.applyMemoryCandidate ?? defaultApplyMemoryCandidate;
 
@@ -146,13 +167,29 @@ export async function sendCampMessage(input: {
       );
     }
 
-    // Idempotent replay: ensure reward decision exists without double-grant.
+    // Idempotent replay: First Thirty then ordinary reward without double-grant.
     let rewardUnavailable = false;
+    let firstThirtyUnavailable = false;
     let granted = Number(existingAssistant.reward_granted ?? 0);
+    let firstThirty: SafeFirstThirtyProgress | undefined;
     const alreadyFinalized = hasFinalizedRewardPolicy(
       existingAssistant.moderation_flags,
     );
-    if (!alreadyFinalized && granted === 0) {
+
+    let suppressCamp = false;
+    try {
+      const ft = await applyFirstThirty({
+        messageId: existingAssistant.id,
+        admin,
+      });
+      firstThirty = ft.progress;
+      suppressCamp = ft.suppressOrdinaryCampReward;
+    } catch {
+      // First Thirty failure must not block conversation replay.
+      firstThirtyUnavailable = true;
+    }
+
+    if (!alreadyFinalized && granted === 0 && !suppressCamp) {
       try {
         const rewardResult = await applyReward({
           messageId: existingAssistant.id,
@@ -185,7 +222,9 @@ export async function sendCampMessage(input: {
       assistantMessage: assistantSafe,
       reward: toSafeCampReward(granted),
       rewardUnavailable,
+      ...(firstThirtyUnavailable ? { firstThirtyUnavailable: true } : {}),
       reused: true,
+      ...(firstThirty ? { firstThirty } : {}),
     };
   }
 
@@ -297,20 +336,64 @@ export async function sendCampMessage(input: {
   await refreshCampSessionCounters(session.id, admin);
 
   let rewardUnavailable = false;
+  let firstThirtyUnavailable = false;
   let granted = 0;
+  let firstThirty: SafeFirstThirtyProgress | undefined;
+  let suppressCamp = false;
+
+  // First Thirty before ordinary CAMP: active path suppresses per-turn grants.
   try {
-    const rewardResult = await applyReward({
+    const ft = await applyFirstThirty({
       messageId: assistantRow.id,
       admin,
     });
-    granted = rewardResult.actualGrant;
+    firstThirty = ft.progress;
+    suppressCamp = ft.suppressOrdinaryCampReward;
+  } catch {
+    // Prefer conversation continuity; next send can reconcile.
+    firstThirtyUnavailable = true;
+  }
+
+  if (!suppressCamp) {
+    try {
+      const rewardResult = await applyReward({
+        messageId: assistantRow.id,
+        admin,
+      });
+      granted = rewardResult.actualGrant;
+      assistantRow = {
+        ...assistantRow,
+        reward_granted: granted,
+        leaf_ledger_id: rewardResult.ledgerId,
+      };
+    } catch {
+      rewardUnavailable = true;
+    }
+  } else {
+    // Finalise a zero-grant policy so replay does not re-open ordinary reward.
     assistantRow = {
       ...assistantRow,
-      reward_granted: granted,
-      leaf_ledger_id: rewardResult.ledgerId,
+      reward_granted: 0,
+      moderation_flags: {
+        ...(assistantRow.moderation_flags ?? {}),
+        rewardPolicy: {
+          recommended: Number(assistantRow.reward_recommendation ?? 0),
+          actual: 0,
+          reason: "first_thirty_suppressed",
+        },
+      },
     };
-  } catch {
-    rewardUnavailable = true;
+    try {
+      await admin
+        .from("camp_messages")
+        .update({
+          reward_granted: 0,
+          moderation_flags: assistantRow.moderation_flags,
+        })
+        .eq("id", assistantRow.id);
+    } catch {
+      // Non-fatal; RPC suppress remains true while active.
+    }
   }
 
   // Best-effort memory candidate after reward — never blocks conversation/LEAF.
@@ -340,7 +423,9 @@ export async function sendCampMessage(input: {
     assistantMessage: assistantSafe,
     reward: toSafeCampReward(granted),
     rewardUnavailable,
+    ...(firstThirtyUnavailable ? { firstThirtyUnavailable: true } : {}),
     reused: Boolean(existingUser),
+    ...(firstThirty ? { firstThirty } : {}),
   };
 }
 
@@ -350,6 +435,29 @@ async function defaultApplyReward(input: {
 }): Promise<ApplyCampMessageRewardResult> {
   return applyCampMessageReward({
     messageId: input.messageId,
+    admin: input.admin,
+  });
+}
+
+async function defaultApplyFirstThirty(input: {
+  messageId: string;
+  admin: SupabaseClient;
+}): Promise<{
+  progress: SafeFirstThirtyProgress;
+  suppressOrdinaryCampReward: boolean;
+  lastEvent?: {
+    milestone: "camp_first" | "camp_three" | "first_deed";
+    newlySatisfied: boolean;
+    nominalGrant: number;
+    actualGrant: number;
+    greenwoodOpen: boolean;
+  };
+}> {
+  const { applyFirstThirtyCampExchange } = await import(
+    "@/lib/first-thirty/service"
+  );
+  return applyFirstThirtyCampExchange({
+    assistantMessageId: input.messageId,
     admin: input.admin,
   });
 }

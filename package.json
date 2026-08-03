@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --conditions=react-server --test src/lib/leaf/**/*.test.ts src/lib/deeds/**/*.test.ts src/lib/admin/**/*.test.ts src/lib/desk/**/*.test.ts src/lib/wallet/**/*.test.ts src/lib/camp/**/*.test.ts src/lib/greenwood/**/*.test.ts src/lib/treasury/**/*.test.ts src/lib/commons/**/*.test.ts src/lib/wall/**/*.test.ts src/lib/canon/**/*.test.ts src/lib/memory/**/*.test.ts src/lib/agent/**/*.test.ts src/lib/x/**/*.test.ts src/lib/world-pulse/**/*.test.ts src/lib/ledger/**/*.test.ts src/lib/home/**/*.test.ts src/lib/chronicle/**/*.test.ts src/lib/ops/**/*.test.ts",
+    "test": "tsx --conditions=react-server --test src/lib/leaf/**/*.test.ts src/lib/deeds/**/*.test.ts src/lib/admin/**/*.test.ts src/lib/desk/**/*.test.ts src/lib/wallet/**/*.test.ts src/lib/camp/**/*.test.ts src/lib/greenwood/**/*.test.ts src/lib/treasury/**/*.test.ts src/lib/commons/**/*.test.ts src/lib/wall/**/*.test.ts src/lib/canon/**/*.test.ts src/lib/memory/**/*.test.ts src/lib/agent/**/*.test.ts src/lib/x/**/*.test.ts src/lib/world-pulse/**/*.test.ts src/lib/ledger/**/*.test.ts src/lib/home/**/*.test.ts src/lib/chronicle/**/*.test.ts src/lib/ops/**/*.test.ts src/lib/first-thirty/**/*.test.ts",
     "canon:sync": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/sync-fenn-canon.ts",
     "memory:process-pending": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/process-pending-memory.ts",
     "memory:index": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/index-fenn-memory.ts",

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DeedBoard } from "@/components/deeds/deed-board";
+import { FirstThirtyDeedSurface } from "@/components/first-thirty/first-thirty-deed-surface";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { DeedsBoardPulse } from "@/components/world-pulse/deeds-pulse";
 import { listPublicDeeds } from "@/lib/deeds/queries";
@@ -36,6 +37,8 @@ export default async function DeedsPage() {
           )
         }
       />
+
+      <FirstThirtyDeedSurface placement="board" />
 
       {deeds.length > 0 ? (
         <section className="deed-board" aria-labelledby="deed-board-list-title">

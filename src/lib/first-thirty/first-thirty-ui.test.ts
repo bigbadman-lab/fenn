@@ -1,0 +1,421 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
+
+import {
+  FIRST_THIRTY_CHECKLIST,
+  firstThirtyThresholdTotal,
+} from "@/lib/first-thirty/copy";
+import {
+  FIRST_THIRTY_DEEDS_COPY,
+  FIRST_THIRTY_DEEDS_HREF,
+  FIRST_THIRTY_FAILURE_COPY,
+  FIRST_THIRTY_GREENWOOD_HREF,
+  FIRST_THIRTY_INELIGIBLE_COPY,
+  firstDeedEventFromTransition,
+  firstThirtyEventSessionKey,
+  formatActualLeafGrantLine,
+  formatCompactFirstThirtyLine,
+  formatEligibleExchangeQuiet,
+  formatFirstThirtyLeafLine,
+  shouldAnnounceFirstThirtyEvent,
+  shouldShowActiveFirstThirty,
+  shouldShowGreenwoodOpenAction,
+} from "@/lib/first-thirty/presentation";
+import {
+  buildUnstartedFirstThirtyProgress,
+  type SafeFirstThirtyProgress,
+} from "@/lib/first-thirty/types";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const repo = join(here, "../../..");
+
+function read(rel: string): string {
+  return readFileSync(join(repo, rel), "utf8");
+}
+
+function activeProgress(
+  partial: Partial<SafeFirstThirtyProgress> = {},
+): SafeFirstThirtyProgress {
+  const milestones = {
+    firstCamp: false,
+    thirdCamp: false,
+    firstDeed: false,
+    ...partial.milestones,
+  };
+  return {
+    active: true,
+    completed: false,
+    terminated: false,
+    greenwoodOpen: false,
+    eligibleCampExchanges: 0,
+    milestoneLeafGranted: 0,
+    lifetimeLeaf: 0,
+    leafUntilGreenwood: 30,
+    nextMilestone: "first_camp",
+    ...partial,
+    milestones,
+  };
+}
+
+describe("THE FIRST THIRTY — presentation helpers", () => {
+  it("shows active progress only when backend reports active", () => {
+    assert.equal(shouldShowActiveFirstThirty(activeProgress()), true);
+    assert.equal(
+      shouldShowActiveFirstThirty(
+        activeProgress({ active: false, greenwoodOpen: true }),
+      ),
+      false,
+    );
+    assert.equal(shouldShowActiveFirstThirty(null), false);
+  });
+
+  it("hides inactive First Thirty checklist", () => {
+    const inactive = buildUnstartedFirstThirtyProgress({
+      lifetimeLeaf: 30,
+      greenwoodThreshold: 30,
+      isGreenwoodMember: false,
+    });
+    assert.equal(shouldShowActiveFirstThirty(inactive), false);
+  });
+
+  it("Greenwood members see open action, not active checklist", () => {
+    const member = buildUnstartedFirstThirtyProgress({
+      lifetimeLeaf: 5,
+      greenwoodThreshold: 30,
+      isGreenwoodMember: true,
+    });
+    assert.equal(shouldShowActiveFirstThirty(member), false);
+    assert.equal(shouldShowGreenwoodOpenAction(member), true);
+  });
+
+  it("shows exact lifetime LEAF from progress, not assumed +10 steps", () => {
+    const p = activeProgress({
+      lifetimeLeaf: 17,
+      leafUntilGreenwood: 13,
+      milestones: { firstCamp: true, thirdCamp: true, firstDeed: false },
+      milestoneLeafGranted: 13,
+    });
+    assert.equal(formatFirstThirtyLeafLine(p), "17 / 30 LEAF");
+    assert.equal(formatCompactFirstThirtyLine(p), "FIRST THIRTY · 17 / 30");
+    assert.equal(firstThirtyThresholdTotal(p), 30);
+  });
+
+  it("never uses raw message counts for progress lines", () => {
+    const helpers = read("src/lib/first-thirty/presentation.ts");
+    const camp = read("src/components/camp/camp-conversation.tsx");
+    assert.doesNotMatch(helpers, /messages\.length|messageCount|localStorage/);
+    assert.doesNotMatch(camp, /messages\.length\s*[+\-*/]|localStorage/);
+    assert.match(helpers, /eligibleCampExchanges/);
+  });
+
+  it("first milestone actual grant formatting never shows +0", () => {
+    assert.equal(formatActualLeafGrantLine(10), "+10 LEAF");
+    assert.equal(formatActualLeafGrantLine(3), "+3 LEAF");
+    assert.equal(formatActualLeafGrantLine(0), null);
+    assert.equal(formatActualLeafGrantLine(-1), null);
+  });
+
+  it("quiet line for eligible second exchange uses trusted count", () => {
+    const p = activeProgress({
+      exchangeCounted: true,
+      eligibleCampExchanges: 2,
+      milestones: { firstCamp: true, thirdCamp: false, firstDeed: false },
+      lifetimeLeaf: 10,
+      leafUntilGreenwood: 20,
+    });
+    assert.equal(
+      formatEligibleExchangeQuiet(p),
+      "ONE MEANINGFUL EXCHANGE REMAINS",
+    );
+  });
+
+  it("ineligible exchange (not counted) has no quiet progress", () => {
+    const p = activeProgress({
+      exchangeCounted: false,
+      eligibleCampExchanges: 1,
+    });
+    assert.equal(formatEligibleExchangeQuiet(p), null);
+  });
+
+  it("session keys prevent replaying announcements", () => {
+    const event = {
+      milestone: "camp_first" as const,
+      newlySatisfied: true,
+      nominalGrant: 10,
+      actualGrant: 10,
+      greenwoodOpen: false,
+    };
+    const key = firstThirtyEventSessionKey({
+      messageId: "msg-1",
+      event,
+      lifetimeLeaf: 10,
+    });
+    const seen = new Set<string>([key]);
+    assert.equal(
+      shouldAnnounceFirstThirtyEvent({ event, eventKey: key, seenKeys: seen }),
+      false,
+    );
+    assert.equal(
+      shouldAnnounceFirstThirtyEvent({
+        event,
+        eventKey: "ft:other:camp_first",
+        seenKeys: seen,
+      }),
+      true,
+    );
+  });
+
+  it("deed transition synthesizes trusted actual grant only after prior progress", () => {
+    const previous = activeProgress({
+      milestones: { firstCamp: true, thirdCamp: true, firstDeed: false },
+      nextMilestone: "first_deed",
+      lifetimeLeaf: 20,
+      leafUntilGreenwood: 10,
+    });
+    const next: SafeFirstThirtyProgress = {
+      ...previous,
+      active: false,
+      greenwoodOpen: true,
+      milestones: { firstCamp: true, thirdCamp: true, firstDeed: true },
+      milestoneGrants: { firstCamp: 10, thirdCamp: 10, firstDeed: 3 },
+      lifetimeLeaf: 33,
+      leafUntilGreenwood: 0,
+      nextMilestone: null,
+    };
+    const event = firstDeedEventFromTransition({ previous, next });
+    assert.ok(event);
+    assert.equal(event!.actualGrant, 3);
+    assert.equal(event!.greenwoodOpen, true);
+
+    assert.equal(
+      firstDeedEventFromTransition({ previous: null, next }),
+      null,
+    );
+  });
+
+  it("zero onboarding grant on first_deed transition is explicit zero", () => {
+    const previous = activeProgress({
+      milestones: { firstCamp: true, thirdCamp: true, firstDeed: false },
+    });
+    const next = activeProgress({
+      active: false,
+      greenwoodOpen: true,
+      milestones: { firstCamp: true, thirdCamp: true, firstDeed: true },
+      milestoneGrants: { firstCamp: 10, thirdCamp: 10, firstDeed: 0 },
+      lifetimeLeaf: 30,
+      leafUntilGreenwood: 0,
+    });
+    const event = firstDeedEventFromTransition({ previous, next });
+    assert.equal(event?.actualGrant, 0);
+    assert.equal(formatActualLeafGrantLine(event!.actualGrant), null);
+  });
+
+  it("checklist labels match THE FIRST THIRTY voice", () => {
+    assert.equal(FIRST_THIRTY_CHECKLIST.firstCamp, "THE FIRE HEARD YOU");
+    assert.equal(
+      FIRST_THIRTY_CHECKLIST.thirdCamp,
+      "THE GREENWOOD REMEMBERED",
+    );
+    assert.equal(
+      FIRST_THIRTY_CHECKLIST.firstDeed,
+      "A DEED MUST BE WITNESSED",
+    );
+  });
+
+  it("Greenwood walk uses existing crossing route", () => {
+    assert.equal(FIRST_THIRTY_GREENWOOD_HREF, "/greenwood?crossing=1");
+    assert.equal(FIRST_THIRTY_DEEDS_HREF, "/deeds");
+  });
+
+  it("failure and ineligible copy stay non-technical", () => {
+    assert.equal(FIRST_THIRTY_FAILURE_COPY.line1, "The words remain.");
+    assert.match(FIRST_THIRTY_FAILURE_COPY.line2, /could not be counted/);
+    assert.equal(
+      FIRST_THIRTY_INELIGIBLE_COPY,
+      "Not every word leaves a mark.",
+    );
+    assert.doesNotMatch(FIRST_THIRTY_FAILURE_COPY.line2, /rpc|sql|score|spam/i);
+  });
+
+  it("deeds pending copy does not grant LEAF", () => {
+    assert.equal(
+      FIRST_THIRTY_DEEDS_COPY.pendingWitness,
+      "YOUR DEED IS WAITING TO BE WITNESSED",
+    );
+    assert.doesNotMatch(
+      FIRST_THIRTY_DEEDS_COPY.pendingWitness,
+      /\+\d+\s*LEAF/,
+    );
+  });
+  it("quiet line for first counted exchange without full milestone thrash", () => {
+    const p = activeProgress({
+      exchangeCounted: true,
+      eligibleCampExchanges: 1,
+      milestones: { firstCamp: true, thirdCamp: false, firstDeed: false },
+      lastEvent: undefined,
+      lifetimeLeaf: 10,
+      leafUntilGreenwood: 20,
+    });
+    // After first milestone, lastEvent present suppresses quiet — without event:
+    const quiet = formatEligibleExchangeQuiet({
+      ...p,
+      milestones: { firstCamp: false, thirdCamp: false, firstDeed: false },
+    });
+    assert.match(quiet ?? "", /1 \/ 3 MEANINGFUL EXCHANGES/);
+  });
+
+  it("Greenwood-open state removes remaining checklist visibility", () => {
+    const open = activeProgress({
+      active: false,
+      greenwoodOpen: true,
+      lifetimeLeaf: 30,
+      leafUntilGreenwood: 0,
+      nextMilestone: null,
+      milestones: { firstCamp: true, thirdCamp: true, firstDeed: true },
+    });
+    assert.equal(shouldShowActiveFirstThirty(open), false);
+    assert.equal(shouldShowGreenwoodOpenAction(open), true);
+  });
+});
+
+describe("THE FIRST THIRTY — UI source contracts", () => {
+  it("reusable progress component uses trusted lifetime and ASCII markers", () => {
+    const ui = read("src/components/first-thirty/first-thirty-progress.tsx");
+    assert.match(ui, /lifetimeLeaf/);
+    assert.match(ui, /leafUntilGreenwood/);
+    assert.match(ui, /\[x\]/);
+    assert.match(ui, /\[ \]/);
+    assert.match(ui, /progress\.active/);
+    assert.match(ui, /FIRST_THIRTY_GREENWOOD_HREF/);
+    assert.match(ui, /\[ FIND A DEED \]/);
+    assert.match(ui, /FIRST_THIRTY_DEEDS_HREF/);
+    assert.doesNotMatch(ui, /localStorage|messageCount|reward_recommendation/);
+  });
+
+  it("milestone acknowledge uses actualGrant and aria-live polite", () => {
+    const ui = read(
+      "src/components/first-thirty/first-thirty-acknowledge.tsx",
+    );
+    assert.match(ui, /actualGrant/);
+    assert.match(ui, /aria-live="polite"/);
+    assert.match(ui, /prefers-reduced-motion/);
+    assert.match(ui, /formatActualLeafGrantLine/);
+    assert.match(ui, /FIRST_THIRTY_REVEAL_TITLE/);
+    assert.match(ui, /YOUR DEED WAS WITNESSED/);
+    assert.match(ui, /\[ WALK TO THE GREENWOOD \]/);
+    assert.match(ui, /FIRST_THIRTY_GREENWOOD_HREF/);
+    assert.match(ui, /\[ FIND A DEED \]/);
+    assert.match(ui, /formatActualLeafGrantLine\(actual\)/);
+  });
+
+  it("CAMP conversation uses API firstThirty and GET status, not invent progress", () => {
+    const camp = read("src/components/camp/camp-conversation.tsx");
+    assert.match(camp, /useFirstThirtyProgress/);
+    assert.match(camp, /firstThirty/);
+    assert.match(camp, /FirstThirtyAcknowledge/);
+    assert.match(camp, /FirstThirtyProgressPanel/);
+    assert.match(camp, /formatEligibleExchangeQuiet/);
+    assert.match(camp, /firstThirtyUnavailable/);
+    assert.match(camp, /FIRST_THIRTY_FAILURE_COPY/);
+    assert.match(camp, /FIRST_THIRTY_INELIGIBLE_COPY/);
+    assert.match(camp, /shouldAnnounceFirstThirtyEvent/);
+    assert.match(camp, /seenEventsRef/);
+    assert.doesNotMatch(camp, /localStorage/);
+    assert.doesNotMatch(camp, /reward_recommendation|spam|repetition/i);
+  });
+
+  it("CAMP orientation uses First Thirty voice", () => {
+    const ground = read("src/components/camp/camp-ground.tsx");
+    assert.match(ground, /Speak with care/);
+    assert.match(ground, /The Fire does not answer noise/);
+    assert.match(ground, /Not every word leaves a mark/);
+    assert.match(ground, /formatCompactFirstThirtyLine/);
+    assert.match(ground, /useFirstThirtyProgress/);
+  });
+
+  it("send-message exposes firstThirtyUnavailable without blocking AI", () => {
+    const send = read("src/lib/camp/send-message.ts");
+    assert.match(send, /firstThirtyUnavailable/);
+    assert.match(send, /applyFirstThirty/);
+    const route = read("src/app/api/camp/[character]/messages/route.ts");
+    assert.match(route, /firstThirtyUnavailable/);
+  });
+
+  it("Deeds surface pending / orientation / greenwood path without new routes", () => {
+    const deeds = read(
+      "src/components/first-thirty/first-thirty-deed-surface.tsx",
+    );
+    assert.match(deeds, /FIRST_THIRTY_DEEDS_COPY\.oneDeedRemains/);
+    assert.match(deeds, /FIRST_THIRTY_DEEDS_COPY\.pendingWitness/);
+    assert.match(deeds, /firstDeedEventFromTransition/);
+    assert.match(deeds, /FIRST_THIRTY_GREENWOOD_HREF/);
+    assert.match(deeds, /useFirstThirtyProgress/);
+    const page = read("src/app/deeds/page.tsx");
+    assert.match(page, /FirstThirtyDeedSurface/);
+    const panel = read("src/components/deeds/deed-submission-panel.tsx");
+    assert.match(panel, /FirstThirtyDeedSurface/);
+    assert.match(panel, /YOUR DEED IS WAITING TO BE WITNESSED/);
+  });
+
+  it("exchangeCounted is surfaced on camp apply without schema change", () => {
+    const service = read("src/lib/first-thirty/service.ts");
+    assert.match(service, /exchangeCounted:\s*Boolean\(row\.counted\)/);
+  });
+
+  it("milestone grants exposed for post-approval discovery", () => {
+    const types = read("src/lib/first-thirty/types.ts");
+    assert.match(types, /milestoneGrants/);
+    assert.match(types, /first_deed_leaf_granted/);
+  });
+
+  it("ordinary CAMP rewards remain rewardGranted display after First Thirty", () => {
+    const camp = read("src/components/camp/camp-conversation.tsx");
+    assert.match(camp, /rewardGranted/);
+    assert.match(camp, /camp-talk__reward/);
+    assert.match(camp, /\+\{message\.rewardGranted\}/);
+  });
+
+  it("CSS supports mobile, forced colours, reduced motion, no rounded cards", () => {
+    const css = read("src/app/globals.css");
+    assert.match(css, /\.ft-progress/);
+    assert.match(css, /\.ft-reveal/);
+    assert.match(css, /forced-colors:\s*active/);
+    assert.match(css, /CanvasText/);
+    assert.match(css, /prefers-reduced-motion:\s*reduce/);
+    assert.match(css, /max-width:\s*360px/);
+    assert.doesNotMatch(css, /\.ft-reveal[^{]*\{[^}]*border-radius/);
+  });
+
+  it("progress fetch failures leave CAMP usable", () => {
+    const hook = read("src/hooks/use-first-thirty.ts");
+    assert.match(hook, /setProgress\(null\)/);
+    assert.match(hook, /\/api\/first-thirty/);
+    const camp = read("src/components/camp/camp-conversation.tsx");
+    assert.match(camp, /fetchedProgress/);
+    // Conversation still renders when progress is null
+    assert.match(camp, /camp-talk__form/);
+  });
+
+  it("Desk First Thirty summary remains operator-facing", () => {
+    const panel = read("src/components/desk/desk-register-member-panel.tsx");
+    assert.match(panel, /member\.firstThirty/);
+    assert.match(panel, /Eligible Camp exchanges/);
+    assert.match(panel, /Onboarding LEAF granted/);
+  });
+
+  it("does not add First Thirty to global shell Fire status", () => {
+    const shell = read("src/components/shell/shell-fire-status.tsx");
+    assert.doesNotMatch(shell, /FirstThirty|first-thirty|FIRST THIRTY/);
+  });
+
+  it("Greenwood arrival ceremony sources are unchanged in shape", () => {
+    const ceremony = read(
+      "src/components/greenwood/greenwood-arrival-ceremony.tsx",
+    );
+    assert.match(ceremony, /greenwood-arrival/);
+    assert.doesNotMatch(ceremony, /FirstThirty|first_thirty/);
+  });
+});

@@ -9,10 +9,22 @@ import {
 } from "@/components/camp/camp-characters";
 import { CampLeafReadout } from "@/components/camp/camp-leaf-readout";
 import { CampLeafText } from "@/components/camp/camp-leaf-text";
+import { FirstThirtyProgressPanel } from "@/components/first-thirty/first-thirty-progress";
+import { useFennAuth } from "@/components/auth/fenn-auth-provider";
+import { useFirstThirtyProgress } from "@/hooks/use-first-thirty";
+import {
+  formatCompactFirstThirtyLine,
+  shouldShowActiveFirstThirty,
+  shouldShowGreenwoodOpenAction,
+} from "@/lib/first-thirty/presentation";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 
 export function CampGround() {
   const [activeId, setActiveId] = useState<CampCharacterId | null>(null);
+  const { authenticated, registered } = useFennAuth();
+  const { progress } = useFirstThirtyProgress(
+    Boolean(authenticated && registered),
+  );
 
   const active = CAMP_CHARACTERS.find((c) => c.id === activeId) ?? null;
   const others = CAMP_CHARACTERS.filter((c) => c.id !== activeId);
@@ -27,6 +39,14 @@ export function CampGround() {
           subtitle={<p className="camp__fire-line">the fire is low.</p>}
         />
         <CampLeafReadout />
+        {shouldShowActiveFirstThirty(progress) && progress ? (
+          <p className="camp__ft-compact muted">
+            {formatCompactFirstThirtyLine(progress)}
+          </p>
+        ) : null}
+        {shouldShowGreenwoodOpenAction(progress) && progress ? (
+          <FirstThirtyProgressPanel progress={progress} />
+        ) : null}
       </div>
 
       <section className="camp__how" aria-labelledby="camp-how-title">
@@ -34,14 +54,17 @@ export function CampGround() {
           HOW THE CAMP WORKS
         </h2>
         <div className="camp__how-body">
+          <p>Speak with care.</p>
+          <p>The Fire does not answer noise.</p>
+          <p>
+            But words that carry weight may leave{" "}
+            <CampLeafText text="LEAF" /> behind.
+          </p>
+          <p className="camp__how-pause muted">
+            Not every word leaves a mark.
+          </p>
           <p>three voices live here.</p>
           <p>choose one.</p>
-          <p>speak plainly.</p>
-          <p>bring something worth keeping.</p>
-          <p className="camp__how-pause">
-            good conversation may leave <CampLeafText text="LEAF" /> behind.
-          </p>
-          <p>noise earns nothing.</p>
         </div>
         <ul className="camp__how-roles">
           <li>
@@ -109,8 +132,12 @@ export function CampGround() {
         <p className="camp__leaf-note-title">
           <CampLeafText text="LEAF CAN BE FOUND HERE." />
         </p>
-        <p className="muted">not every conversation earns it.</p>
-        <p className="muted">noise earns nothing.</p>
+        <p className="muted">Not every word leaves a mark.</p>
+        {shouldShowActiveFirstThirty(progress) && progress ? (
+          <div className="camp__ft-panel">
+            <FirstThirtyProgressPanel progress={progress} variant="panel" />
+          </div>
+        ) : null}
       </aside>
     </div>
   );

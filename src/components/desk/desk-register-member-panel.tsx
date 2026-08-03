@@ -253,6 +253,31 @@ export function DeskRegisterMemberPanel({ profileId }: { profileId: string }) {
             : "—"}
         </li>
       </ul>
+
+      <h3 className="desk-overview__group-title">THE FIRST THIRTY</h3>
+      <ul className="desk-member__facts">
+        <li>Status: {member.firstThirty.status}</li>
+        <li>
+          Eligible Camp exchanges: {member.firstThirty.eligibleCampExchanges}
+        </li>
+        <li>
+          Milestones: camp_first{" "}
+          {member.firstThirty.milestones.firstCamp ? "✓" : "—"} · camp_three{" "}
+          {member.firstThirty.milestones.thirdCamp ? "✓" : "—"} · first_deed{" "}
+          {member.firstThirty.milestones.firstDeed ? "✓" : "—"}
+        </li>
+        <li>
+          Onboarding LEAF granted: {member.firstThirty.onboardingLeafGranted}
+        </li>
+        <li>
+          Lifetime LEAF: {member.firstThirty.lifetimeLeaf} · Until Greenwood:{" "}
+          {member.firstThirty.leafUntilGreenwood}
+        </li>
+        <li>
+          Greenwood open:{" "}
+          {member.firstThirty.greenwoodOpen ? "yes" : "no"}
+        </li>
+      </ul>
     </section>
   );
 }

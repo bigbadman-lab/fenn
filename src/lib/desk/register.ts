@@ -440,6 +440,7 @@ export async function getDeskRegisterMember(
     hands,
     hollow,
     camp,
+    firstThirtyRes,
   ] = await Promise.all([
     loadXHandles(db, [profileId]),
     loadSigils(db, [profileId]),
@@ -474,12 +475,30 @@ export async function getDeskRegisterMember(
       .from("camp_sessions")
       .select("id, last_message_at, message_count")
       .eq("profile_id", profileId),
+    db
+      .from("first_thirty_progress")
+      .select(
+        "status, eligible_camp_exchange_count, first_camp_satisfied_at, third_camp_satisfied_at, first_deed_satisfied_at, onboarding_leaf_granted",
+      )
+      .eq("profile_id", profileId)
+      .maybeSingle(),
   ]);
 
   if (deeds.error) throw new Error(deeds.error.message);
   if (hands.error) throw new Error(hands.error.message);
   if (hollow.error) throw new Error(hollow.error.message);
   if (camp.error) throw new Error(camp.error.message);
+  // firstThirty may fail if migration not applied — treat as null
+  const firstThirtyRow = firstThirtyRes.error
+    ? null
+    : (firstThirtyRes.data as {
+        status: string;
+        eligible_camp_exchange_count: number;
+        first_camp_satisfied_at: string | null;
+        third_camp_satisfied_at: string | null;
+        first_deed_satisfied_at: string | null;
+        onboarding_leaf_granted: number;
+      } | null);
 
   const wallet = normalizeEvmAddress(row.wallet_address);
   const sigil = sigils.get(profileId) ?? null;
@@ -596,5 +615,63 @@ export async function getDeskRegisterMember(
       lastMessageAt,
       totalMessages,
     },
+    firstThirty: buildDeskFirstThirty({
+      row: firstThirtyRow,
+      lifetime,
+      threshold,
+      greenwoodMember: row.greenwood_entered_at != null,
+    }),
+  };
+}
+
+function buildDeskFirstThirty(input: {
+  row: {
+    status: string;
+    eligible_camp_exchange_count: number;
+    first_camp_satisfied_at: string | null;
+    third_camp_satisfied_at: string | null;
+    first_deed_satisfied_at: string | null;
+    onboarding_leaf_granted: number;
+  } | null;
+  lifetime: number;
+  threshold: number | null;
+  greenwoodMember: boolean;
+}): import("@/lib/desk/register-types").DeskRegisterFirstThirty {
+  const thresh = input.threshold ?? 30;
+  const greenwoodOpen =
+    input.greenwoodMember || input.lifetime >= thresh;
+  if (!input.row) {
+    return {
+      status: greenwoodOpen ? "n_a" : "unstarted",
+      eligibleCampExchanges: 0,
+      milestones: {
+        firstCamp: false,
+        thirdCamp: false,
+        firstDeed: false,
+      },
+      onboardingLeafGranted: 0,
+      lifetimeLeaf: input.lifetime,
+      leafUntilGreenwood: Math.max(0, thresh - input.lifetime),
+      greenwoodOpen,
+    };
+  }
+  const status =
+    input.row.status === "active" ||
+    input.row.status === "completed" ||
+    input.row.status === "terminated"
+      ? input.row.status
+      : "unstarted";
+  return {
+    status: greenwoodOpen && status === "active" ? "terminated" : status,
+    eligibleCampExchanges: Number(input.row.eligible_camp_exchange_count) || 0,
+    milestones: {
+      firstCamp: input.row.first_camp_satisfied_at != null,
+      thirdCamp: input.row.third_camp_satisfied_at != null,
+      firstDeed: input.row.first_deed_satisfied_at != null,
+    },
+    onboardingLeafGranted: Number(input.row.onboarding_leaf_granted) || 0,
+    lifetimeLeaf: input.lifetime,
+    leafUntilGreenwood: Math.max(0, thresh - input.lifetime),
+    greenwoodOpen,
   };
 }

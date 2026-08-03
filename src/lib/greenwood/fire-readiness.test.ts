@@ -38,6 +38,7 @@ describe("Fire readiness — member meaning and UI", () => {
     assert.match(ui, /WAITING BY THE FIRE/);
     assert.match(ui, /MARKS STILL WARM/);
     assert.match(ui, /THE FIRE WAITS|OTHERS ARE ALREADY WAITING/);
+    assert.match(ui, /A PLACE|AWAITS YOU/);
   });
 
   it("Fire section exposes id=the-fire and keeps gf-at-fire heading", () => {

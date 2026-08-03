@@ -76,6 +76,20 @@ export type DeskRegisterCampSummary = {
   totalMessages: number;
 };
 
+export type DeskRegisterFirstThirty = {
+  status: "active" | "completed" | "terminated" | "unstarted" | "n_a";
+  eligibleCampExchanges: number;
+  milestones: {
+    firstCamp: boolean;
+    thirdCamp: boolean;
+    firstDeed: boolean;
+  };
+  onboardingLeafGranted: number;
+  lifetimeLeaf: number;
+  leafUntilGreenwood: number;
+  greenwoodOpen: boolean;
+};
+
 export type DeskRegisterMemberDetail = {
   profileId: string;
   outlawNumber: number;
@@ -104,4 +118,5 @@ export type DeskRegisterMemberDetail = {
   recentHollow: DeskRegisterHollowActivity[];
   recentLedger: DeskRegisterLedgerActivity[];
   camp: DeskRegisterCampSummary;
+  firstThirty: DeskRegisterFirstThirty;
 };

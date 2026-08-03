@@ -12,12 +12,28 @@ import {
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import type { CampCharacterId } from "@/components/camp/camp-characters";
+import { FirstThirtyAcknowledge } from "@/components/first-thirty/first-thirty-acknowledge";
+import { FirstThirtyProgressPanel } from "@/components/first-thirty/first-thirty-progress";
+import { useFirstThirtyProgress } from "@/hooks/use-first-thirty";
 import {
   CAMP_EMPTY_CONVERSATION_PROMPTS,
   CAMP_USER_MESSAGE_MAX_CHARS,
 } from "@/lib/camp/config";
 import { campErrorCopy } from "@/lib/camp/errors";
 import type { SafeCampMessage } from "@/lib/camp/dto";
+import {
+  FIRST_THIRTY_FAILURE_COPY,
+  FIRST_THIRTY_INELIGIBLE_COPY,
+  formatEligibleExchangeQuiet,
+  firstThirtyEventSessionKey,
+  shouldAnnounceFirstThirtyEvent,
+  shouldShowActiveFirstThirty,
+  shouldShowGreenwoodOpenAction,
+} from "@/lib/first-thirty/presentation";
+import type {
+  FirstThirtyMilestoneEvent,
+  SafeFirstThirtyProgress,
+} from "@/lib/first-thirty/types";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 
 type CampConversationProps = {
@@ -41,6 +57,8 @@ type SendResponse = {
   assistantMessage?: SafeCampMessage;
   reward?: { granted?: number };
   rewardUnavailable?: boolean;
+  firstThirtyUnavailable?: boolean;
+  firstThirty?: SafeFirstThirtyProgress;
   code?: string;
   error?: string;
 };
@@ -73,6 +91,10 @@ export function CampConversation({
     refreshMe,
   } = useFennAuth();
 
+  const { progress: fetchedProgress } = useFirstThirtyProgress(
+    Boolean(authenticated && registered),
+  );
+
   const [messages, setMessages] = useState<SafeCampMessage[] | null>(null);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [draft, setDraft] = useState("");
@@ -82,8 +104,21 @@ export function CampConversation({
     string | null
   >(null);
   const [activeCharacterId, setActiveCharacterId] = useState(characterId);
+  const [turnProgress, setTurnProgress] =
+    useState<SafeFirstThirtyProgress | null>(null);
+  const [reveal, setReveal] = useState<{
+    event: FirstThirtyMilestoneEvent;
+    progress: SafeFirstThirtyProgress;
+    eventKey: string;
+    afterMessageId: string;
+  } | null>(null);
+  const [quietNote, setQuietNote] = useState<string | null>(null);
+  const [ineligibleHint, setIneligibleHint] = useState(false);
+  const [countFailure, setCountFailure] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
+  const seenEventsRef = useRef<Set<string>>(new Set());
+  const lastIneligibleShownRef = useRef(false);
 
   // Reset local transcript state when the selected character changes (render-time).
   if (characterId !== activeCharacterId) {
@@ -94,7 +129,14 @@ export function CampConversation({
     setError(null);
     setPendingClientMessageId(null);
     setSending(false);
+    setReveal(null);
+    setQuietNote(null);
+    setIneligibleHint(false);
+    setCountFailure(false);
+    setTurnProgress(null);
   }
+
+  const progress = turnProgress ?? fetchedProgress;
 
   const outlawLabel = profile
     ? `OUTLAW ${formatOutlawNumber(profile.outlawNumber)}`
@@ -145,7 +187,92 @@ export function CampConversation({
   useEffect(() => {
     if (!messages || messages.length === 0) return;
     endRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [messages]);
+  }, [messages, reveal, quietNote]);
+
+  function applyFirstThirtyTurn(
+    data: SendResponse,
+    assistantId: string,
+  ): void {
+    if (data.firstThirtyUnavailable) {
+      setCountFailure(true);
+      setQuietNote(null);
+      setIneligibleHint(false);
+      // Do not advance trusted progress from a failed count.
+      return;
+    }
+    setCountFailure(false);
+
+    const ft = data.firstThirty;
+    if (!ft) {
+      // Progress fetch can still recover on next load.
+      return;
+    }
+
+    setTurnProgress(ft);
+
+    const event = ft.lastEvent?.newlySatisfied ? ft.lastEvent : null;
+    if (event) {
+      const eventKey = firstThirtyEventSessionKey({
+        messageId: assistantId,
+        event,
+        lifetimeLeaf: ft.lifetimeLeaf,
+      });
+      if (
+        shouldAnnounceFirstThirtyEvent({
+          event,
+          eventKey,
+          seenKeys: seenEventsRef.current,
+        })
+      ) {
+        seenEventsRef.current.add(eventKey);
+        setReveal({
+          event,
+          progress: ft,
+          eventKey,
+          afterMessageId: assistantId,
+        });
+        setQuietNote(null);
+        setIneligibleHint(false);
+        lastIneligibleShownRef.current = false;
+        if (event.actualGrant > 0 || event.greenwoodOpen) {
+          void refreshMe({ quiet: true });
+        }
+        return;
+      }
+      // Already announced (idempotent replay) — keep steady progress only.
+      setReveal(null);
+      setQuietNote(null);
+      return;
+    }
+
+    setReveal(null);
+
+    const quiet = formatEligibleExchangeQuiet(ft);
+    if (quiet) {
+      setQuietNote(quiet);
+      setIneligibleHint(false);
+      lastIneligibleShownRef.current = false;
+      return;
+    }
+
+    // Valid reply, active path, but exchange not counted — restrained once.
+    if (
+      shouldShowActiveFirstThirty(ft) &&
+      ft.exchangeCounted === false
+    ) {
+      if (!lastIneligibleShownRef.current) {
+        setIneligibleHint(true);
+        lastIneligibleShownRef.current = true;
+      } else {
+        setIneligibleHint(false);
+      }
+      setQuietNote(null);
+      return;
+    }
+
+    setQuietNote(null);
+    setIneligibleHint(false);
+  }
 
   async function submitTurn(clientMessageId: string, text: string) {
     setSending(true);
@@ -196,6 +323,9 @@ export function CampConversation({
       });
       setDraft("");
       setPendingClientMessageId(null);
+
+      applyFirstThirtyTurn(data, data.assistantMessage.id);
+
       if (granted > 0) {
         void refreshMe({ quiet: true });
       }
@@ -271,8 +401,23 @@ export function CampConversation({
     );
   }
 
+  // Failures of progress fetch must not invent onboarding or break CAMP.
+  const showActivePanel = shouldShowActiveFirstThirty(progress);
+  const showOpen = shouldShowGreenwoodOpenAction(progress);
+
   return (
     <div className="camp-talk">
+      {showActivePanel && progress ? (
+        <div className="camp-talk__ft-header">
+          <FirstThirtyProgressPanel progress={progress} variant="compact" />
+        </div>
+      ) : null}
+      {showOpen && progress ? (
+        <div className="camp-talk__ft-header">
+          <FirstThirtyProgressPanel progress={progress} />
+        </div>
+      ) : null}
+
       <div
         className="camp-talk__transcript"
         ref={transcriptRef}
@@ -290,25 +435,35 @@ export function CampConversation({
               </p>
             ) : null}
             {messages.map((message) => (
-              <div
-                key={message.id}
-                className={
-                  message.role === "assistant"
-                    ? `camp-talk__turn camp-talk__turn--${characterId}`
-                    : "camp-talk__turn camp-talk__turn--you"
-                }
-              >
-                <p className="camp-talk__label">
-                  {message.role === "assistant" ? characterName : outlawLabel}
-                </p>
-                <p className="camp-talk__body">{message.content}</p>
-                {message.role === "assistant" &&
-                message.rewardGranted &&
-                message.rewardGranted > 0 ? (
-                  <p className="camp-talk__reward">
-                    +{message.rewardGranted}{" "}
-                    <span className="camp-leaf">LEAF</span>
+              <div key={message.id}>
+                <div
+                  className={
+                    message.role === "assistant"
+                      ? `camp-talk__turn camp-talk__turn--${characterId}`
+                      : "camp-talk__turn camp-talk__turn--you"
+                  }
+                >
+                  <p className="camp-talk__label">
+                    {message.role === "assistant" ? characterName : outlawLabel}
                   </p>
+                  <p className="camp-talk__body">{message.content}</p>
+                  {message.role === "assistant" &&
+                  message.rewardGranted &&
+                  message.rewardGranted > 0 ? (
+                    <p className="camp-talk__reward">
+                      +{message.rewardGranted}{" "}
+                      <span className="camp-leaf">LEAF</span>
+                    </p>
+                  ) : null}
+                </div>
+                {reveal &&
+                message.role === "assistant" &&
+                message.id === reveal.afterMessageId ? (
+                  <FirstThirtyAcknowledge
+                    event={reveal.event}
+                    progress={reveal.progress}
+                    eventKey={reveal.eventKey}
+                  />
                 ) : null}
               </div>
             ))}
@@ -316,6 +471,31 @@ export function CampConversation({
         )}
         <div ref={endRef} />
       </div>
+
+      {quietNote ? (
+        <p className="camp-talk__ft-quiet" role="status">
+          {quietNote.split("\n").map((line) => (
+            <span key={line} className="camp-talk__ft-quiet-line">
+              {line}
+            </span>
+          ))}
+        </p>
+      ) : null}
+
+      {ineligibleHint ? (
+        <p className="muted camp-talk__ft-ineligible">{FIRST_THIRTY_INELIGIBLE_COPY}</p>
+      ) : null}
+
+      {countFailure ? (
+        <div className="camp-talk__ft-fail" role="status">
+          <p>{FIRST_THIRTY_FAILURE_COPY.line1}</p>
+          <p>{FIRST_THIRTY_FAILURE_COPY.line2}</p>
+        </div>
+      ) : null}
+
+      {showActivePanel && progress ? (
+        <FirstThirtyProgressPanel progress={progress} variant="panel" />
+      ) : null}
 
       {error ? (
         <div className="camp-talk__error">

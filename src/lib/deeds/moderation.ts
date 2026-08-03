@@ -159,12 +159,28 @@ export async function approveDeedSubmission(input: {
   reviewNote?: string | null;
 }) {
   try {
-    return await approveDeedSubmissionAtomic({
+    const result = await approveDeedSubmissionAtomic({
       submissionId: input.submissionId,
       admin: input.admin,
       leafAmount: input.leafAmount,
       reviewNote: input.reviewNote,
     });
+
+    // First Thirty: after Deed LEAF is final, grant remainder (0 allowed).
+    // Failure must not reverse Deed approval.
+    try {
+      const { applyFirstThirtyFirstDeed } = await import(
+        "@/lib/first-thirty/service"
+      );
+      await applyFirstThirtyFirstDeed({
+        profileId: result.profileId,
+        submissionId: result.submissionId,
+      });
+    } catch (error) {
+      console.error("[first_thirty first_deed after approve]", error);
+    }
+
+    return result;
   } catch (error) {
     if (error instanceof DeedModerationRpcError) {
       throw new DeedModerationError(error.code, error.message, error.status);

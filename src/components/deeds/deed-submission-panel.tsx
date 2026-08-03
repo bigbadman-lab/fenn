@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
+import { FirstThirtyDeedSurface } from "@/components/first-thirty/first-thirty-deed-surface";
 import { formatDeedBoardDate } from "@/lib/deeds/format";
 import { deedSubmissionErrorCopy } from "@/lib/deeds/submission-errors";
 import type {
@@ -266,11 +267,25 @@ export function DeedSubmissionPanel({
     );
   }
 
+  const ftStatus = pending
+    ? "pending"
+    : latestApproved
+      ? "approved"
+      : latestRejected
+        ? "rejected"
+        : null;
+
   return (
     <section className="deed-proof" aria-labelledby="deed-proof-title">
       <h2 id="deed-proof-title" className="deed-proof__title">
         PROOF
       </h2>
+
+      <FirstThirtyDeedSurface
+        placement="detail"
+        submissionStatus={ftStatus}
+        showBeforeSubmitHint={canShowForm}
+      />
 
       {historyLoading && !submissions ? (
         <p className="muted">...</p>
@@ -300,6 +315,7 @@ export function DeedSubmissionPanel({
         <div className="deed-proof__state">
           <p>PROOF LEFT.</p>
           <p className="muted">awaiting judgement.</p>
+          <p className="muted">YOUR DEED IS WAITING TO BE WITNESSED</p>
           {formatDeedBoardDate(pending.submittedAt) ? (
             <p className="muted">
               {formatDeedBoardDate(pending.submittedAt)} ·{" "}
