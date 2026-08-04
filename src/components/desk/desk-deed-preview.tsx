@@ -25,9 +25,11 @@ export function DeskDeedPreview({ deed, draftLabel }: Props) {
   return (
     <article className="deed-detail desk-deed-preview" aria-label="Deed preview">
       {draftLabel || deed.status === "draft" ? (
-        <p className="muted">PREVIEW — NOT YET IN THE WORLD</p>
+        <p className="muted">Not yet published</p>
+      ) : deed.status === "active" ? (
+        <p className="muted">As Outlaws see it</p>
       ) : (
-        <p className="muted">PREVIEW — {deed.status.toUpperCase()}</p>
+        <p className="muted">Record preview</p>
       )}
       <header className="deed-detail__header">
         <p className="deed-detail__eyebrow" aria-hidden="true">
@@ -52,20 +54,15 @@ export function DeskDeedPreview({ deed, draftLabel }: Props) {
           <dd>{formatRepeatability(deed.isRepeatable)}</dd>
         </div>
         <div className="deed-detail__fact">
-          <dt>SCOPE</dt>
+          <dt>WHO</dt>
           <dd>{formatAccessScope(deed.accessScope)}</dd>
         </div>
       </dl>
 
       <aside className="deed-detail__aside" aria-label="notice details">
-        {deed.slug ? (
-          <p>
-            <span className="deed-detail__label">slug</span> {deed.slug}
-          </p>
-        ) : null}
         <p>
-          <span className="deed-detail__label">listed</span>{" "}
-          {deed.isPublic ? "public" : "not listed"}
+          <span className="deed-detail__label">board</span>{" "}
+          {deed.isPublic ? "listed" : "unlisted"}
         </p>
         {deed.sponsorName ? (
           <p>

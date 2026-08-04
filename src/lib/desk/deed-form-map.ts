@@ -4,12 +4,31 @@ export type RewardFormMode = "fixed" | "range" | "none";
 
 export type EvidenceFormState = DeedEvidenceRequirements;
 
+/** Default simplified new-deed evidence: screenshot required. */
 export const DEFAULT_EVIDENCE_FORM: EvidenceFormState = {
+  text: { allowed: false, required: false },
+  url: { allowed: false, required: false },
+  image: { allowed: true, required: true },
+  other: { allowed: false, required: false },
+};
+
+/**
+ * Backend always requires at least one allowed evidence type.
+ * "No evidence" in the Keeper UI maps to optional written note only —
+ * not zero-proof submissions (which the domain forbids).
+ */
+export const NO_EVIDENCE_PAYLOAD: EvidenceFormState = {
   text: { allowed: true, required: false },
   url: { allowed: false, required: false },
   image: { allowed: false, required: false },
   other: { allowed: false, required: false },
 };
+
+export type SimpleEvidenceKeys = "screenshot" | "link" | "written";
+
+export type CapChoice = "unlimited" | "first10" | "custom";
+
+export type PrimaryRewardChoice = "none" | "fixed";
 
 export function suggestSlugFromTitle(title: string): string {
   return title
@@ -99,6 +118,145 @@ export function hasAnyAllowedEvidence(requirements: EvidenceFormState): boolean 
   );
 }
 
+function fieldOff(): { allowed: boolean; required: boolean } {
+  return { allowed: false, required: false };
+}
+
+function fieldRequired(): { allowed: boolean; required: boolean } {
+  return { allowed: true, required: true };
+}
+
+function isOff(field: { allowed: boolean; required: boolean }): boolean {
+  return !field.allowed && !field.required;
+}
+
+function isRequiredOn(field: { allowed: boolean; required: boolean }): boolean {
+  return field.allowed && field.required;
+}
+
+function isOptionalOnly(
+  field: { allowed: boolean; required: boolean },
+): boolean {
+  return field.allowed && !field.required;
+}
+
+/** True when evidence matches a simple primary-toggle shape (not Advanced). */
+export function isSimpleEvidenceConfig(
+  evidence: EvidenceFormState,
+): boolean {
+  if (evidence.other.allowed || evidence.other.required) return false;
+
+  if (
+    isOptionalOnly(evidence.text) &&
+    isOff(evidence.url) &&
+    isOff(evidence.image) &&
+    isOff(evidence.other)
+  ) {
+    return true; // "No evidence" backend mapping
+  }
+
+  for (const key of ["text", "url", "image"] as const) {
+    const f = evidence[key];
+    if (!(isOff(f) || isRequiredOn(f))) return false;
+  }
+  return hasAnyAllowedEvidence(evidence);
+}
+
+export function isNoEvidenceSelection(evidence: EvidenceFormState): boolean {
+  return (
+    isOptionalOnly(evidence.text) &&
+    isOff(evidence.url) &&
+    isOff(evidence.image) &&
+    isOff(evidence.other)
+  );
+}
+
+export function simpleEvidenceFromForm(
+  evidence: EvidenceFormState,
+): Record<SimpleEvidenceKeys, boolean> & { none: boolean } {
+  if (!isSimpleEvidenceConfig(evidence)) {
+    return { screenshot: false, link: false, written: false, none: false };
+  }
+  if (isNoEvidenceSelection(evidence)) {
+    return { screenshot: false, link: false, written: false, none: true };
+  }
+  return {
+    screenshot: evidence.image.allowed && evidence.image.required,
+    link: evidence.url.allowed && evidence.url.required,
+    written: evidence.text.allowed && evidence.text.required,
+    none: false,
+  };
+}
+
+export function evidenceFromSimpleSelection(selection: {
+  screenshot: boolean;
+  link: boolean;
+  written: boolean;
+  none: boolean;
+}): EvidenceFormState {
+  if (selection.none) {
+    return { ...NO_EVIDENCE_PAYLOAD };
+  }
+  return {
+    text: selection.written ? fieldRequired() : fieldOff(),
+    url: selection.link ? fieldRequired() : fieldOff(),
+    image: selection.screenshot ? fieldRequired() : fieldOff(),
+    other: fieldOff(),
+  };
+}
+
+export function toggleSimpleEvidence(
+  current: EvidenceFormState,
+  key: SimpleEvidenceKeys | "none",
+): EvidenceFormState {
+  if (!isSimpleEvidenceConfig(current)) {
+    // Preserve complex config: don't clobber via simple toggles.
+    return current;
+  }
+  const sel = simpleEvidenceFromForm(current);
+  if (key === "none") {
+    return evidenceFromSimpleSelection({
+      screenshot: false,
+      link: false,
+      written: false,
+      none: true,
+    });
+  }
+  const next = {
+    screenshot: key === "screenshot" ? !sel.screenshot : sel.screenshot,
+    link: key === "link" ? !sel.link : sel.link,
+    written: key === "written" ? !sel.written : sel.written,
+    none: false,
+  };
+  if (!next.screenshot && !next.link && !next.written) {
+    return evidenceFromSimpleSelection({
+      screenshot: false,
+      link: false,
+      written: false,
+      none: true,
+    });
+  }
+  return evidenceFromSimpleSelection(next);
+}
+
+export function capChoiceFromMaxCompletions(
+  maxCompletions: string,
+): CapChoice {
+  const trimmed = maxCompletions.trim();
+  if (!trimmed) return "unlimited";
+  if (trimmed === "10") return "first10";
+  return "custom";
+}
+
+export function maxCompletionsFromCapChoice(
+  choice: CapChoice,
+  customValue: string,
+): string {
+  if (choice === "unlimited") return "";
+  if (choice === "first10") return "10";
+  return customValue;
+}
+
 export function parseOptionalMaxCompletions(
   raw: string,
 ): { ok: true; value: number | null } | { ok: false; error: string } {
@@ -108,10 +266,38 @@ export function parseOptionalMaxCompletions(
   if (!Number.isInteger(n) || n <= 0) {
     return {
       ok: false,
-      error: "Maximum completions must be empty or a positive integer.",
+      error: "Completion limit must be empty or a positive integer.",
     };
   }
   return { ok: true, value: n };
+}
+
+/**
+ * Prefer opening Advanced when existing data needs non-default controls.
+ */
+export function shouldExpandAdvancedInitially(input: {
+  rewardMode: RewardFormMode;
+  externalRewardNote: string;
+  sponsorName: string;
+  startsAtLocal: string;
+  endsAtLocal: string;
+  accessScope: string;
+  isPublic: boolean;
+  isRepeatable: boolean;
+  category: string;
+  evidence: EvidenceFormState;
+  slugManuallyNotable?: boolean;
+}): boolean {
+  if (input.rewardMode === "range") return true;
+  if (input.externalRewardNote.trim()) return true;
+  if (input.sponsorName.trim()) return true;
+  if (input.startsAtLocal.trim() || input.endsAtLocal.trim()) return true;
+  if (input.accessScope !== "road") return true;
+  if (!input.isPublic) return true;
+  if (input.isRepeatable) return true;
+  if (input.category.trim()) return true;
+  if (!isSimpleEvidenceConfig(input.evidence)) return true;
+  return false;
 }
 
 /**

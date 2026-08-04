@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   DeskDeedDefinitionForm,
   buildCreatePayload,
   emptyDeedFormValues,
   formValuesFromDefinition,
+  shouldExpandAdvancedInitially,
+  validateForPublish,
   type DeedFormValues,
 } from "@/components/desk/desk-deed-definition-form";
 import { DeskDeedPreview } from "@/components/desk/desk-deed-preview";
@@ -25,28 +27,39 @@ type Props = {
   deedId?: string;
 };
 
+function keeperStatusLabel(status: string | undefined): string {
+  if (!status || status === "draft") return "Draft";
+  if (status === "active") return "Open to Outlaws";
+  if (status === "closed") return "Not accepting submissions";
+  if (status === "archived") return "Archived";
+  return status;
+}
+
 export function DeskDeedDefinitionPanel({ deedId }: Props) {
   const { getAuthHeaders } = useDeskGate();
   const router = useRouter();
   const [deed, setDeed] = useState<DeskDeedDefinition | null>(null);
   const [values, setValues] = useState<DeedFormValues>(emptyDeedFormValues());
   const [error, setError] = useState<string | null>(null);
+  const [errorField, setErrorField] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [preferAdvancedOpen, setPreferAdvancedOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement | null>(null);
   const isNew = !deedId;
   const readOnly = Boolean(deed && deed.status !== "draft");
 
   const load = useCallback(async () => {
     if (!deedId) return;
     setError(null);
+    setErrorField(null);
     const headers = await getAuthHeaders();
     if (!headers) {
-      setError("Could not open Deed.");
+      setError("Could not open this Deed.");
       return;
     }
     const response = await fetch(`/api/desk/deeds/${deedId}`, {
@@ -64,7 +77,9 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
       return;
     }
     setDeed(data.deed);
-    setValues(formValuesFromDefinition(data.deed));
+    const next = formValuesFromDefinition(data.deed);
+    setValues(next);
+    setPreferAdvancedOpen(shouldExpandAdvancedInitially(next));
   }, [deedId, getAuthHeaders]);
 
   useEffect(() => {
@@ -82,28 +97,68 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
     }
   }
 
-  function authFailureMessage(status: number): string {
-    if (status === 401) return "Sign in required.";
-    if (status === 403) return "Desk access denied.";
-    if (status === 404) return "Not found.";
+  function authFailureMessage(httpStatus: number): string {
+    if (httpStatus === 401) return "Sign in required.";
+    if (httpStatus === 403) return "Desk access denied.";
+    if (httpStatus === 404) return "Not found.";
     return "Request failed.";
   }
 
-  async function saveDraft(options?: { manageBusy?: boolean }): Promise<boolean> {
+  function humanizeAuthoringError(
+    code: string | undefined,
+    fallback: string | undefined,
+    httpStatus: number,
+  ): string {
+    if (code === "slug_conflict") {
+      return "That page path is already in use. Change it in Advanced.";
+    }
+    if (code === "not_editable") {
+      return "This Deed can no longer be edited.";
+    }
+    if (code === "invalid_transition") {
+      return fallback ?? "State changed. Refresh and try again.";
+    }
+    if (code === "invalid_field" || code === "invalid_evidence_requirements") {
+      return fallback ?? "Some required details are missing or invalid.";
+    }
+    if (code === "invalid_reward") {
+      return fallback ?? "The LEAF reward is not valid.";
+    }
+    if (code === "invalid_date_window") {
+      return fallback ?? "Start and end times are not valid.";
+    }
+    return fallback ?? authFailureMessage(httpStatus);
+  }
+
+  function focusActions() {
+    actionsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  /**
+   * Persist draft. Returns new/existing id on success.
+   * For creates, does not redirect when `deferRedirect` is set (publish path).
+   */
+  async function saveDraft(options?: {
+    manageBusy?: boolean;
+    deferRedirect?: boolean;
+  }): Promise<{ ok: true; id: string } | { ok: false }> {
     const manageBusy = options?.manageBusy !== false;
     if (manageBusy) setBusy(true);
     setError(null);
+    setErrorField(null);
     setStatus(null);
     try {
       const payload = buildCreatePayload(values);
       if (!payload.ok) {
         setError(payload.error);
-        return false;
+        setErrorField(payload.field ?? null);
+        focusActions();
+        return { ok: false };
       }
       const headers = await getAuthHeaders();
       if (!headers) {
         setError("Could not open Desk session.");
-        return false;
+        return { ok: false };
       }
 
       if (isNew) {
@@ -116,7 +171,7 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
           });
         } catch {
           setError("Network failure while saving draft.");
-          return false;
+          return { ok: false };
         }
         const data = await readJsonSafe<{
           ok?: boolean;
@@ -126,17 +181,23 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
         }>(response);
         if (!response.ok || !data?.deed) {
           setError(
-            data?.code === "slug_conflict"
-              ? "Slug already exists."
-              : (data?.error ??
-                  authFailureMessage(response.status) ??
-                  "Could not save draft."),
+            humanizeAuthoringError(
+              data?.code,
+              data?.error,
+              response.status,
+            ),
           );
-          return false;
+          if (data?.code === "slug_conflict") setErrorField("slug");
+          focusActions();
+          return { ok: false };
         }
         setStatus("Draft saved.");
-        router.push(`/desk/deeds/definitions/${data.deed.id}`);
-        return true;
+        setDeed(data.deed);
+        setValues(formValuesFromDefinition(data.deed));
+        if (!options?.deferRedirect) {
+          router.push(`/desk/deeds/definitions/${data.deed.id}`);
+        }
+        return { ok: true, id: data.deed.id };
       }
 
       let response: Response;
@@ -148,7 +209,7 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
         });
       } catch {
         setError("Network failure while saving changes.");
-        return false;
+        return { ok: false };
       }
       const data = await readJsonSafe<{
         ok?: boolean;
@@ -158,37 +219,93 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
       }>(response);
       if (!response.ok || !data?.deed) {
         setError(
-          data?.code === "slug_conflict"
-            ? "Slug already exists."
-            : data?.code === "not_editable"
-              ? "This Deed can no longer be edited."
-              : (data?.error ?? authFailureMessage(response.status)),
+          humanizeAuthoringError(data?.code, data?.error, response.status),
         );
-        return false;
+        if (data?.code === "slug_conflict") setErrorField("slug");
+        focusActions();
+        return { ok: false };
       }
       setDeed(data.deed);
       setValues(formValuesFromDefinition(data.deed));
       setStatus("Changes saved.");
-      return true;
+      return { ok: true, id: data.deed.id };
     } finally {
       if (manageBusy) setBusy(false);
     }
   }
 
+  async function publish() {
+    const client = validateForPublish(values);
+    if (!client.ok) {
+      setError(client.error);
+      setErrorField(client.field ?? null);
+      setConfirmPublish(false);
+      focusActions();
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setErrorField(null);
+    setStatus(null);
+    try {
+      const saved = await saveDraft({ manageBusy: false, deferRedirect: true });
+      if (!saved.ok) return;
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        setError("Could not open Desk session.");
+        return;
+      }
+      let response: Response;
+      try {
+        response = await fetch(`/api/desk/deeds/${saved.id}/publish`, {
+          method: "POST",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ confirm: true }),
+        });
+      } catch {
+        setError("Network failure while publishing.");
+        return;
+      }
+      const data = await readJsonSafe<{
+        ok?: boolean;
+        deed?: DeskDeedDefinition;
+        error?: string;
+        code?: string;
+      }>(response);
+      if (!response.ok || !data?.deed) {
+        setError(
+          humanizeAuthoringError(data?.code, data?.error, response.status),
+        );
+        setConfirmPublish(false);
+        focusActions();
+        // If we created a new draft, land on the edit page.
+        if (isNew) {
+          router.push(`/desk/deeds/definitions/${saved.id}`);
+        }
+        return;
+      }
+      setConfirmPublish(false);
+      setDeed(data.deed);
+      setValues(formValuesFromDefinition(data.deed));
+      setStatus("Published. Outlaws can take this Deed.");
+      if (isNew || deedId !== data.deed.id) {
+        router.push(`/desk/deeds/definitions/${data.deed.id}`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function lifecycle(
-    path: "publish" | "close" | "archive" | "duplicate",
+    path: "close" | "archive" | "duplicate",
     okMessage: string,
   ) {
     if (!deedId && path !== "duplicate") return;
     setBusy(true);
     setError(null);
+    setErrorField(null);
     setStatus(null);
     try {
-      if (path === "publish") {
-        // Keep busy through save + publish so release cannot double-submit.
-        const saved = await saveDraft({ manageBusy: false });
-        if (!saved) return;
-      }
       const headers = await getAuthHeaders();
       if (!headers) {
         setError("Could not open Desk session.");
@@ -207,7 +324,13 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
               : JSON.stringify({ confirm: true }),
         });
       } catch {
-        setError(`Network failure during ${path}.`);
+        setError(
+          path === "close"
+            ? "Network failure while stopping submissions."
+            : path === "archive"
+              ? "Network failure while archiving."
+              : "Network failure while duplicating.",
+        );
         return;
       }
       const data = await readJsonSafe<{
@@ -218,13 +341,10 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
       }>(response);
       if (!response.ok || !data?.deed) {
         setError(
-          data?.code === "invalid_transition"
-            ? (data.error ?? "State changed. Refresh and try again.")
-            : (data?.error ?? authFailureMessage(response.status)),
+          humanizeAuthoringError(data?.code, data?.error, response.status),
         );
         return;
       }
-      setConfirmPublish(false);
       setConfirmClose(false);
       setConfirmArchive(false);
       if (path === "duplicate") {
@@ -279,12 +399,24 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
     const reward: DeskDeedDefinition["reward"] = built.ok
       ? (built.body.reward as DeskDeedDefinition["reward"])
       : { type: "none" };
-    const maxParsed = parseOptionalMaxCompletions(values.maxCompletions);
+    let maxCompletions: number | null = null;
+    if (values.capMode === "first10") {
+      maxCompletions = 10;
+    } else if (values.capMode === "custom") {
+      const maxParsed = parseOptionalMaxCompletions(values.maxCompletions);
+      maxCompletions = maxParsed.ok ? maxParsed.value : null;
+    }
+    const instructions = values.instructions;
+    const lore =
+      values.loreDescription.trim() ||
+      instructions.trim() ||
+      "Description appears here.";
     return {
       id: deed?.id ?? "preview",
       title: values.title.trim() || "Untitled Deed",
-      loreDescription: values.loreDescription,
-      instructions: values.instructions,
+      loreDescription: lore,
+      instructions:
+        instructions.trim() || "Instructions appear here.",
       status: deed?.status ?? "draft",
       slug: values.slug.trim() || null,
       category: values.category.trim() || null,
@@ -294,7 +426,7 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
       evidenceRequirementsInvalid: false,
       startsAt: localDatetimeToIso(values.startsAtLocal),
       endsAt: localDatetimeToIso(values.endsAtLocal),
-      maxCompletions: maxParsed.ok ? maxParsed.value : null,
+      maxCompletions,
       completionsCount: deed?.completionsCount ?? 0,
       isRepeatable: values.isRepeatable,
       isPublic: values.isPublic,
@@ -310,6 +442,9 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
     };
   }
 
+  const previewDeed =
+    !deed || deed.status === "draft" ? previewFromForm() : deed;
+
   if (deedId && !deed && !error) return <p className="muted">…</p>;
   if (deedId && error && !deed) {
     return (
@@ -322,13 +457,14 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
     );
   }
 
-  const statusLabel = deed?.status?.toUpperCase() ?? "NEW DRAFT";
+  const canEdit = !readOnly;
+  const canPublish = canEdit && (isNew || deed?.status === "draft");
 
   return (
-    <section className="desk-deed-definition" aria-label="Deed definition">
-      <p>
+    <section className="desk-deed-write" aria-label="Write a Deed">
+      <p className="desk-deed-write__nav">
         <Link href="/desk/deeds?view=definitions" className="btn-text">
-          [ back to definitions ]
+          [ back ]
         </Link>
         {deedId ? (
           <button type="button" className="btn-text" onClick={() => void load()}>
@@ -336,215 +472,248 @@ export function DeskDeedDefinitionPanel({ deedId }: Props) {
           </button>
         ) : null}
       </p>
-      <h2 className="desk-section-title">
-        {isNew ? "WRITE A DEED" : deed?.title ?? "DEED"}
-      </h2>
-      <p className="muted">{statusLabel}</p>
-      {status ? <p>{status}</p> : null}
-      {error ? <p className="muted">{error}</p> : null}
+
+      <header className="desk-deed-write__header">
+        <h2 className="desk-section-title">
+          {isNew ? "WRITE A DEED" : deed?.title ?? "DEED"}
+        </h2>
+        <p className="muted">{keeperStatusLabel(deed?.status)}</p>
+        {readOnly ? (
+          <p className="desk-deed-write__readonly-note">
+            This Deed is live or closed. Details below are for inspection.
+            You can duplicate it, stop accepting submissions, or archive it.
+          </p>
+        ) : null}
+      </header>
+
+      {status ? (
+        <p className="desk-deed-write__status" role="status">
+          {status}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="desk-deed-write__error" role="alert">
+          {error}
+        </p>
+      ) : null}
 
       {deed && deed.status === "active" ? (
-        <ul className="desk-member__facts">
-          <li>ACTIVE</li>
+        <ul className="desk-member__facts desk-deed-write__facts">
+          <li>Open to Outlaws</li>
           <li>
             {deed.completionsCount} completed
             {deed.maxCompletions != null
-              ? ` · ${deed.maxCompletions} maximum`
-              : ""}
+              ? ` · first ${deed.maxCompletions}`
+              : " · unlimited"}
           </li>
           <li>{formatDeedReward(deed.reward)}</li>
-          <li>Published: {deed.publishedAt ?? "—"}</li>
+          <li>
+            Released:{" "}
+            {deed.publishedAt ? deed.publishedAt.slice(0, 10) : "—"}
+          </li>
         </ul>
       ) : null}
 
-      <DeskDeedDefinitionForm
-        values={values}
-        onChange={setValues}
-        readOnly={readOnly}
-        autoSlug={isNew}
-      />
+      <div className="desk-deed-write__layout">
+        <div className="desk-deed-write__author">
+          <DeskDeedDefinitionForm
+            values={values}
+            onChange={setValues}
+            readOnly={readOnly}
+            autoSlug={isNew}
+            preferAdvancedOpen={preferAdvancedOpen}
+            fieldError={errorField ? error : null}
+            errorField={errorField}
+          />
 
-      <div className="desk-gatherings__actions">
-        {!readOnly ? (
-          <button
-            type="button"
-            className="btn-text"
-            disabled={busy}
-            onClick={() => void saveDraft()}
+          <div
+            className="desk-deed-write__actions"
+            ref={actionsRef}
           >
-            [ {isNew ? "SAVE DRAFT" : "SAVE CHANGES"} ]
-          </button>
-        ) : null}
-
-        <button
-          type="button"
-          className="btn-text"
-          onClick={() => setShowPreview((v) => !v)}
-        >
-          [ PREVIEW ]
-        </button>
-
-        {deed?.status === "draft" && deedId ? (
-          <>
-            {!confirmPublish ? (
+            {canEdit ? (
               <button
                 type="button"
-                className="btn-text"
+                className="desk-deed-write__btn"
                 disabled={busy}
-                onClick={() => setConfirmPublish(true)}
+                onClick={() => void saveDraft()}
               >
-                [ RELEASE INTO THE WORLD ]
+                Save Draft
               </button>
-            ) : (
-              <div className="desk-gatherings__confirm">
-                <p>RELEASE INTO THE WORLD</p>
-                <p className="muted">
-                  Publish this Deed. It will appear on the board when listed.
-                </p>
+            ) : null}
+
+            {canPublish ? (
+              !confirmPublish ? (
                 <button
                   type="button"
-                  className="btn-text"
+                  className="desk-deed-write__btn desk-deed-write__btn--primary"
                   disabled={busy}
-                  onClick={() => void lifecycle("publish", "THE DEED IS ACTIVE")}
+                  onClick={() => setConfirmPublish(true)}
                 >
-                  [ confirm release ]
+                  Publish
                 </button>
+              ) : (
+                <div className="desk-gatherings__confirm">
+                  <p>Publish this Deed?</p>
+                  <p className="muted">
+                    It will appear on the board when listed. Pending proof will
+                    be open for review after Outlaws submit.
+                  </p>
+                  <button
+                    type="button"
+                    className="desk-deed-write__btn desk-deed-write__btn--primary"
+                    disabled={busy}
+                    onClick={() => void publish()}
+                  >
+                    Confirm publish
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-deed-write__btn"
+                    onClick={() => setConfirmPublish(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )
+            ) : null}
+
+            {deed?.status === "draft" && deedId ? (
+              !confirmDelete ? (
                 <button
                   type="button"
-                  className="btn-text"
-                  onClick={() => setConfirmPublish(false)}
-                >
-                  [ cancel ]
-                </button>
-              </div>
-            )}
-            {!confirmDelete ? (
-              <button
-                type="button"
-                className="btn-text"
-                disabled={busy}
-                onClick={() => setConfirmDelete(true)}
-              >
-                [ DELETE ]
-              </button>
-            ) : (
-              <div className="desk-gatherings__confirm">
-                <p>DELETE DRAFT</p>
-                <button
-                  type="button"
-                  className="btn-text"
+                  className="desk-deed-write__btn"
                   disabled={busy}
-                  onClick={() => void deleteDraft()}
+                  onClick={() => setConfirmDelete(true)}
                 >
-                  [ confirm delete ]
+                  Delete draft
                 </button>
+              ) : (
+                <div className="desk-gatherings__confirm">
+                  <p>Delete this draft?</p>
+                  <button
+                    type="button"
+                    className="desk-deed-write__btn"
+                    disabled={busy}
+                    onClick={() => void deleteDraft()}
+                  >
+                    Confirm delete
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-deed-write__btn"
+                    onClick={() => setConfirmDelete(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )
+            ) : null}
+
+            {deed?.status === "active" ? (
+              !confirmClose ? (
                 <button
                   type="button"
-                  className="btn-text"
-                  onClick={() => setConfirmDelete(false)}
+                  className="desk-deed-write__btn"
+                  disabled={busy}
+                  onClick={() => setConfirmClose(true)}
                 >
-                  [ cancel ]
+                  Stop accepting submissions
                 </button>
-              </div>
-            )}
-          </>
-        ) : null}
+              ) : (
+                <div className="desk-gatherings__confirm">
+                  <p>Stop accepting submissions?</p>
+                  <p className="muted">
+                    No new proof. Pending review may still finish.
+                  </p>
+                  <button
+                    type="button"
+                    className="desk-deed-write__btn"
+                    disabled={busy}
+                    onClick={() =>
+                      void lifecycle(
+                        "close",
+                        "No longer accepting submissions.",
+                      )
+                    }
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-deed-write__btn"
+                    onClick={() => setConfirmClose(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )
+            ) : null}
 
-        {deed?.status === "active" ? (
-          !confirmClose ? (
-            <button
-              type="button"
-              className="btn-text"
-              disabled={busy}
-              onClick={() => setConfirmClose(true)}
-            >
-              [ CLOSE THE DEED ]
-            </button>
-          ) : (
-            <div className="desk-gatherings__confirm">
-              <p>CLOSE THE DEED</p>
-              <p className="muted">No new submissions. Pending review may finish.</p>
-              <button
-                type="button"
-                className="btn-text"
-                disabled={busy}
-                onClick={() => void lifecycle("close", "THE DEED IS CLOSED")}
-              >
-                [ confirm close ]
-              </button>
-              <button
-                type="button"
-                className="btn-text"
-                onClick={() => setConfirmClose(false)}
-              >
-                [ cancel ]
-              </button>
-            </div>
-          )
-        ) : null}
+            {deed?.status === "closed" ? (
+              !confirmArchive ? (
+                <button
+                  type="button"
+                  className="desk-deed-write__btn"
+                  disabled={busy}
+                  onClick={() => setConfirmArchive(true)}
+                >
+                  Archive
+                </button>
+              ) : (
+                <div className="desk-gatherings__confirm">
+                  <p>Archive this Deed?</p>
+                  <button
+                    type="button"
+                    className="desk-deed-write__btn"
+                    disabled={busy}
+                    onClick={() =>
+                      void lifecycle("archive", "Archived.")
+                    }
+                  >
+                    Confirm archive
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-deed-write__btn"
+                    onClick={() => setConfirmArchive(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )
+            ) : null}
 
-        {deed?.status === "closed" ? (
-          !confirmArchive ? (
-            <button
-              type="button"
-              className="btn-text"
-              disabled={busy}
-              onClick={() => setConfirmArchive(true)}
-            >
-              [ ARCHIVE ]
-            </button>
-          ) : (
-            <div className="desk-gatherings__confirm">
-              <p>ARCHIVE</p>
+            {deedId ? (
               <button
                 type="button"
-                className="btn-text"
+                className="desk-deed-write__btn"
                 disabled={busy}
                 onClick={() =>
-                  void lifecycle("archive", "THE DEED IS ARCHIVED")
+                  void lifecycle("duplicate", "Copy drafted.")
                 }
               >
-                [ confirm archive ]
+                Duplicate
               </button>
-              <button
-                type="button"
-                className="btn-text"
-                onClick={() => setConfirmArchive(false)}
-              >
-                [ cancel ]
-              </button>
-            </div>
-          )
-        ) : null}
+            ) : null}
 
-        {deedId ? (
-          <button
-            type="button"
-            className="btn-text"
-            disabled={busy}
-            onClick={() => void lifecycle("duplicate", "Copy drafted.")}
-          >
-            [ DUPLICATE ]
-          </button>
-        ) : null}
+            {deed?.status === "active" && deed.slug ? (
+              <Link href={`/deeds/${deed.slug}`} className="desk-deed-write__btn">
+                Open public page
+              </Link>
+            ) : null}
+          </div>
+        </div>
 
-        {deed?.status === "active" && deed.slug ? (
-          <Link href={`/deeds/${deed.slug}`} className="btn-text">
-            [ OPEN PUBLIC PAGE ]
-          </Link>
-        ) : null}
+        <aside className="desk-deed-write__preview-col" aria-label="Preview">
+          <h3 className="desk-deed-write__preview-title">
+            HOW OUTLAWS WILL SEE IT
+          </h3>
+          <DeskDeedPreview
+            deed={previewDeed}
+            draftLabel={!deed || deed.status === "draft"}
+          />
+        </aside>
       </div>
-
-      {showPreview ? (
-        <DeskDeedPreview
-          deed={
-            // Drafts (including unsaved new drafts) preview from Desk form state.
-            // Active/closed/archived use the loaded definition DTO.
-            !deed || deed.status === "draft" ? previewFromForm() : deed
-          }
-          draftLabel={!deed || deed.status === "draft"}
-        />
-      ) : null}
     </section>
   );
 }

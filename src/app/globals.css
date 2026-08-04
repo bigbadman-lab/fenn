@@ -5723,6 +5723,316 @@ button.wall-mark__action:focus-visible {
   letter-spacing: 0.04em;
 }
 
+/* ------------------------------------------------------------------ */
+/* WRITE A DEED (authoring)                                            */
+/* ------------------------------------------------------------------ */
+
+.desk-deed-write {
+  max-width: 72rem;
+}
+
+.desk-deed-write__nav {
+  margin: 0 0 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.desk-deed-write__header {
+  margin-bottom: 1rem;
+}
+
+.desk-deed-write__readonly-note {
+  margin: 0.35rem 0 0;
+  max-width: 36rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.desk-deed-write__status {
+  margin: 0 0 0.75rem;
+  color: var(--color-hoard);
+}
+
+.desk-deed-write__error {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  border-left: 2px solid var(--border);
+  padding-left: 0.55rem;
+}
+
+.desk-deed-write__facts {
+  margin-bottom: 1rem;
+}
+
+.desk-deed-write__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.75rem 2rem;
+  align-items: start;
+}
+
+.desk-deed-write__author {
+  min-width: 0;
+}
+
+.desk-deed-write__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.desk-deed-write__section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.desk-deed-write__label {
+  display: block;
+  margin: 0 0 0.4rem;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--color-hoard);
+}
+
+.desk-deed-write__hint {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  max-width: 36rem;
+}
+
+.desk-deed-write__input,
+.desk-deed-write__textarea {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--color-bone);
+  font: inherit;
+  padding: 0.45rem 0.55rem;
+}
+
+.desk-deed-write__textarea {
+  min-height: 8rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.desk-deed-write__textarea--short {
+  min-height: 4.5rem;
+}
+
+.desk-deed-write__input--amount {
+  width: 5.5rem;
+  min-width: 5.5rem;
+  text-align: right;
+}
+
+.desk-deed-write__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.55rem;
+  margin: 0.35rem 0 0.55rem;
+}
+
+.desk-deed-write__choice {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+}
+
+.desk-deed-write__choice:hover:not(:disabled),
+.desk-deed-write__choice:focus-visible {
+  color: var(--color-bone);
+  border-color: color-mix(in srgb, var(--color-hoard) 50%, var(--border));
+}
+
+.desk-deed-write__choice--selected {
+  color: var(--color-bone);
+  border-color: var(--color-hoard);
+  box-shadow: inset 0 0 0 1px var(--color-hoard);
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.desk-deed-write__choice:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.desk-deed-write__chip-note {
+  font-size: 0.78rem;
+  color: var(--muted);
+  align-self: center;
+}
+
+.desk-deed-write__inline-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+}
+
+.desk-deed-write__advanced {
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.85rem;
+}
+
+.desk-deed-write__advanced-toggle {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  padding: 0;
+  cursor: pointer;
+}
+
+.desk-deed-write__advanced-toggle:hover,
+.desk-deed-write__advanced-toggle:focus-visible {
+  color: var(--color-bone);
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.desk-deed-write__advanced-body {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.desk-deed-write__advanced-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: 0.45rem;
+}
+
+.desk-deed-write__evidence-row {
+  margin: 0.35rem 0;
+  font-size: 0.85rem;
+}
+
+.desk-deed-write__actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.75rem;
+  align-items: center;
+  margin: 1.25rem 0 0;
+  padding: 0.85rem 0 0.25rem;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--background, #0b0b0b) 92%, transparent);
+}
+
+.desk-deed-write__btn {
+  appearance: none;
+  display: inline-block;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--color-bone);
+  font: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.desk-deed-write__btn:hover:not(:disabled),
+.desk-deed-write__btn:focus-visible {
+  border-color: color-mix(in srgb, var(--color-hoard) 55%, var(--border));
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.desk-deed-write__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.desk-deed-write__btn--primary {
+  border-color: var(--color-hoard);
+  color: var(--color-hoard);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-hoard) 35%, transparent);
+  letter-spacing: 0.1em;
+}
+
+a.desk-deed-write__btn {
+  color: var(--color-bone);
+}
+
+.desk-deed-write__preview-col {
+  min-width: 0;
+  position: sticky;
+  top: 1rem;
+}
+
+.desk-deed-write__preview-title {
+  margin: 0 0 0.75rem;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-hoard);
+}
+
+.desk-deed-preview {
+  border: 1px solid var(--border);
+  padding: 0.85rem 0.95rem 1rem;
+  max-height: min(70vh, 40rem);
+  overflow: auto;
+}
+
+@media (max-width: 900px) {
+  .desk-deed-write__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .desk-deed-write__preview-col {
+    position: static;
+    order: 2;
+  }
+
+  .desk-deed-write__author {
+    order: 1;
+  }
+
+  .desk-deed-preview {
+    max-height: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .desk-deed-write__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .desk-deed-write__btn {
+    text-align: center;
+  }
+}
+
+
 .admin-deed-ticket__block {
   margin: 0 0 0.85rem;
 }

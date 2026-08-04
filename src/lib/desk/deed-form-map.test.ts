@@ -8,6 +8,10 @@ import {
   setEvidenceAllowed,
   setEvidenceRequired,
   suggestSlugFromTitle,
+  evidenceFromSimpleSelection,
+  isNoEvidenceSelection,
+  isSimpleEvidenceConfig,
+  toggleSimpleEvidence,
 } from "@/lib/desk/deed-form-map";
 import { buildDefaultDeedWallInscription } from "@/lib/desk/deed-inscription";
 
@@ -101,6 +105,24 @@ describe("Desk deed form mapping helpers", () => {
     const cleared = setEvidenceAllowed(required, "url", false);
     assert.equal(cleared.url.allowed, false);
     assert.equal(cleared.url.required, false);
+  });
+
+  it("maps simple evidence choices and no-evidence exclusive mode", () => {
+    const none = evidenceFromSimpleSelection({
+      screenshot: false,
+      link: false,
+      written: false,
+      none: true,
+    });
+    assert.ok(isNoEvidenceSelection(none));
+    assert.ok(isSimpleEvidenceConfig(none));
+
+    const shot = toggleSimpleEvidence(none, "screenshot");
+    assert.equal(shot.image.required, true);
+    assert.equal(isNoEvidenceSelection(shot), false);
+
+    const cleared = toggleSimpleEvidence(shot, "none");
+    assert.ok(isNoEvidenceSelection(cleared));
   });
 });
 
