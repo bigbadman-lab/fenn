@@ -1,66 +1,60 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { DeskGatheringCallForm } from "@/components/desk/desk-gathering-call-form";
+import { DeskGatheringOperate } from "@/components/desk/desk-gathering-operate";
 import { useDeskGate } from "@/components/desk/desk-gate";
 import type {
   DeskGatheringDetail,
-  DeskGatheringFilter,
   DeskGatheringListItem,
 } from "@/lib/desk/gatherings-types";
+import {
+  gatheringAnnouncementStyleLabel,
+} from "@/lib/greenwood/gatherings/announcement-style";
+import {
+  durationMinutesBetween,
+  formatBeginsInLabel,
+  formatDurationMinutesLabel,
+  formatRemainingDurationLabel,
+} from "@/lib/greenwood/gatherings/duration";
 
-function toLocalInputValue(iso: string): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+type BoardMode =
+  | { kind: "list" }
+  | { kind: "call"; draft?: DeskGatheringListItem | null }
+  | { kind: "operate"; gatheringId: string };
+
+function afterLabel(item: DeskGatheringListItem): string {
+  if (item.resolvedState === "cancelled") return "Cancelled";
+  if (item.status === "closed" || item.closedAt != null) return "Closed";
+  return "Ended";
 }
 
-function durationLabel(startsAt: string, endsAt: string): string {
-  const ms = Date.parse(endsAt) - Date.parse(startsAt);
-  if (!Number.isFinite(ms) || ms <= 0) return "—";
-  const mins = Math.round(ms / 60_000);
-  if (mins < 60) return `${mins} min`;
-  const hours = Math.floor(mins / 60);
-  const rem = mins % 60;
-  return rem ? `${hours}h ${rem}m` : `${hours}h`;
-}
-
+/**
+ * Desk Gatherings board — call, operate, after the Fire.
+ */
 export function DeskGatheringsBoard() {
   const { getAuthHeaders } = useDeskGate();
-  const [filter, setFilter] = useState<DeskGatheringFilter>("all");
   const [items, setItems] = useState<DeskGatheringListItem[] | null>(null);
-  const [detail, setDetail] = useState<DeskGatheringDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [confirmPublish, setConfirmPublish] = useState(false);
-  const [confirmClose, setConfirmClose] = useState(false);
-  const [confirmCancel, setConfirmCancel] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
-
-  const [title, setTitle] = useState("THE GREENWOOD GATHERS");
-  const [summary, setSummary] = useState(
-    "Those wishing to be remembered should raise a hand before the Fire.",
+  const [mode, setMode] = useState<BoardMode>({ kind: "list" });
+  const [activeDetail, setActiveDetail] = useState<DeskGatheringDetail | null>(
+    null,
   );
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
-  const [capacity, setCapacity] = useState("");
-  const [rewardPreview, setRewardPreview] = useState("25");
 
   const loadList = useCallback(async () => {
     setError(null);
     const headers = await getAuthHeaders();
     if (!headers) {
       setItems([]);
-      setError("The Gatherings could not be opened.");
+      setError("Keeper access is required.");
       return;
     }
-    const response = await fetch(
-      `/api/desk/gatherings?filter=${encodeURIComponent(filter)}`,
-      { headers, cache: "no-store" },
-    );
+    const response = await fetch("/api/desk/gatherings?filter=all", {
+      headers,
+      cache: "no-store",
+    });
     const data = (await response.json()) as {
       ok?: boolean;
       gatherings?: DeskGatheringListItem[];
@@ -72,7 +66,7 @@ export function DeskGatheringsBoard() {
       return;
     }
     setItems(data.gatherings ?? []);
-  }, [getAuthHeaders, filter]);
+  }, [getAuthHeaders]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -87,11 +81,22 @@ export function DeskGatheringsBoard() {
     };
   }, [loadList]);
 
-  async function openDetail(id: string) {
+  const buckets = useMemo(() => {
+    const list = items ?? [];
+    const live = list.filter((g) => g.resolvedState === "active");
+    const upcoming = list.filter((g) => g.resolvedState === "scheduled");
+    const after = list.filter(
+      (g) =>
+        g.resolvedState === "closed" || g.resolvedState === "cancelled",
+    );
+    const drafts = list.filter(
+      (g) => g.resolvedState === "draft" || g.status === "draft",
+    );
+    return { live, upcoming, after, drafts };
+  }, [items]);
+
+  async function openOperate(id: string) {
     setError(null);
-    setConfirmPublish(false);
-    setConfirmClose(false);
-    setConfirmCancel(false);
     const headers = await getAuthHeaders();
     if (!headers) return;
     const response = await fetch(`/api/desk/gatherings/${id}`, {
@@ -99,133 +104,58 @@ export function DeskGatheringsBoard() {
       cache: "no-store",
     });
     const data = (await response.json()) as {
-      ok?: boolean;
       gathering?: DeskGatheringDetail;
       error?: string;
     };
     if (!response.ok || !data.gathering) {
-      setError(data.error ?? "detail failed");
+      setError(data.error ?? "That Gathering could not be found.");
       return;
     }
-    setDetail(data.gathering);
-    if (data.gathering.status === "draft") {
-      setTitle(data.gathering.title);
-      setSummary(data.gathering.summary);
-      setStartsAt(toLocalInputValue(data.gathering.startsAt));
-      setEndsAt(toLocalInputValue(data.gathering.endsAt));
-      setCapacity(
-        data.gathering.capacity != null ? String(data.gathering.capacity) : "",
-      );
-      setRewardPreview(
-        data.gathering.rewardLeafPreview != null
-          ? String(data.gathering.rewardLeafPreview)
-          : "",
-      );
-    }
+    setActiveDetail(data.gathering);
+    setMode({ kind: "operate", gatheringId: id });
   }
 
-  async function createDraft(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setStatus(null);
-    setError(null);
-    try {
-      const headers = await getAuthHeaders();
-      if (!headers) return;
-      const response = await fetch("/api/desk/gatherings", {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          summary,
-          startsAt: new Date(startsAt).toISOString(),
-          endsAt: new Date(endsAt).toISOString(),
-          capacity: capacity.trim() ? Number(capacity) : null,
-          rewardLeafPreview: rewardPreview.trim()
-            ? Number(rewardPreview)
-            : null,
-        }),
-      });
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        setError(data.error ?? "create failed");
-        return;
-      }
-      setStatus("draft created.");
-      await loadList();
-    } finally {
-      setBusy(false);
-    }
+  if (mode.kind === "call") {
+    return (
+      <DeskGatheringCallForm
+        getAuthHeaders={getAuthHeaders}
+        draftSeed={mode.draft ?? null}
+        onCancel={() => setMode({ kind: "list" })}
+        onBegun={(gathering) => {
+          setActiveDetail(gathering);
+          setMode({ kind: "operate", gatheringId: gathering.id });
+          void loadList();
+        }}
+      />
+    );
   }
 
-  async function saveDraft() {
-    if (!detail || detail.status !== "draft") return;
-    setBusy(true);
-    setStatus(null);
-    setError(null);
-    try {
-      const headers = await getAuthHeaders();
-      if (!headers) return;
-      const response = await fetch(`/api/desk/gatherings/${detail.id}`, {
-        method: "PATCH",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          summary,
-          startsAt: new Date(startsAt).toISOString(),
-          endsAt: new Date(endsAt).toISOString(),
-          capacity: capacity.trim() ? Number(capacity) : null,
-          rewardLeafPreview: rewardPreview.trim()
-            ? Number(rewardPreview)
-            : null,
-        }),
-      });
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        setError(data.error ?? "save failed");
-        return;
-      }
-      setStatus("draft saved.");
-      await openDetail(detail.id);
-      await loadList();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function act(
-    path: string,
-    okMessage: string,
-    body?: Record<string, unknown>,
-  ) {
-    setBusy(true);
-    setError(null);
-    setStatus(null);
-    try {
-      const headers = await getAuthHeaders();
-      if (!headers) return;
-      const response = await fetch(path, {
-        method: "POST",
-        headers: body
-          ? { ...headers, "Content-Type": "application/json" }
-          : headers,
-        body: body ? JSON.stringify(body) : undefined,
-        cache: "no-store",
-      });
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        setError(data.error ?? "action failed");
-        return;
-      }
-      setStatus(okMessage);
-      setDetail(null);
-      setConfirmPublish(false);
-      setConfirmClose(false);
-      setConfirmCancel(false);
-      await loadList();
-    } finally {
-      setBusy(false);
-    }
+  if (mode.kind === "operate" && activeDetail) {
+    return (
+      <section className="desk-gatherings" aria-label="Operate Gathering">
+        <p>
+          <button
+            type="button"
+            className="btn-text"
+            onClick={() => {
+              setMode({ kind: "list" });
+              setActiveDetail(null);
+              void loadList();
+            }}
+          >
+            [ back to Gatherings ]
+          </button>
+        </p>
+        <DeskGatheringOperate
+          gathering={activeDetail}
+          getAuthHeaders={getAuthHeaders}
+          onChanged={async () => {
+            await loadList();
+            await openOperate(activeDetail.id);
+          }}
+        />
+      </section>
+    );
   }
 
   return (
@@ -240,348 +170,157 @@ export function DeskGatheringsBoard() {
           [ refresh ]
         </button>
       </div>
-      <p className="muted">WHAT IS HAPPENING AT THE FIRE?</p>
+      <p className="muted">Call the Greenwood. Operate the Fire. Record what remains.</p>
 
-      <label className="desk-register__field">
-        <span className="muted">Filter</span>
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as DeskGatheringFilter)}
+      {error ? (
+        <p className="desk-gathering-call__error" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      <p>
+        <button
+          type="button"
+          className="btn-text desk-gathering-call__begin"
+          onClick={() => setMode({ kind: "call" })}
         >
-          <option value="all">all</option>
-          <option value="draft">draft</option>
-          <option value="upcoming">upcoming</option>
-          <option value="active">active</option>
-          <option value="closed">closed</option>
-          <option value="cancelled">cancelled</option>
-          <option value="closed_hands_no_campaign">
-            closed · hands · no campaign
-          </option>
-        </select>
-      </label>
-
-      <p className="desk-divider" aria-hidden>
-        ────────────────────
-      </p>
-
-      {error ? <p className="muted">{error}</p> : null}
-      {status ? <p className="desk-overview__note">{status}</p> : null}
-
-      <h3 className="desk-overview__group-title">CREATE DRAFT</h3>
-      <form className="desk-gatherings__form" onSubmit={createDraft}>
-        <label className="desk-register__field">
-          <span className="muted">Title</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} />
-        </label>
-        <label className="desk-register__field">
-          <span className="muted">Summary</span>
-          <input value={summary} onChange={(e) => setSummary(e.target.value)} />
-        </label>
-        <label className="desk-register__field">
-          <span className="muted">Starts</span>
-          <input
-            type="datetime-local"
-            value={startsAt}
-            onChange={(e) => setStartsAt(e.target.value)}
-            required
-          />
-        </label>
-        <label className="desk-register__field">
-          <span className="muted">Ends</span>
-          <input
-            type="datetime-local"
-            value={endsAt}
-            onChange={(e) => setEndsAt(e.target.value)}
-            required
-          />
-        </label>
-        <label className="desk-register__field">
-          <span className="muted">Capacity</span>
-          <input value={capacity} onChange={(e) => setCapacity(e.target.value)} />
-        </label>
-        <label className="desk-register__field">
-          <span className="muted">LEAF preview</span>
-          <input
-            value={rewardPreview}
-            onChange={(e) => setRewardPreview(e.target.value)}
-          />
-        </label>
-        <p className="muted">Location: Fire · Interaction: Raise Hand</p>
-        <button type="submit" className="btn-text" disabled={busy}>
-          [ create draft ]
+          [ Call a Gathering ]
         </button>
-      </form>
+      </p>
 
       <p className="desk-divider" aria-hidden>
         ────────────────────
       </p>
 
-      <h3 className="desk-overview__group-title">LIST</h3>
+      <h3 className="desk-overview__group-title">LIVE</h3>
       {items == null ? <p className="muted">…</p> : null}
-      {items && items.length === 0 ? (
-        <p className="muted">No Gatherings match.</p>
+      {items && buckets.live.length === 0 ? (
+        <p className="muted">No Gathering is burning.</p>
       ) : null}
-      {items && items.length > 0 ? (
-        <ul className="desk-member__list">
-          {items.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                className="btn-text"
-                onClick={() => void openDetail(item.id)}
-              >
-                {item.title}
-              </button>{" "}
-              · {item.resolvedState} · {item.handCount} hands ·{" "}
-              {item.attendanceCount} attendance
-              {item.rewardCampaign ? " · campaign" : ""}
-              {" · "}
-              <Link
-                href={`/desk/gatherings/${item.id}`}
-                className="btn-text"
-              >
-                [ detail ]
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {buckets.live.map((item) => (
+        <GatheringRow
+          key={item.id}
+          item={item}
+          section="live"
+          onOperate={() => void openOperate(item.id)}
+        />
+      ))}
 
-      {detail ? (
+      <h3 className="desk-overview__group-title">UPCOMING</h3>
+      {items && buckets.upcoming.length === 0 ? (
+        <p className="muted">Nothing waits on the Fire.</p>
+      ) : null}
+      {buckets.upcoming.map((item) => (
+        <GatheringRow
+          key={item.id}
+          item={item}
+          section="upcoming"
+          onOperate={() => void openOperate(item.id)}
+        />
+      ))}
+
+      <h3 className="desk-overview__group-title">AFTER THE FIRE</h3>
+      {items && buckets.after.length === 0 ? (
+        <p className="muted">No closed or cancelled Gatherings yet.</p>
+      ) : null}
+      {buckets.after.map((item) => (
+        <GatheringRow
+          key={item.id}
+          item={item}
+          section="after"
+          onOperate={() => void openOperate(item.id)}
+        />
+      ))}
+
+      {buckets.drafts.length > 0 ? (
         <>
-          <p className="desk-divider" aria-hidden>
-            ────────────────────
+          <h3 className="desk-overview__group-title">UNFINISHED CALLS</h3>
+          <p className="muted">
+            Older drafts. Resume into Begin Gathering, or open for detail.
           </p>
-          <h3 className="desk-overview__group-title">DETAIL</h3>
-          <ul className="desk-member__facts">
-            <li>{detail.title}</li>
-            <li className="muted">{detail.summary}</li>
-            <li>
-              State: {detail.resolvedState} ({detail.status})
-            </li>
-            <li>
-              Window: {detail.startsAt.slice(0, 16)} → {detail.endsAt.slice(0, 16)}{" "}
-              · {durationLabel(detail.startsAt, detail.endsAt)}
-            </li>
-            <li>Capacity: {detail.capacity ?? "—"}</li>
-            <li>LEAF preview: {detail.rewardLeafPreview ?? "—"}</li>
-            <li>
-              Deed: {detail.linkedDeed?.title ?? detail.linkedDeedId ?? "—"}
-            </li>
-            <li>
-              Attendance {detail.attendanceCount} · open hands{" "}
-              {detail.openHandCount} · lowered {detail.loweredHandCount}
-            </li>
-            <li>
-              Campaign:{" "}
-              {detail.rewardCampaign
-                ? `${detail.rewardCampaign.title} (${detail.rewardCampaign.status})`
-                : "none"}
-            </li>
+          <ul className="desk-member__list">
+            {buckets.drafts.map((item) => (
+              <li key={item.id}>
+                {item.title} ·{" "}
+                <button
+                  type="button"
+                  className="btn-text"
+                  onClick={() => setMode({ kind: "call", draft: item })}
+                >
+                  [ resume ]
+                </button>{" "}
+                <Link
+                  href={`/desk/gatherings/${item.id}`}
+                  className="btn-text"
+                >
+                  [ detail ]
+                </Link>
+              </li>
+            ))}
           </ul>
-
-          {detail.status === "draft" ? (
-            <div className="desk-gatherings__actions">
-              <button
-                type="button"
-                className="btn-text"
-                disabled={busy}
-                onClick={() => void saveDraft()}
-              >
-                [ save draft ]
-              </button>
-              {!confirmPublish ? (
-                <button
-                  type="button"
-                  className="btn-text"
-                  disabled={busy}
-                  onClick={() => setConfirmPublish(true)}
-                >
-                  [ prepare publish ]
-                </button>
-              ) : (
-                <div className="desk-gatherings__confirm">
-                  <p>PUBLISH THIS GATHERING</p>
-                  <p className="muted">
-                    {detail.title} · {durationLabel(detail.startsAt, detail.endsAt)}{" "}
-                    · capacity {detail.capacity ?? "—"} · LEAF{" "}
-                    {detail.rewardLeafPreview ?? "—"}
-                  </p>
-                  <button
-                    type="button"
-                    className="btn-text"
-                    disabled={busy}
-                    onClick={() =>
-                      void act(
-                        `/api/desk/gatherings/${detail.id}/publish`,
-                        "published.",
-                      )
-                    }
-                  >
-                    [ confirm publish ]
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-text"
-                    onClick={() => setConfirmPublish(false)}
-                  >
-                    [ cancel ]
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : null}
-
-          {detail.resolvedState === "active" ||
-          detail.resolvedState === "scheduled" ? (
-            <div className="desk-gatherings__actions">
-              {!confirmClose ? (
-                <button
-                  type="button"
-                  className="btn-text"
-                  disabled={busy}
-                  onClick={() => setConfirmClose(true)}
-                >
-                  [ prepare close ]
-                </button>
-              ) : (
-                <div className="desk-gatherings__confirm">
-                  <p>CLOSE THIS GATHERING</p>
-                  <p className="muted">
-                    {detail.title} · {detail.openHandCount} hands raised ·{" "}
-                    {detail.attendanceCount} attendance.
-                  </p>
-                  <p className="muted">
-                    Hands still raised when the Gathering closes may later be
-                    used for a Hollow campaign. No reward is created
-                    automatically.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn-text"
-                    disabled={busy}
-                    onClick={() =>
-                      void act(
-                        `/api/desk/gatherings/${detail.id}/close`,
-                        "closed.",
-                      )
-                    }
-                  >
-                    [ confirm close ]
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-text"
-                    onClick={() => setConfirmClose(false)}
-                  >
-                    [ cancel ]
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : null}
-
-          {detail.resolvedState !== "cancelled" &&
-          detail.resolvedState !== "closed" ? (
-            <div className="desk-gatherings__actions">
-              {!confirmCancel ? (
-                <button
-                  type="button"
-                  className="btn-text"
-                  disabled={busy}
-                  onClick={() => setConfirmCancel(true)}
-                >
-                  [ prepare cancel ]
-                </button>
-              ) : (
-                <div className="desk-gatherings__confirm">
-                  <p>CANCEL THIS GATHERING</p>
-                  <p className="muted">
-                    {detail.title} · state {detail.resolvedState} ·{" "}
-                    {detail.openHandCount} hands · campaign{" "}
-                    {detail.rewardCampaign ? detail.rewardCampaign.status : "none"}
-                  </p>
-                  <label className="desk-register__field">
-                    <span className="muted">Reason</span>
-                    <input
-                      value={cancelReason}
-                      onChange={(e) => setCancelReason(e.target.value)}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="btn-text"
-                    disabled={busy}
-                    onClick={() =>
-                      void act(
-                        `/api/desk/gatherings/${detail.id}/cancel`,
-                        "cancelled.",
-                        { reason: cancelReason || null },
-                      )
-                    }
-                  >
-                    [ confirm cancel ]
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-text"
-                    onClick={() => setConfirmCancel(false)}
-                  >
-                    [ back ]
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : null}
-
-          {detail.resolvedState === "closed" &&
-          !detail.rewardCampaign &&
-          detail.openHandCount > 0 ? (
-            <p>
-              <Link
-                href={`/desk/hollow?gathering=${detail.id}`}
-                className="btn-text"
-              >
-                [ CREATE HOLLOW CAMPAIGN ]
-              </Link>
-            </p>
-          ) : null}
-
-          {detail.rewardCampaign ? (
-            <p>
-              Campaign: {detail.rewardCampaign.title} (
-              {detail.rewardCampaign.status}) ·{" "}
-              <Link
-                href={`/desk/hollow/${detail.rewardCampaign.id}`}
-                className="btn-text"
-              >
-                [ open in The Hollow ]
-              </Link>
-            </p>
-          ) : null}
-
-          <h3 className="desk-overview__group-title">HANDS</h3>
-          {detail.hands.length === 0 ? (
-            <p className="muted">No hands recorded.</p>
-          ) : (
-            <ul className="desk-member__list">
-              {detail.hands.map((hand) => (
-                <li key={`${hand.profileId}-${hand.raisedAt}`}>
-                  {hand.displayName} · #{hand.outlawNumberLabel} ·{" "}
-                  {hand.isOpen ? "raised" : "lowered"}
-                  {hand.attended ? " · attended" : ""} ·{" "}
-                  <Link
-                    href={`/desk/register/${hand.profileId}`}
-                    className="btn-text"
-                  >
-                    [ register ]
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
         </>
       ) : null}
     </section>
+  );
+}
+
+function GatheringRow({
+  item,
+  section,
+  onOperate,
+}: {
+  item: DeskGatheringListItem;
+  section: "live" | "upcoming" | "after";
+  onOperate: () => void;
+}) {
+  const now = Date.now();
+  const remain = Math.max(0, Date.parse(item.endsAt) - now);
+  const until = Math.max(0, Date.parse(item.startsAt) - now);
+  const duration = durationMinutesBetween(item.startsAt, item.endsAt);
+  const label =
+    section === "live"
+      ? "Operate"
+      : section === "upcoming"
+        ? "Inspect"
+        : "Review";
+
+  return (
+    <div className="desk-gathering-row">
+      <p className="desk-gathering-row__title">{item.title}</p>
+      <p className="muted desk-gathering-row__meta">
+        {section === "live" ? (
+          <>
+            {formatRemainingDurationLabel(remain)} remain · {item.handCount} hands
+            · {item.attendanceCount} attendance
+            {item.capacity != null ? ` · cap ${item.capacity}` : ""} ·{" "}
+            {gatheringAnnouncementStyleLabel(item.announcementStyle)}
+          </>
+        ) : null}
+        {section === "upcoming" ? (
+          <>
+            begins in {formatBeginsInLabel(until)}
+            {duration != null
+              ? ` · ${formatDurationMinutesLabel(duration)}`
+              : ""}{" "}
+            · {gatheringAnnouncementStyleLabel(item.announcementStyle)}
+          </>
+        ) : null}
+        {section === "after" ? (
+          <>
+            {afterLabel(item)} · {item.handCount} hands · {item.attendanceCount}{" "}
+            attendance
+            {item.rewardCampaign ? " · campaign" : ""}
+          </>
+        ) : null}
+      </p>
+      <p className="desk-gathering-row__actions">
+        <button type="button" className="btn-text" onClick={onOperate}>
+          [ {label} ]
+        </button>{" "}
+        <Link href={`/desk/gatherings/${item.id}`} className="btn-text">
+          [ detail ]
+        </Link>
+      </p>
+    </div>
   );
 }

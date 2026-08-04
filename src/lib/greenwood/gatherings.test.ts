@@ -182,6 +182,7 @@ describe("SafeGathering privacy shape", () => {
       interactionType: "raise_hand",
       capacity: 18,
       rewardLeafPreview: 25,
+      announcementStyle: "quiet",
       handCount: 3,
       memberHasRaisedHand: true,
       canRaiseHand: false,
@@ -195,6 +196,7 @@ describe("SafeGathering privacy shape", () => {
     };
     const keys = Object.keys(sample).sort();
     assert.deepEqual(keys, [
+      "announcementStyle",
       "canLowerHand",
       "canRaiseHand",
       "capacity",
@@ -302,17 +304,25 @@ describe("Living Greenwood 3 Fire UI + pulse", () => {
   it("wires Gathering panel independently from presence", () => {
     const member = read("src/components/greenwood/greenwood-member.tsx");
     const ui = read("src/components/greenwood/greenwood-fire-gathering.tsx");
+    const card = read("src/components/greenwood/gathering-fire-card.tsx");
+    const banner = read(
+      "src/components/greenwood/greenwood-gathering-call-banner.tsx",
+    );
     const hook = read("src/hooks/use-greenwood-fire-gatherings.ts");
     assert.match(member, /GreenwoodFireGathering/);
     assert.match(member, /GreenwoodFirePresence/);
+    assert.match(member, /GreenwoodGatheringCallBanner/);
+    assert.match(member, /useGreenwoodFireGatherings/);
     assert.match(ui, /No Gathering has been called/);
-    assert.match(ui, /RAISE HAND/);
-    assert.match(ui, /LOWER HAND/);
-    assert.match(ui, /THE FIRE CLOSES IN|GATHERING BEGINS IN/);
+    assert.match(card, /RAISE HAND/);
+    assert.match(card, /LOWER HAND/);
+    assert.match(card, /remain|Begins in|Begins when you press/);
+    assert.match(banner, /fire_calling/);
     assert.match(hook, /WORLD_PULSE_GREENWOOD_GATHERING_MS/);
     assert.match(hook, /usePagePulse/);
     assert.doesNotMatch(hook, /supabase\.channel|WebSocket/);
     assert.doesNotMatch(ui, /awardLeaf|hollow|claim/i);
+    assert.doesNotMatch(banner, /handCount|attendance/i);
   });
 
   it("keeps Gathering pulse in the 20–30s band", () => {

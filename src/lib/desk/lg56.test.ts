@@ -91,17 +91,13 @@ describe("LG5.6 privacy and secrets", () => {
 
 describe("LG5.6 confirmation consistency", () => {
   it("dangerous Desk actions use explicit confirmation phrases", () => {
-    assert.match(
-      read("src/components/desk/desk-gatherings-board.tsx"),
-      /CLOSE THIS GATHERING/,
-    );
-    assert.match(
-      read("src/components/desk/desk-gatherings-board.tsx"),
-      /CANCEL THIS GATHERING/,
-    );
+    const operate = read("src/components/desk/desk-gathering-operate.tsx");
+    assert.match(operate, /End this Gathering now/);
+    assert.match(operate, /Cancel this Gathering/);
+    assert.match(operate, /confirm end|confirm cancel|confirm close/);
     assert.match(
       read("src/components/desk/desk-gathering-detail-panel.tsx"),
-      /CLOSE THIS GATHERING/,
+      /DeskGatheringOperate/,
     );
     assert.match(
       read("src/components/desk/desk-book-panel.tsx"),
@@ -134,6 +130,10 @@ describe("LG5.6 confirmation consistency", () => {
     assert.match(
       read("src/components/desk/desk-speaks-panel.tsx"),
       /PUBLISH THIS MESSAGE/,
+    );
+    assert.match(
+      read("src/components/desk/desk-speaks-panel.tsx"),
+      /Turn into FENN Speak/,
     );
   });
 });

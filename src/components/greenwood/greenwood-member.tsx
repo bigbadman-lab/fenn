@@ -7,8 +7,10 @@ import { GreenwoodFireGathering } from "@/components/greenwood/greenwood-fire-ga
 import { GreenwoodFireHashScroll } from "@/components/greenwood/greenwood-fire-hash-scroll";
 import { GreenwoodFireHollow } from "@/components/greenwood/greenwood-fire-hollow";
 import { GreenwoodFirePresence } from "@/components/greenwood/greenwood-fire-presence";
+import { GreenwoodGatheringCallBanner } from "@/components/greenwood/greenwood-gathering-call-banner";
 import { useFirePresenceShell } from "@/components/shell/fire-presence-provider";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import { useGreenwoodFireGatherings } from "@/hooks/use-greenwood-fire-gatherings";
 import { formatDeedBoardDate, formatDeedReward } from "@/lib/deeds/format";
 import type { SafeDeed } from "@/lib/deeds/types";
 import { fetchGreenwoodDeeds } from "@/lib/greenwood/client";
@@ -40,6 +42,7 @@ export function GreenwoodMember({
   getAuthHeaders,
 }: GreenwoodMemberProps) {
   const { seated } = useFirePresenceShell();
+  const gatherings = useGreenwoodFireGatherings({ getAuthHeaders });
   const enteredDate = formatDeedBoardDate(member.greenwoodEnteredAt);
   const aliasTrimmed = alias?.trim() || null;
   const displayName = aliasTrimmed ?? outlawLabel;
@@ -169,6 +172,8 @@ export function GreenwoodMember({
       </header>
 
       <div className="greenwood-member__body">
+        <GreenwoodGatheringCallBanner snapshot={gatherings.snapshot} />
+
         <section
           className="greenwood-interior__section greenwood-fire__message"
           aria-labelledby="gf-message"
@@ -188,7 +193,14 @@ export function GreenwoodMember({
 
         <hr className="greenwood-member__rule" />
 
-        <GreenwoodFireGathering getAuthHeaders={getAuthHeaders} />
+        <GreenwoodFireGathering
+          status={gatherings.status}
+          snapshot={gatherings.snapshot}
+          actionPending={gatherings.actionPending}
+          refresh={gatherings.refresh}
+          raiseHand={gatherings.raiseHand}
+          lowerHand={gatherings.lowerHand}
+        />
 
         <hr className="greenwood-member__rule" />
 

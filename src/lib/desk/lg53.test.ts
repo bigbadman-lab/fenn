@@ -40,6 +40,7 @@ describe("LG5.3 Desk Gatherings", () => {
   it("Desk Gathering APIs require Desk access and reuse domain ops", () => {
     const routes = [
       "src/app/api/desk/gatherings/route.ts",
+      "src/app/api/desk/gatherings/begin/route.ts",
       "src/app/api/desk/gatherings/[id]/route.ts",
       "src/app/api/desk/gatherings/[id]/publish/route.ts",
       "src/app/api/desk/gatherings/[id]/cancel/route.ts",
@@ -59,6 +60,10 @@ describe("LG5.3 Desk Gatherings", () => {
     assert.match(lib, /adminCancelGathering/);
     assert.match(lib, /adminCloseGathering/);
     assert.match(lib, /greenwood\/gatherings\/admin-ops/);
+    const begin = read("src/lib/desk/begin-gathering.ts");
+    assert.match(begin, /adminCreateGatheringDraft/);
+    assert.match(begin, /adminPublishGathering/);
+    assert.match(begin, /durationMinutes/);
   });
 
   it("Desk Gathering helpers preserve audit action names via domain ops", () => {
@@ -73,11 +78,18 @@ describe("LG5.3 Desk Gatherings", () => {
   it("hand DTO excludes wallets and includes Register profile links", () => {
     const types = read("src/lib/desk/gatherings-types.ts");
     const ui = read("src/components/desk/desk-gatherings-board.tsx");
+    const operate = read("src/components/desk/desk-gathering-operate.tsx");
+    const form = read("src/components/desk/desk-gathering-call-form.tsx");
     assert.match(types, /profileId/);
     assert.doesNotMatch(types, /wallet|privy|createdByActorId/i);
-    assert.match(ui, /PUBLISH THIS GATHERING/);
-    assert.match(ui, /Hands still raised when the Gathering closes/);
-    assert.match(ui, /CREATE HOLLOW CAMPAIGN/);
+    assert.match(ui, /Call a Gathering/);
+    assert.match(ui, /LIVE|UPCOMING|AFTER THE FIRE/);
+    assert.match(form, /BEGIN GATHERING/);
+    assert.match(form, /WHY ARE WE GATHERING/);
+    assert.match(form, /HOW SHOULD THE GREENWOOD HEAR/);
+    assert.doesNotMatch(form, /datetime-local/);
+    assert.match(operate, /END GATHERING|CANCEL GATHERING/);
+    assert.match(operate, /CREATE HOLLOW CAMPAIGN/);
     assert.doesNotMatch(ui, /\/api\/admin|COPY WALLET|walletAddress/);
   });
 

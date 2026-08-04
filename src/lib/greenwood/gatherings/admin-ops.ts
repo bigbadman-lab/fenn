@@ -4,6 +4,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { writeAdminAuditLog } from "@/lib/admin/audit";
 import { GreenwoodError } from "@/lib/greenwood/errors";
+import {
+  announcementStyleFromMetadata,
+  metadataWithAnnouncementStyle,
+  parseGatheringAnnouncementStyle,
+  type GatheringAnnouncementStyle,
+} from "@/lib/greenwood/gatherings/announcement-style";
 import { resolveGatheringStateFromRow } from "@/lib/greenwood/gatherings/state";
 import type {
   AdminGatheringDetail,
@@ -148,6 +154,7 @@ async function toListItem(
     capacity: row.capacity,
     rewardLeafPreview: row.reward_leaf_preview,
     linkedDeedId: row.linked_deed_id,
+    announcementStyle: announcementStyleFromMetadata(row.metadata),
     handCount: await countOpenHands(db, row.id),
     attendanceCount: await countAttendance(db, row.id),
     cancelledAt: row.cancelled_at,
@@ -165,6 +172,7 @@ export type CreateGatheringInput = {
   capacity?: number | null;
   rewardLeafPreview?: number | null;
   linkedDeedId?: string | null;
+  announcementStyle?: GatheringAnnouncementStyle | string | null;
 };
 
 export async function adminListGatherings(
@@ -297,6 +305,9 @@ export async function adminCreateGatheringDraft(
   }
   validateWindow(input.startsAt, input.endsAt);
 
+  const announcementStyle = parseGatheringAnnouncementStyle(
+    input.announcementStyle,
+  );
   const rowInsert = {
     title,
     slug: slugify(title),
@@ -310,6 +321,7 @@ export async function adminCreateGatheringDraft(
     reward_leaf_preview: input.rewardLeafPreview ?? null,
     linked_deed_id: input.linkedDeedId ?? null,
     created_by_actor_id: actorId,
+    metadata: metadataWithAnnouncementStyle({}, announcementStyle),
   };
 
   const { data, error } = await db
@@ -378,6 +390,10 @@ export async function adminUpdateGatheringDraft(
   }
   if (input.linkedDeedId !== undefined) {
     patch.linked_deed_id = input.linkedDeedId;
+  }
+  if (input.announcementStyle !== undefined) {
+    const style = parseGatheringAnnouncementStyle(input.announcementStyle);
+    patch.metadata = metadataWithAnnouncementStyle(before.metadata, style);
   }
 
   const { data, error } = await db

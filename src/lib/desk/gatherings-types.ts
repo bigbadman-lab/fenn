@@ -1,3 +1,4 @@
+import type { GatheringAnnouncementStyle } from "@/lib/greenwood/gatherings/announcement-style";
 import type {
   GatheringAdminStatus,
   GatheringResolvedState,
@@ -15,6 +16,7 @@ export type DeskGatheringListItem = {
   capacity: number | null;
   rewardLeafPreview: number | null;
   linkedDeedId: string | null;
+  announcementStyle: GatheringAnnouncementStyle;
   handCount: number;
   attendanceCount: number;
   cancelledAt: string | null;

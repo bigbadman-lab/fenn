@@ -110,9 +110,11 @@ describe("LG5.4 Desk Hollow product surfaces", () => {
 
   it("Gathering detail links into Desk Hollow creation", () => {
     const detail = read("src/components/desk/desk-gathering-detail-panel.tsx");
-    assert.match(detail, /CREATE HOLLOW CAMPAIGN/);
-    assert.match(detail, /\/desk\/hollow\?gathering=/);
-    assert.match(detail, /\/desk\/hollow\/\$\{detail\.rewardCampaign\.id\}/);
+    const operate = read("src/components/desk/desk-gathering-operate.tsx");
+    assert.match(detail, /DeskGatheringOperate/);
+    assert.match(operate, /CREATE HOLLOW CAMPAIGN/);
+    assert.match(operate, /\/desk\/hollow\?gathering=/);
+    assert.match(operate, /\/desk\/hollow\/\$\{view\.rewardCampaign\.id\}/);
   });
 
   it("Overview Hollow signals link to Desk Hollow", () => {

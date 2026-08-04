@@ -1,3 +1,5 @@
+import type { GatheringAnnouncementStyle } from "@/lib/greenwood/gatherings/announcement-style";
+
 export type GatheringAdminStatus =
   | "draft"
   | "scheduled"
@@ -39,6 +41,8 @@ export type GatheringRow = {
   updated_at: string;
 };
 
+export type { GatheringAnnouncementStyle };
+
 export type SafeGatheringDeedLink = {
   id: string;
   slug: string | null;
@@ -58,6 +62,7 @@ export type SafeGathering = {
   interactionType: GatheringInteractionType;
   capacity: number | null;
   rewardLeafPreview: number | null;
+  announcementStyle: GatheringAnnouncementStyle;
   handCount: number;
   memberHasRaisedHand: boolean;
   canRaiseHand: boolean;
@@ -86,6 +91,7 @@ export type AdminGatheringListItem = {
   capacity: number | null;
   rewardLeafPreview: number | null;
   linkedDeedId: string | null;
+  announcementStyle: GatheringAnnouncementStyle;
   handCount: number;
   attendanceCount: number;
   cancelledAt: string | null;

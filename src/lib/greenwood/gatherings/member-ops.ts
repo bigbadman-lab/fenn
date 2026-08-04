@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { GreenwoodError } from "@/lib/greenwood/errors";
+import { announcementStyleFromMetadata } from "@/lib/greenwood/gatherings/announcement-style";
 import {
   isMemberVisibleState,
   resolveGatheringStateFromRow,
@@ -169,6 +170,7 @@ export async function toSafeGathering(
     interactionType: row.interaction_type,
     capacity: row.capacity,
     rewardLeafPreview: row.reward_leaf_preview,
+    announcementStyle: announcementStyleFromMetadata(row.metadata),
     handCount,
     memberHasRaisedHand,
     canRaiseHand:

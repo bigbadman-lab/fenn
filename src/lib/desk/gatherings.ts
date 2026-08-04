@@ -74,6 +74,7 @@ function toDeskListItem(
     capacity: item.capacity,
     rewardLeafPreview: item.rewardLeafPreview,
     linkedDeedId: item.linkedDeedId,
+    announcementStyle: item.announcementStyle,
     handCount: item.handCount,
     attendanceCount: item.attendanceCount,
     cancelledAt: item.cancelledAt,

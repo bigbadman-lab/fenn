@@ -75,17 +75,22 @@ describe("Fire readiness — Gathering copy", () => {
     const gathering = read(
       "src/components/greenwood/greenwood-fire-gathering.tsx",
     );
+    const card = read("src/components/greenwood/gathering-fire-card.tsx");
     assert.match(
       gathering,
       /Those waiting at the Fire will be here when one begins/,
     );
     assert.match(
-      gathering,
+      card,
       /Those already seated at the Fire will be present when the Gathering begins/,
     );
-    assert.match(gathering, /Those seated at the Fire are here/);
+    assert.match(card, /Those seated at the Fire are here/);
     assert.doesNotMatch(
       gathering,
+      /will receive|guaranteed selection|automatically rewarded/i,
+    );
+    assert.doesNotMatch(
+      card,
       /will receive|guaranteed selection|automatically rewarded/i,
     );
   });
