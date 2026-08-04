@@ -60,6 +60,7 @@ export type WriteChronicleEntryInput = {
   title: string;
   body: string;
   sourceType?: string;
-  sourceExternalId?: string;
+  /** Maps to chronicle_entries.source_id (not wall source_external_id). */
+  sourceId?: string;
   publishedAt?: string;
 };

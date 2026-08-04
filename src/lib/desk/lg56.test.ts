@@ -105,7 +105,11 @@ describe("LG5.6 confirmation consistency", () => {
     );
     assert.match(
       read("src/components/desk/desk-book-panel.tsx"),
-      /WRITE THE MISSING ENTRY/,
+      /Generate with FENN/,
+    );
+    assert.doesNotMatch(
+      read("src/components/desk/desk-book-panel.tsx"),
+      /confirm write/i,
     );
     assert.match(
       read("src/components/desk/desk-agent-panel.tsx"),

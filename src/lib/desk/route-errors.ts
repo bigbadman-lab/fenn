@@ -2,7 +2,10 @@ import { DeedAuthoringError } from "@/lib/deeds/authoring-validation";
 import { DeedModerationError } from "@/lib/deeds/moderation";
 import { DeskAuthError } from "@/lib/desk/auth";
 import { deskJson } from "@/lib/desk/http";
-import { ChronicleError } from "@/lib/chronicle/errors";
+import {
+  ChronicleError,
+  deskFacingChronicleError,
+} from "@/lib/chronicle/errors";
 import { CommonsError } from "@/lib/commons/errors";
 import { EditorialError } from "@/lib/editorial/errors";
 import { GreenwoodError } from "@/lib/greenwood/errors";
@@ -55,8 +58,16 @@ export function mapDeskError(error: unknown, label: string): Response {
     );
   }
   if (error instanceof ChronicleError) {
+    console.error(`[${label}] chronicle`, {
+      code: error.code,
+      message: error.message,
+    });
     return deskJson(
-      { ok: false, error: error.message, code: error.code },
+      {
+        ok: false,
+        error: deskFacingChronicleError(error),
+        code: error.code,
+      },
       { status: error.status },
     );
   }

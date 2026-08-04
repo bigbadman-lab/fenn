@@ -16,3 +16,23 @@ export class ChronicleError extends Error {
     this.status = status;
   }
 }
+
+/**
+ * Keeper-facing Book copy. Prefer codes over raw `error.message`
+ * (which may contain internal diagnostics).
+ */
+export function deskFacingChronicleError(error: ChronicleError): string {
+  switch (error.code) {
+    case "chronicle_persist_failed":
+      return "FENN could not write this entry to the Book.";
+    case "chronicle_generation_failed":
+    case "chronicle_grounding_failed":
+      return "FENN could not compose this entry.";
+    case "chronicle_unavailable":
+      return "The Book could not be opened.";
+    case "chronicle_invalid_input":
+      return "That date could not be used.";
+    default:
+      return "FENN could not complete this step.";
+  }
+}

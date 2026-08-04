@@ -85,6 +85,7 @@ describe("LG5.5 Desk Book", () => {
     const route = read("src/app/api/desk/book/route.ts");
     const generate = read("src/app/api/desk/book/generate/route.ts");
     const lib = read("src/lib/desk/book.ts");
+    const panel = read("src/components/desk/desk-book-panel.tsx");
     assert.match(route, /requireFennDeskAccess/);
     assert.match(generate, /requireFennDeskAccess/);
     assert.match(generate, /confirm:true|confirm: z\.literal\(true\)/);
@@ -92,11 +93,17 @@ describe("LG5.5 Desk Book", () => {
     assert.match(lib, /Never overwrites|already_exists|fill-if-missing/i);
     assert.doesNotMatch(lib, /CRON_SECRET|OPENAI_API_KEY|prompt/);
     assert.doesNotMatch(generate, /CRON_SECRET|\/api\/cron/);
+    assert.match(panel, /Generate with FENN/);
+    assert.match(panel, /Already written|Entry written/);
+    assert.doesNotMatch(panel, /confirm write/i);
+    assert.doesNotMatch(panel, /Could not find the/);
+    assert.match(panel, /mapGenerateError|schema cache/);
   });
 
   it("cron route remains cron-secret gated", () => {
     const cron = read("src/app/api/cron/chronicle-daily/route.ts");
     assert.match(cron, /CRON_SECRET/);
+    assert.match(cron, /if \(!secret\) return false/);
     assert.doesNotMatch(cron, /requireFennDeskAccess/);
   });
 });

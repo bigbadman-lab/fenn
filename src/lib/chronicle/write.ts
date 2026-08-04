@@ -44,6 +44,7 @@ function validateBody(body: string): string {
 
 /**
  * Persist a DAILY Book entry. Idempotent on covered_date.
+ * Provenance uses chronicle_entries.source_id (not the Wall provenance column).
  */
 export async function writeDailyChronicleEntry(
   input: WriteDailyChronicleInput,
@@ -63,7 +64,7 @@ export async function writeDailyChronicleEntry(
       : null;
 
   const admin = options?.admin ?? (await defaultAdmin());
-  const sourceExternalId = `daily:${input.coveredDate}`;
+  const sourceId = `daily:${input.coveredDate}`;
 
   const { data, error } = await admin
     .from("chronicle_entries")
@@ -74,7 +75,7 @@ export async function writeDailyChronicleEntry(
       visibility: "public",
       covered_date: input.coveredDate,
       source_type: "daily_chronicle",
-      source_external_id: sourceExternalId,
+      source_id: sourceId,
       created_by_actor_id: "fenn_daily_chronicle",
       metadata: {
         tone: input.tone,
@@ -108,9 +109,12 @@ export async function writeDailyChronicleEntry(
         .eq("covered_date", input.coveredDate)
         .single();
       if (readError || !existing) {
+        console.error("[chronicle] daily unique load failed", {
+          message: readError?.message,
+        });
         throw new ChronicleError(
           "chronicle_persist_failed",
-          readError?.message || "Daily entry exists but could not be loaded",
+          "FENN could not write this entry to the Book.",
           500,
         );
       }
@@ -119,9 +123,13 @@ export async function writeDailyChronicleEntry(
         entry: toPublicChronicleEntry(existing),
       };
     }
+    console.error("[chronicle] daily persist failed", {
+      message: error.message,
+      code: error.code,
+    });
     throw new ChronicleError(
       "chronicle_persist_failed",
-      error.message || "Could not persist daily chronicle",
+      "FENN could not write this entry to the Book.",
       500,
     );
   }
@@ -152,7 +160,7 @@ export async function writeChronicleEntry(
       body,
       visibility: "public",
       source_type: input.sourceType ?? "ops",
-      source_external_id: input.sourceExternalId ?? null,
+      source_id: input.sourceId ?? null,
       created_by_actor_id: "fenn_ops",
       published_at: input.publishedAt ?? new Date().toISOString(),
       metadata: {},
@@ -161,9 +169,13 @@ export async function writeChronicleEntry(
     .single();
 
   if (error) {
+    console.error("[chronicle] exceptional persist failed", {
+      message: error.message,
+      code: error.code,
+    });
     throw new ChronicleError(
       "chronicle_persist_failed",
-      error.message || "Could not persist chronicle entry",
+      "FENN could not write this entry to the Book.",
       500,
     );
   }

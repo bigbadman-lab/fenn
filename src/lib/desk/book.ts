@@ -105,7 +105,7 @@ export async function getDeskBookHealth(
     recentDays,
     gapCount,
     cronHint:
-      "Daily generation may be scheduled in deployment. This page does not prove a successful cron run.",
+      "FENN is scheduled to write the previous day automatically. This page shows whether the entry was actually written.",
     serverNow: now.toISOString(),
   };
 }

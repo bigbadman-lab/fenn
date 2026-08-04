@@ -163,6 +163,34 @@ describe("Living Book persistence and surfaces", () => {
     assert.match(migration, /'chronicle'/);
   });
 
+  it("chronicle inserts use source_id and never source_external_id", () => {
+    const write = readFileSync(join(repo, "src/lib/chronicle/write.ts"), "utf8");
+    const types = readFileSync(join(repo, "src/lib/chronicle/types.ts"), "utf8");
+    assert.match(write, /source_id:\s*sourceId/);
+    assert.match(write, /source_id:\s*input\.sourceId/);
+    assert.match(write, /daily:\$\{input\.coveredDate\}/);
+    // Insert payloads must never send the wall field name as a column key.
+    assert.doesNotMatch(write, /source_external_id\s*:/);
+    assert.doesNotMatch(write, /sourceExternalId/);
+    assert.match(types, /sourceId\?:/);
+    assert.doesNotMatch(types, /sourceExternalId/);
+
+    // Wall provenance is a different table and remains independent.
+    const wallWrite = readFileSync(join(repo, "src/lib/wall/write.ts"), "utf8");
+    assert.match(wallWrite, /source_external_id:\s*validated\.sourceExternalId/);
+  });
+
+  it("Desk Book maps chronicle failures to Keeper-facing copy", () => {
+    const routeErrors = readFileSync(
+      join(repo, "src/lib/desk/route-errors.ts"),
+      "utf8",
+    );
+    const errors = readFileSync(join(repo, "src/lib/chronicle/errors.ts"), "utf8");
+    assert.match(routeErrors, /deskFacingChronicleError/);
+    assert.match(errors, /FENN could not write this entry to the Book/);
+    assert.match(errors, /FENN could not compose this entry/);
+  });
+
   it("Book page lists reverse-chronological public entries without Realtime or Stage 12 execute", () => {
     const page = readFileSync(join(repo, "src/app/book/page.tsx"), "utf8");
     assert.match(page, /listPublicChronicleEntries/);
@@ -210,6 +238,7 @@ describe("Living Book persistence and surfaces", () => {
     assert.match(cron, /previousUtcCalendarDay/);
     assert.match(cron, /CRON_SECRET/);
     assert.match(cron, /unauthorized/);
+    assert.match(cron, /if \(!secret\) return false/);
     assert.match(vercel, /chronicle-daily/);
     assert.match(vercel, /5 0 \* \* \*/);
   });
