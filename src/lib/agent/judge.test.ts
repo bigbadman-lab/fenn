@@ -61,16 +61,29 @@ function fixedModel(
 }
 
 describe("Stage 12.3 judgement schema", () => {
-  it("locks action and reason-code enums", () => {
+  it("locks action and reason-code enums (live: no wall-only)", () => {
     assert.deepEqual([...STAGE12_AGENT_ACTIONS], [
-      "reply_on_x",
-      "write_to_wall",
-      "reply_and_write_to_wall",
       "do_nothing",
+      "reply_on_x",
+      "reply_and_write_to_wall",
     ]);
+    assert.ok(!STAGE12_AGENT_ACTIONS.includes("write_to_wall" as never));
     assert.ok(STAGE12_JUDGEMENT_REASON_CODES.includes("do_nothing" as never) === false);
     assert.ok(STAGE12_JUDGEMENT_REASON_CODES.includes("no_response_warranted"));
     assert.equal(STAGE12_X_REPLY_MAX_CHARS, 280);
+  });
+
+  it("rejects write_to_wall from model schema", () => {
+    const parsed = stage12JudgementModelSchema.safeParse({
+      engage: true,
+      action: "write_to_wall",
+      reasonCode: "creative_world_action",
+      replyText: null,
+      wallBody: "line",
+      needsLiveState: [],
+      identityUnverified: false,
+    });
+    assert.equal(parsed.success, false);
   });
 
   it("rejects authority / provenance fields from model output", () => {
@@ -138,14 +151,14 @@ describe("Stage 12.3 judgement schema", () => {
     assert.equal(down.reasonCode, "knowledge_unavailable");
   });
 
-  it("preserves Wall ASCII whitespace unchanged", () => {
+  it("preserves Wall ASCII whitespace for dual action", () => {
     const art = "  /\\\n /  \\\n/____\\\n";
     const intention = normalizeJudgementIntention({
       raw: {
         engage: true,
-        action: "write_to_wall",
+        action: "reply_and_write_to_wall",
         reasonCode: "creative_world_action",
-        replyText: null,
+        replyText: "I left a line on the Wall.",
         wallBody: art,
         needsLiveState: [],
         identityUnverified: false,
@@ -154,7 +167,46 @@ describe("Stage 12.3 judgement schema", () => {
       model: STAGE12_JUDGE_OPENAI_MODEL,
       promptVersion: STAGE12_JUDGE_PROMPT_VERSION,
     });
+    assert.equal(intention.action, "reply_and_write_to_wall");
     assert.equal(intention.wallBody, art);
+    assert.ok(intention.replyText);
+  });
+
+  it("demotes dual missing wall to reply-only; never wall-only", () => {
+    const demoted = normalizeJudgementIntention({
+      raw: {
+        engage: true,
+        action: "reply_and_write_to_wall",
+        reasonCode: "creative_world_action",
+        replyText: "An answer only.",
+        wallBody: null,
+        needsLiveState: [],
+        identityUnverified: false,
+      },
+      knowledgeAvailable: true,
+      model: STAGE12_JUDGE_OPENAI_MODEL,
+      promptVersion: STAGE12_JUDGE_PROMPT_VERSION,
+    });
+    assert.equal(demoted.action, "reply_on_x");
+    assert.equal(demoted.wallBody, null);
+
+    const noReply = normalizeJudgementIntention({
+      raw: {
+        engage: true,
+        action: "reply_and_write_to_wall",
+        reasonCode: "creative_world_action",
+        replyText: null,
+        wallBody: "orphan wall line",
+        needsLiveState: [],
+        identityUnverified: false,
+      },
+      knowledgeAvailable: true,
+      model: STAGE12_JUDGE_OPENAI_MODEL,
+      promptVersion: STAGE12_JUDGE_PROMPT_VERSION,
+    });
+    assert.equal(noReply.action, "do_nothing");
+    assert.equal(noReply.wallBody, null);
+    assert.equal(noReply.replyText, null);
   });
 });
 
@@ -162,6 +214,7 @@ describe("Stage 12.3 prompt security", () => {
   it("delimits untrusted X content and excludes Camp scoring", () => {
     const system = buildFennPublicJudgeSystemPrompt();
     assert.match(system, /Silence is a first-class decision/);
+    assert.match(system, /BEGIN_BOOK_OF_SPEECH/);
     assert.doesNotMatch(system, /rewardRecommendation|memoryCandidate|spamProbability/);
     assert.doesNotMatch(system, /You inhabit The Camp/);
 
@@ -269,7 +322,7 @@ describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
     assert.doesNotMatch(intention.replyText ?? "", /\d+\s*LEAF/);
   });
 
-  it("may form Wall intentions without model-controlled provenance", async () => {
+  it("may form dual Wall intentions without model-controlled provenance", async () => {
     const art = "   *\n  /|\\\n / | \\\n";
     const intention = await judgePerceptionContent({
       xPostId: "14",
@@ -280,16 +333,17 @@ describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
       ]),
       callModel: fixedModel({
         engage: true,
-        action: "write_to_wall",
+        action: "reply_and_write_to_wall",
         reasonCode: "creative_world_action",
-        replyText: null,
+        replyText: "I left a tree where the road can find it.",
         wallBody: art,
         needsLiveState: [],
         identityUnverified: false,
       }),
     });
-    assert.equal(intention.action, "write_to_wall");
+    assert.equal(intention.action, "reply_and_write_to_wall");
     assert.equal(intention.wallBody, art);
+    assert.ok(intention.replyText);
     assert.equal("sourceType" in intention, false);
     assert.equal("sourceExternalId" in intention, false);
   });

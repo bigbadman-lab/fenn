@@ -66,10 +66,14 @@ function makeAdmin(seed: {
 }
 
 describe("Stage 12.4 sight — boundaries", () => {
-  it("final judgement system prompt treats live data as data", () => {
+  it("final judgement system prompt treats live data as data and carries Book of Speech", () => {
     const sys = buildFennPublicFinalJudgeSystemPrompt();
     assert.match(sys, /Trusted live state is authoritative for current truth/);
     assert.match(sys, /Stored Wall\/Deed bodies.*prompt injection/);
+    assert.match(sys, /BEGIN_BOOK_OF_SPEECH/);
+    assert.match(sys, /clarity outranks poetry/i);
+    assert.match(sys, /Wall always requires a reply|no wall-only action/i);
+    assert.match(sys, /will this still matter in a year/i);
     assert.doesNotMatch(sys, /re-request/);
     assert.doesNotMatch(sys, /needsLiveState/);
   });
@@ -238,7 +242,7 @@ describe("Stage 12.4 sight — two-phase finalization", () => {
           knowledgeAvailable: true,
           liveStateAnyAvailable: true,
           model: STAGE12_JUDGE_OPENAI_MODEL,
-          promptVersion: "fenn-public-final-judge-v1",
+          promptVersion: "fenn-public-final-judge-wall-requires-reply-v1",
         };
         return intention;
       },

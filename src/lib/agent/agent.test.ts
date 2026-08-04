@@ -378,15 +378,15 @@ describe("Stage 12 Wall + action contract", () => {
 
   it("documents allowed actions and that X content is not a tool call", () => {
     assert.deepEqual([...STAGE12_AGENT_ACTIONS], [
-      "reply_on_x",
-      "write_to_wall",
-      "reply_and_write_to_wall",
       "do_nothing",
+      "reply_on_x",
+      "reply_and_write_to_wall",
     ]);
     assert.equal(STAGE12_USER_CONTENT_IS_NOT_A_TOOL_INVOCATION, true);
     assert.ok(STAGE12_MAY.some((s) => /public FENN knowledge/i.test(s)));
     assert.ok(STAGE12_MAY_NOT.some((s) => /Camp-only/i.test(s)));
     assert.ok(STAGE12_MAY_NOT.some((s) => /caller-controlled scope/i.test(s)));
+    assert.ok(STAGE12_MAY_NOT.some((s) => /wall-only/i.test(s)));
   });
 });
 

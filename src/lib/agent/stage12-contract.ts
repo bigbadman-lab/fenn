@@ -48,7 +48,7 @@ export const STAGE12_MAY = [
   "receive trusted live state through explicit application tools",
   "propose X reply text",
   "propose Wall body text including ASCII (whitespace preserved)",
-  "choose from STAGE12_AGENT_ACTIONS",
+  "choose from STAGE12_LIVE_AGENT_ACTIONS (no live wall-only from X)",
   "form and persist Stage 12.3 intentions without executing them",
   "authorise final intentions into pending consequence plans (Stage 12.5)",
 ] as const;
@@ -66,6 +66,7 @@ export const STAGE12_MAY_NOT = [
   "use stale RAG as authoritative current mutable state",
   "call retrieveFennKnowledge with a caller-controlled scope",
   "execute reply_on_x / write_to_wall / live tools in Stage 12.3",
+  "authorise live wall-only effects from X perceptions (reply required; Desk ops exception for infrastructure test only)",
   "create Memory or Canon from X perceptions or judgement candidates",
   "let the model control reply target, idempotency keys, or Wall provenance",
   "execute authorised effects in Stage 12.5 (pending only; Stage 12.6 executes)",

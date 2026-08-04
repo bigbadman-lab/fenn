@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { STAGE12_AGENT_ACTIONS } from "@/lib/agent/actions";
+import { STAGE12_LIVE_AGENT_ACTIONS } from "@/lib/agent/actions";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
 
 import {
@@ -10,7 +10,7 @@ import {
 
 export const stage124FinalJudgementModelSchema = z.object({
   engage: z.boolean(),
-  action: z.enum(STAGE12_AGENT_ACTIONS),
+  action: z.enum(STAGE12_LIVE_AGENT_ACTIONS),
   reasonCode: z.enum(STAGE12_JUDGEMENT_REASON_CODES),
   replyText: z.string().min(1).max(STAGE12_X_REPLY_MAX_CHARS).nullable(),
   wallBody: z.string().min(1).max(WALL_BODY_MAX_CHARS).nullable(),
@@ -101,40 +101,38 @@ export function normalizeStage124FinalJudgementIntention(input: {
     };
   }
 
-  if (action === "write_to_wall") {
-    if (!wallBody) {
-      return silenceFallback(input, "insufficient_knowledge");
-    }
-    return {
-      engage: true,
-      action,
-      reasonCode,
-      replyText: null,
-      wallBody,
-      identityUnverified,
-      knowledgeAvailable: input.knowledgeAvailable,
-      liveStateAnyAvailable: input.liveStateAnyAvailable,
-      model: input.model,
-      promptVersion: input.promptVersion,
-    };
-  }
-
   if (action === "reply_and_write_to_wall") {
-    if (!replyText || !wallBody) {
-      return silenceFallback(input, "insufficient_knowledge");
+    if (replyText && wallBody) {
+      return {
+        engage: true,
+        action,
+        reasonCode,
+        replyText,
+        wallBody,
+        identityUnverified,
+        knowledgeAvailable: input.knowledgeAvailable,
+        liveStateAnyAvailable: input.liveStateAnyAvailable,
+        model: input.model,
+        promptVersion: input.promptVersion,
+      };
     }
-    return {
-      engage: true,
-      action,
-      reasonCode,
-      replyText,
-      wallBody,
-      identityUnverified,
-      knowledgeAvailable: input.knowledgeAvailable,
-      liveStateAnyAvailable: input.liveStateAnyAvailable,
-      model: input.model,
-      promptVersion: input.promptVersion,
-    };
+    // Missing wall + valid reply → reply only (never wall-only)
+    if (replyText && !wallBody) {
+      return {
+        engage: true,
+        action: "reply_on_x",
+        reasonCode,
+        replyText,
+        wallBody: null,
+        identityUnverified,
+        knowledgeAvailable: input.knowledgeAvailable,
+        liveStateAnyAvailable: input.liveStateAnyAvailable,
+        model: input.model,
+        promptVersion: input.promptVersion,
+      };
+    }
+    // Missing reply with or without wall → silence (never wall-only)
+    return silenceFallback(input, "insufficient_knowledge");
   }
 
   // do_nothing: wipe candidates.
@@ -180,4 +178,3 @@ function silenceFallback(
     promptVersion: input.promptVersion,
   };
 }
-

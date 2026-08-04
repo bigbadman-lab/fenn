@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { STAGE12_AGENT_ACTIONS } from "@/lib/agent/actions";
+import { STAGE12_LIVE_AGENT_ACTIONS } from "@/lib/agent/actions";
 import {
   STAGE12_JUDGEMENT_REASON_CODES,
   STAGE12_X_REPLY_MAX_CHARS,
@@ -9,13 +9,13 @@ import { FENN_LIVE_CAPABILITIES } from "@/lib/agent/live-state";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
 
 /**
- * Structured judgement the model may emit.
+ * Structured judgement the model may emit (live action set only).
  * Application owns provenance, execution, and authority fields.
  */
 export const stage12JudgementModelSchema = z.object({
   /** Attention: does this event warrant any engagement? */
   engage: z.boolean(),
-  action: z.enum(STAGE12_AGENT_ACTIONS),
+  action: z.enum(STAGE12_LIVE_AGENT_ACTIONS),
   reasonCode: z.enum(STAGE12_JUDGEMENT_REASON_CODES),
   replyText: z.string().max(STAGE12_X_REPLY_MAX_CHARS).nullable(),
   /** Wall candidate — do not trim internal whitespace. */
@@ -77,6 +77,7 @@ export function parseJudgementModelOutput(
 
 /**
  * Enforce action/content consistency and Stage 12.3 safety post-conditions.
+ * Never produces live wall-only intentions.
  * Does not invent live answers. Does not execute.
  */
 export function normalizeJudgementIntention(input: {
@@ -165,34 +166,25 @@ export function normalizeJudgementIntention(input: {
     };
   }
 
-  if (action === "write_to_wall") {
-    if (!wall) {
-      return silenceFallback(
-        input,
-        live,
+  // reply_and_write_to_wall — never demote to wall-only
+  if (action === "reply_and_write_to_wall") {
+    if (reply && wall) {
+      return {
+        engage: true,
+        action: "reply_and_write_to_wall",
+        reasonCode:
+          reasonCode === "answered_from_public_knowledge"
+            ? "creative_world_action"
+            : reasonCode,
+        replyText: reply.slice(0, STAGE12_X_REPLY_MAX_CHARS),
+        wallBody: wall.slice(0, WALL_BODY_MAX_CHARS),
+        needsLiveState: live,
         identityUnverified,
-        "insufficient_knowledge",
-      );
+        knowledgeAvailable: input.knowledgeAvailable,
+        model: input.model,
+        promptVersion: input.promptVersion,
+      };
     }
-    return {
-      engage: true,
-      action,
-      reasonCode:
-        reasonCode === "answered_from_public_knowledge"
-          ? "creative_world_action"
-          : reasonCode,
-      replyText: null,
-      wallBody: wall.slice(0, WALL_BODY_MAX_CHARS),
-      needsLiveState: live,
-      identityUnverified,
-      knowledgeAvailable: input.knowledgeAvailable,
-      model: input.model,
-      promptVersion: input.promptVersion,
-    };
-  }
-
-  // reply_and_write_to_wall
-  if (!reply || !wall) {
     if (reply && !wall) {
       return {
         engage: true,
@@ -207,20 +199,7 @@ export function normalizeJudgementIntention(input: {
         promptVersion: input.promptVersion,
       };
     }
-    if (wall && !reply) {
-      return {
-        engage: true,
-        action: "write_to_wall",
-        reasonCode: "creative_world_action",
-        replyText: null,
-        wallBody: wall.slice(0, WALL_BODY_MAX_CHARS),
-        needsLiveState: live,
-        identityUnverified,
-        knowledgeAvailable: input.knowledgeAvailable,
-        model: input.model,
-        promptVersion: input.promptVersion,
-      };
-    }
+    // wall without reply → silence (never wall-only)
     return silenceFallback(
       input,
       live,
@@ -229,21 +208,21 @@ export function normalizeJudgementIntention(input: {
     );
   }
 
-  return {
-    engage: true,
-    action: "reply_and_write_to_wall",
-    reasonCode:
-      reasonCode === "answered_from_public_knowledge"
-        ? "creative_world_action"
-        : reasonCode,
-    replyText: reply.slice(0, STAGE12_X_REPLY_MAX_CHARS),
-    wallBody: wall.slice(0, WALL_BODY_MAX_CHARS),
-    needsLiveState: live,
+  // Unreachable for live schema; fail closed if action set is extended incorrectly.
+  return silenceFallback(
+    input,
+    live,
     identityUnverified,
-    knowledgeAvailable: input.knowledgeAvailable,
-    model: input.model,
-    promptVersion: input.promptVersion,
-  };
+    "insufficient_knowledge",
+  );
+}
+
+/**
+ * Normalise a raw action string that may include legacy wall-only
+ * (e.g. tests or defensive re-parse paths). Fail closed for wall-only.
+ */
+export function failClosedLegacyWallOnlyAction(): "do_nothing" {
+  return "do_nothing";
 }
 
 function silenceFallback(

@@ -358,6 +358,9 @@ export async function ensureDeskWallTestScaffold(
     finalAction: "write_to_wall",
     finalReplyText: null,
     finalWallBody: DESK_WALL_TEST_BODY,
+    // Explicit ops exception: Desk Wall test verifies infrastructure without X.
+    // Live X perceptions must never set this — wall always requires a reply.
+    allowOperationalWallOnly: true,
   });
 
   if (decision.outcome !== "permitted" || decision.effects.length !== 1) {

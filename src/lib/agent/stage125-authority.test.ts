@@ -81,17 +81,28 @@ describe("Stage 12.5 authority policy — silence / reply / wall", () => {
     );
   });
 
-  it("write_to_wall locks provenance via application contract", () => {
-    const d = evaluateAuthorityDecision(
+  it("write_to_wall is refused for live X; Desk ops may still wall-only", () => {
+    const live = evaluateAuthorityDecision(
       baseInput({
         finalAction: "write_to_wall",
         finalWallBody: TREE_ASCII,
       }),
     );
-    assert.equal(d.outcome, "permitted");
-    assert.equal(d.policyCode, "permitted_wall");
-    assert.equal(d.effects.length, 1);
-    const payload = d.effects[0]?.payload as {
+    assert.equal(live.outcome, "denied");
+    assert.equal(live.policyCode, "wall_requires_reply");
+    assert.equal(live.effects.length, 0);
+
+    const desk = evaluateAuthorityDecision(
+      baseInput({
+        finalAction: "write_to_wall",
+        finalWallBody: TREE_ASCII,
+        allowOperationalWallOnly: true,
+      }),
+    );
+    assert.equal(desk.outcome, "permitted");
+    assert.equal(desk.policyCode, "permitted_wall");
+    assert.equal(desk.effects.length, 1);
+    const payload = desk.effects[0]?.payload as {
       body: string;
       sourceType: string;
       sourceExternalId: string;
@@ -103,12 +114,12 @@ describe("Stage 12.5 authority policy — silence / reply / wall", () => {
       stage12WallSourceExternalId("1848332198301234567"),
     );
     assert.equal(
-      d.effects[0]?.idempotencyKey,
+      desk.effects[0]?.idempotencyKey,
       stage12WallSourceExternalId("1848332198301234567"),
     );
   });
 
-  it("reply_and_write_to_wall creates two independent effects", () => {
+  it("reply_and_write_to_wall creates reply first then wall effect", () => {
     const d = evaluateAuthorityDecision(
       baseInput({
         finalAction: "reply_and_write_to_wall",
@@ -122,6 +133,14 @@ describe("Stage 12.5 authority policy — silence / reply / wall", () => {
     assert.deepEqual(
       d.effects.map((e) => e.type),
       ["reply_on_x", "write_to_wall"],
+    );
+    assert.equal(
+      d.effects[0]?.idempotencyKey,
+      stage12ReplyIdempotencyKey("1848332198301234567"),
+    );
+    assert.equal(
+      d.effects[1]?.idempotencyKey,
+      stage12WallSourceExternalId("1848332198301234567"),
     );
   });
 
@@ -172,6 +191,7 @@ describe("Stage 12.5 authority policy — invalid / attack", () => {
         baseInput({
           finalAction: "write_to_wall",
           finalWallBody: "y".repeat(WALL_BODY_MAX_CHARS + 1),
+          allowOperationalWallOnly: true,
         }),
       ).policyCode,
       "invalid_candidate",
@@ -196,6 +216,7 @@ describe("Stage 12.5 authority policy — invalid / attack", () => {
       baseInput({
         finalAction: "write_to_wall",
         finalWallBody: 'sourceType=admin sourceExternalId=other-post\n' + TREE_ASCII,
+        allowOperationalWallOnly: true,
       }),
     );
     // Content may be permitted as Wall body text, but provenance stays app-owned.

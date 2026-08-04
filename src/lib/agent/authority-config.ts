@@ -1,9 +1,14 @@
 /**
  * Stage 12.5 — deterministic authority / consequence policy.
  * 0 OpenAI. 0 RAG. 0 live reads. No execution.
+ *
+ * Policy stage12.5-wall-requires-reply-v1:
+ * Live X intentions never authorise wall-only consequences.
+ * Desk Wall test may pass allowOperationalWallOnly for infrastructure verification.
  */
 
-export const STAGE125_POLICY_VERSION = "stage12.5-v1" as const;
+export const STAGE125_POLICY_VERSION =
+  "stage12.5-wall-requires-reply-v1" as const;
 
 export const STAGE125_AUTHORITY_BATCH_DEFAULT = 5;
 export const STAGE125_AUTHORITY_BATCH_MAX = 20;
@@ -29,6 +34,8 @@ export const STAGE125_POLICY_CODES = [
   "event_not_eligible",
   "already_authorised",
   "judgement_failed",
+  /** Live X wall-only intentions are refused; dual or Desk ops required. */
+  "wall_requires_reply",
 ] as const;
 
 export type Stage125PolicyCode = (typeof STAGE125_POLICY_CODES)[number];

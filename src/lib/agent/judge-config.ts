@@ -9,7 +9,9 @@ export const STAGE12_JUDGE_MAX_COMPLETION_TOKENS = 600;
 /** Conservative standard X post length (not premium). */
 export const STAGE12_X_REPLY_MAX_CHARS = 280;
 
-export const STAGE12_JUDGE_PROMPT_VERSION = "fenn-public-judge-v1" as const;
+/** Bumps when public X-agent judgement system prompt / action contract changes. */
+export const STAGE12_JUDGE_PROMPT_VERSION =
+  "fenn-public-judge-wall-requires-reply-v1" as const;
 
 /** Default dry-run batch size. */
 export const STAGE12_JUDGE_BATCH_DEFAULT = 5;

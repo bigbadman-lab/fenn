@@ -43,7 +43,7 @@ describe("Desk Wall-only agent test — contract", () => {
     assert.doesNotMatch(DESK_WALL_TEST_BODY, /SECRET|TOKEN|0x|api[_-]?key/i);
   });
 
-  it("authority path is wall-only for reserved synthetic perception", () => {
+  it("authority path is wall-only for reserved Desk ops synthetic (allowOperationalWallOnly)", () => {
     const decision = evaluateAuthorityDecision({
       perceptionEventId: "00000000-0000-4000-8000-000000000001",
       judgementId: "00000000-0000-4000-8000-000000000002",
@@ -53,6 +53,7 @@ describe("Desk Wall-only agent test — contract", () => {
       finalAction: "write_to_wall",
       finalReplyText: null,
       finalWallBody: DESK_WALL_TEST_BODY,
+      allowOperationalWallOnly: true,
     });
     assert.equal(decision.outcome, "permitted");
     assert.equal(decision.effects.length, 1);
@@ -62,6 +63,18 @@ describe("Desk Wall-only agent test — contract", () => {
       decision.effects[0]?.idempotencyKey,
       `${DESK_WALL_TEST_X_POST_ID}:wall`,
     );
+
+    const liveDenied = evaluateAuthorityDecision({
+      perceptionEventId: "00000000-0000-4000-8000-000000000001",
+      judgementId: "00000000-0000-4000-8000-000000000002",
+      xPostId: DESK_WALL_TEST_X_POST_ID,
+      perceptionType: "mention",
+      finalStatus: "finalized",
+      finalAction: "write_to_wall",
+      finalReplyText: null,
+      finalWallBody: DESK_WALL_TEST_BODY,
+    });
+    assert.equal(liveDenied.policyCode, "wall_requires_reply");
   });
 
   it("payload validates with Stage 12 wall provenance lock", () => {
@@ -102,6 +115,7 @@ describe("Desk Wall-only agent test — source safety", () => {
     assert.match(lib, /writeFennWallEntry/);
     assert.match(lib, /claimXPerceptionEffect/);
     assert.match(lib, /write_to_wall/);
+    assert.match(lib, /allowOperationalWallOnly:\s*true/);
     assert.match(lib, /xAttempted:\s*false/);
     assert.doesNotMatch(lib, /createXReplyAsFenn/);
     assert.doesNotMatch(lib, /from ["']@\/lib\/x\/write-client/);

@@ -1,4 +1,7 @@
-import { STAGE12_AGENT_ACTIONS } from "@/lib/agent/actions";
+import {
+  isStage12KnownAgentAction,
+  STAGE12_LEGACY_WALL_ONLY_ACTION,
+} from "@/lib/agent/actions";
 import {
   STAGE125_POLICY_VERSION,
   stage12ReplyIdempotencyKey,
@@ -23,6 +26,12 @@ export type AuthorityJudgementInput = {
   finalAction: string | null;
   finalReplyText: string | null;
   finalWallBody: string | null;
+  /**
+   * Desk Wall test / explicit ops only.
+   * When true, permits wall-only effects for the reserved synthetic path.
+   * Live X pipeline must leave this unset/false — wall always requires a reply.
+   */
+  allowOperationalWallOnly?: boolean;
 };
 
 export type AuthorityEffectPlan = {
@@ -119,6 +128,26 @@ function deny(
   };
 }
 
+function planWallEffect(
+  sourceXPostId: string,
+  body: string,
+): AuthorityEffectPlan {
+  const sourceExternalId = stage12WallSourceExternalId(sourceXPostId);
+  const locked = stage12WallWriteInput({
+    body,
+    sourceExternalId,
+  });
+  return {
+    type: "write_to_wall",
+    idempotencyKey: sourceExternalId,
+    payload: {
+      body: locked.body,
+      sourceType: locked.sourceType,
+      sourceExternalId: locked.sourceExternalId,
+    },
+  };
+}
+
 /**
  * Pure deterministic authority. No I/O. No model. No side effects.
  */
@@ -153,11 +182,7 @@ export function evaluateAuthorityDecision(
     return deny(input, "invalid_final_judgement", finalAction);
   }
 
-  if (
-    !STAGE12_AGENT_ACTIONS.includes(
-      finalAction as (typeof STAGE12_AGENT_ACTIONS)[number],
-    )
-  ) {
+  if (!isStage12KnownAgentAction(finalAction)) {
     return deny(input, "invalid_final_judgement", "unknown");
   }
 
@@ -196,38 +221,28 @@ export function evaluateAuthorityDecision(
     };
   }
 
-  if (finalAction === "write_to_wall") {
+  // Live X: wall-only is forbidden. Desk ops may opt into wall-only via flag.
+  if (finalAction === STAGE12_LEGACY_WALL_ONLY_ACTION) {
+    if (!input.allowOperationalWallOnly) {
+      return deny(input, "wall_requires_reply", finalAction);
+    }
     const wall = validateWallBody(input.finalWallBody);
     if (!wall.ok) {
       return deny(input, wall.code, finalAction);
     }
-    const sourceExternalId = stage12WallSourceExternalId(sourceXPostId);
-    // Lock provenance via existing Stage 12 Wall contract (never model-controlled).
-    const locked = stage12WallWriteInput({
-      body: wall.body,
-      sourceExternalId,
-    });
     return {
       outcome: "permitted",
       policyCode: "permitted_wall",
       policyVersion: STAGE125_POLICY_VERSION,
       finalAction,
       sourceXPostId,
-      effects: [
-        {
-          type: "write_to_wall",
-          idempotencyKey: sourceExternalId,
-          payload: {
-            body: locked.body,
-            sourceType: locked.sourceType,
-            sourceExternalId: locked.sourceExternalId,
-          },
-        },
-      ],
+      // Reply is intentionally absent — isolated infrastructure test only.
+      effects: [planWallEffect(sourceXPostId, wall.body)],
     };
   }
 
   // reply_and_write_to_wall — both must pass; no partial authorisation.
+  // Effect order: reply first (conversation acknowledged), then Wall (memory).
   if (finalAction === "reply_and_write_to_wall") {
     const reply = validateReplyText(input.finalReplyText);
     const wall = validateWallBody(input.finalWallBody);
@@ -240,12 +255,6 @@ export function evaluateAuthorityDecision(
     if (!wall.ok) {
       return deny(input, wall.code, finalAction);
     }
-
-    const sourceExternalId = stage12WallSourceExternalId(sourceXPostId);
-    const locked = stage12WallWriteInput({
-      body: wall.body,
-      sourceExternalId,
-    });
 
     return {
       outcome: "permitted",
@@ -262,15 +271,7 @@ export function evaluateAuthorityDecision(
             text: reply.text,
           },
         },
-        {
-          type: "write_to_wall",
-          idempotencyKey: sourceExternalId,
-          payload: {
-            body: locked.body,
-            sourceType: locked.sourceType,
-            sourceExternalId: locked.sourceExternalId,
-          },
-        },
+        planWallEffect(sourceXPostId, wall.body),
       ],
     };
   }

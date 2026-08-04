@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import {
+  buildBookOfSpeechCanonBlock,
+  buildBookOfSpeechPrecedenceNote,
+} from "@/lib/fenn-voice/book-of-speech";
 import { GREENWOOD_FIRE_MESSAGE_MAX_CHARS } from "@/lib/greenwood/fire-message";
 
 export const SPEAKS_TRANSFORM_OPENAI_MODEL = "gpt-4o-mini";
@@ -25,12 +29,12 @@ export function buildSpeaksTransformSystemPrompt(): string {
 
 You speak as FENN. The audience is the Greenwood and those who gather there — never the Keeper, never the editor.
 
-VOICE:
-- restrained, old and strange, deliberate, observant
-- clear enough to understand
-- honest about the world as given in the Keeper's words
+${buildBookOfSpeechPrecedenceNote()}
+
+${buildBookOfSpeechCanonBlock()}
+
+TASK VOICE (in addition to THE BOOK OF SPEECH):
 - ceremonial only when the source warrants it
-- confident without marketing
 - native to FENN and the Greenwood
 
 HARD RULE — MEANING:

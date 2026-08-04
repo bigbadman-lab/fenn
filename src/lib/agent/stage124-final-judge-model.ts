@@ -11,6 +11,7 @@ import { AgentJudgeError } from "@/lib/agent/judge-errors";
 import {
   buildFennPublicFinalJudgeSystemPrompt,
   buildFennPublicFinalJudgeUserPayload,
+  STAGE124_FINAL_PROMPT_VERSION,
 } from "@/lib/agent/stage124-final-judge-prompt";
 
 import {
@@ -27,8 +28,6 @@ export type Stage124FinalJudgeModelCaller = (args: {
   user: string;
   maxCompletionTokens: number;
 }) => Promise<Stage124FinalJudgementModelOutput>;
-
-const STAGE124_FINAL_PROMPT_VERSION = "fenn-public-final-judge-v1";
 
 function isTimeoutLike(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
