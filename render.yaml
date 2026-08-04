@@ -1,0 +1,64 @@
+# FENN X Agent — Render Cron only (website + OAuth stay on Vercel).
+#
+# Secrets: set via Dashboard / Blueprint sync:false (never commit values).
+# Apply migration 20260804120000_46_ops_runtime_leases.sql before first live run.
+
+services:
+  - type: cron
+    name: fenn-x-agent
+    runtime: node
+    plan: starter
+    region: oregon
+    schedule: "* * * * *"
+    buildCommand: npm ci
+    startCommand: npm run agent:run-x
+    envVars:
+      # --- Execution gate (Render-only defaults; safe until explicitly enabled) ---
+      - key: FENN_X_AGENT_EXECUTION_MODE
+        value: disabled
+      - key: FENN_X_AGENT_BATCH_SIZE
+        value: "1"
+      - key: FENN_X_AGENT_MAX_RUNTIME_SECONDS
+        value: "50"
+      - key: FENN_X_AGENT_LEASE_KEY
+        value: x_agent
+      - key: NODE_VERSION
+        value: "24.11.1"
+
+      # --- Shared with Vercel (public) — set in Dashboard ---
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: NEXT_PUBLIC_PRIVY_APP_ID
+        sync: false
+
+      # --- Shared with Vercel (secrets) — set in Dashboard ---
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: PRIVY_APP_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: X_BEARER_TOKEN
+        sync: false
+      - key: FENN_X_USER_ID
+        sync: false
+      - key: X_OAUTH_CLIENT_ID
+        sync: false
+      - key: X_OAUTH_CLIENT_SECRET
+        sync: false
+
+      # --- Optional (shared or Render-only as needed) ---
+      - key: FENN_X_USERNAME
+        sync: false
+      - key: FENN_ADMIN_WALLETS
+        sync: false
+      - key: GREENWOOD_ACCESS_WALLETS
+        sync: false
+      - key: ROBINHOOD_CHAIN_RPC_URL
+        sync: false
+      - key: FENN_TREASURY_ADDRESS
+        sync: false

@@ -31,6 +31,14 @@ export const X_AGENT_RUNTIME_OPTIONAL_ENV = [
   "FENN_ADMIN_WALLETS",
   "GREENWOOD_ACCESS_WALLETS",
   "CRON_SECRET",
+  /** disabled | dry_run | live — default disabled (never live). */
+  "FENN_X_AGENT_EXECUTION_MODE",
+  /** Stage batch size; default 1. */
+  "FENN_X_AGENT_BATCH_SIZE",
+  /** Soft runtime budget seconds; default 50. */
+  "FENN_X_AGENT_MAX_RUNTIME_SECONDS",
+  /** Postgres lease key; default x_agent. */
+  "FENN_X_AGENT_LEASE_KEY",
 ] as const;
 
 export class XAgentRuntimeEnvError extends Error {

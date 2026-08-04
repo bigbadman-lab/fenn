@@ -4,8 +4,8 @@
  * Usage:
  *   npm run agent:run-x
  *
- * Sequence: poll → judge → sight → authorize → execute.
- * Stops on fatal / hard-fail stage errors. Suitable for Render Cron Jobs.
+ * Bounded execution: mode gate → lease → poll→judge→sight→authorize→execute → exit.
+ * Suitable for Render Cron Jobs (schedule * * * * *). Never a long-running server.
  */
 
 import { validateXAgentRuntimeEnv } from "@/lib/ops/x-runtime-env";
@@ -14,8 +14,10 @@ async function main() {
   validateXAgentRuntimeEnv();
 
   // Dynamic import so env validation runs before serverEnv / stage modules load.
-  const { runXAgentPipeline } = await import("@/lib/ops/x-pipeline-runtime");
-  const result = await runXAgentPipeline();
+  const { runXAgentProductionCycle } = await import(
+    "@/lib/ops/x-agent-production-runtime"
+  );
+  const result = await runXAgentProductionCycle();
   if (!result.ok) {
     process.exitCode = 1;
   }

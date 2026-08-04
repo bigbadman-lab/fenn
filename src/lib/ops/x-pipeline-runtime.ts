@@ -51,6 +51,10 @@ export type XPipelineRunResult = {
   finishedAt: string;
   durationMs: number;
   stoppedAtStage: XPipelineStageName | null;
+  /** Soft stop: runtime budget exhausted before starting a stage. */
+  budgetExhausted: boolean;
+  /** Soft stop: no internal work after poll — later stages skipped. */
+  skippedDueToNoWork: boolean;
   stages: XPipelineStageResult[];
   poll?: XPollAggregate;
   judge?: JudgeBatchAggregate;
@@ -61,12 +65,25 @@ export type XPipelineRunResult = {
 
 export type XPipelineRuntimeDeps = {
   poll?: () => Promise<XPollAggregate>;
-  judge?: () => Promise<JudgeBatchAggregate>;
-  sight?: () => Promise<SightBatchAggregate>;
-  authorize?: () => Promise<AuthorizeBatchAggregate>;
-  execute?: () => Promise<ExecuteBatchAggregate>;
+  judge?: (limit: number | undefined) => Promise<JudgeBatchAggregate>;
+  sight?: (limit: number | undefined) => Promise<SightBatchAggregate>;
+  authorize?: (limit: number | undefined) => Promise<AuthorizeBatchAggregate>;
+  execute?: (
+    limit: number | undefined,
+    dryRun: boolean,
+  ) => Promise<ExecuteBatchAggregate>;
+  /** Cheap DB probe after poll; if false and poll created nothing, skip later stages. */
+  hasInternalWork?: () => Promise<boolean>;
   log?: (line: string) => void;
   now?: () => number;
+  /** Max items per post-poll stage. Defaults left to stage modules when unset. */
+  batchSize?: number;
+  /** Unix ms deadline; do not start a new stage after this. */
+  deadlineMs?: number;
+  /** Pass dry-run to execute stage (no claims / public mutations). */
+  executeDryRun?: boolean;
+  /** Quiet mode: only log stage failures + final line is for outer runtime. */
+  quiet?: boolean;
 };
 
 /** Mirrors scripts/x-poll.ts hard-fail exit condition. */
@@ -112,18 +129,45 @@ export async function runXAgentPipeline(
   const started = now();
   const startedAt = new Date(started).toISOString();
   const stages: XPipelineStageResult[] = [];
+  const batchSize = deps.batchSize;
+  const executeDryRun = deps.executeDryRun === true;
+  const quiet = deps.quiet === true;
 
   const poll = deps.poll ?? (() => pollXMentions());
-  const judge = deps.judge ?? (() => judgePendingXPerceptions());
+  const judge =
+    deps.judge ??
+    ((limit: number | undefined) =>
+      judgePendingXPerceptions(
+        limit !== undefined ? { limit } : {},
+      ));
   const sight =
-    deps.sight ?? (() => finalizePendingXPerceptionsWithLiveState({}, {}));
-  const authorize = deps.authorize ?? (() => authorizePendingXPerceptions());
-  const execute = deps.execute ?? (() => executePendingXPerceptionEffects());
+    deps.sight ??
+    ((limit: number | undefined) =>
+      finalizePendingXPerceptionsWithLiveState(
+        limit !== undefined ? { limit } : {},
+      ));
+  const authorize =
+    deps.authorize ??
+    ((limit: number | undefined) =>
+      authorizePendingXPerceptions(
+        limit !== undefined ? { limit } : {},
+      ));
+  const execute =
+    deps.execute ??
+    ((limit: number | undefined, dryRun: boolean) =>
+      executePendingXPerceptionEffects({
+        ...(limit !== undefined ? { limit } : {}),
+        dryRun,
+      }));
 
-  log("[agent:run-x] START");
+  if (!quiet) {
+    log("[agent:run-x] START");
+  }
 
   let stoppedAtStage: XPipelineStageName | null = null;
   let ok = true;
+  let budgetExhausted = false;
+  let skippedDueToNoWork = false;
   // Bag avoids TDZ when finish() runs after an early stage stop.
   const stageResults: {
     poll?: Awaited<ReturnType<typeof poll>>;
@@ -133,18 +177,43 @@ export async function runXAgentPipeline(
     execute?: Awaited<ReturnType<typeof execute>>;
   } = {};
 
+  const stageLimit = (): number | undefined => {
+    if (batchSize !== undefined && Number.isFinite(batchSize) && batchSize >= 1) {
+      return Math.floor(batchSize);
+    }
+    // Preserve prior stage defaults when production batch is not forced.
+    return undefined;
+  };
+
+  const pastDeadline = (): boolean => {
+    if (deps.deadlineMs === undefined) return false;
+    return now() >= deps.deadlineMs;
+  };
+
   const runStage = async <T>(
     stage: XPipelineStageName,
     fn: () => Promise<T>,
     report: (result: T) => string,
     hardFailed: (result: T) => boolean,
   ): Promise<T | null> => {
-    log(`[agent:run-x] ${stage}`);
+    if (pastDeadline()) {
+      budgetExhausted = true;
+      if (!quiet) {
+        log(`[agent:run-x] BUDGET — skip ${stage}`);
+      }
+      return null;
+    }
+
+    if (!quiet) {
+      log(`[agent:run-x] ${stage}`);
+    }
     const t0 = now();
     try {
       const result = await fn();
       const durationMs = now() - t0;
-      log(report(result));
+      if (!quiet) {
+        log(report(result));
+      }
       const failed = hardFailed(result);
       stages.push({
         stage,
@@ -152,11 +221,15 @@ export async function runXAgentPipeline(
         hardFailed: failed,
         durationMs,
       });
-      log(`[agent:run-x] ${stage} done (${durationMs}ms)`);
+      if (!quiet) {
+        log(`[agent:run-x] ${stage} done (${durationMs}ms)`);
+      }
       if (failed) {
         ok = false;
         stoppedAtStage = stage;
-        log(`[agent:run-x] STOP after ${stage} (hard failure)`);
+        if (!quiet) {
+          log(`[agent:run-x] STOP after ${stage} (hard failure)`);
+        }
         return null;
       }
       return result;
@@ -174,7 +247,9 @@ export async function runXAgentPipeline(
       ok = false;
       stoppedAtStage = stage;
       log(`[agent:run-x] ${stage} failed (${durationMs}ms): ${errorMessage}`);
-      log(`[agent:run-x] STOP after ${stage} (fatal error)`);
+      if (!quiet) {
+        log(`[agent:run-x] STOP after ${stage} (fatal error)`);
+      }
       return null;
     }
   };
@@ -185,44 +260,62 @@ export async function runXAgentPipeline(
   if (stoppedAtStage) {
     return finish();
   }
+  if (budgetExhausted) {
+    return finish();
+  }
+
+  // After poll: if nothing new and no internal queue work, skip paid stages.
+  const created = stageResults.poll?.created ?? 0;
+  if (created === 0 && deps.hasInternalWork) {
+    const hasWork = await deps.hasInternalWork();
+    if (!hasWork) {
+      skippedDueToNoWork = true;
+      if (!quiet) {
+        log("[agent:run-x] NO_WORK — skip JUDGE/SIGHT/AUTHORIZE/EXECUTE");
+      }
+      return finish();
+    }
+  }
+
+  const limit = stageLimit();
 
   stageResults.judge =
     (await runStage(
       "JUDGE",
-      judge,
+      () => judge(limit),
       formatJudgeBatchReport,
       judgeStageHardFailed,
     )) ?? undefined;
-  if (stoppedAtStage) {
+  if (stoppedAtStage || budgetExhausted) {
     return finish();
   }
 
   stageResults.sight =
     (await runStage(
       "SIGHT",
-      sight,
+      () => sight(limit),
       formatSightBatchReport,
       sightStageHardFailed,
     )) ?? undefined;
-  if (stoppedAtStage) {
+  if (stoppedAtStage || budgetExhausted) {
     return finish();
   }
 
   stageResults.authorize =
     (await runStage(
       "AUTHORIZE",
-      authorize,
+      () => authorize(limit),
       formatAuthorizeBatchReport,
       authorizeStageHardFailed,
     )) ?? undefined;
-  if (stoppedAtStage) {
+  if (stoppedAtStage || budgetExhausted) {
     return finish();
   }
 
   stageResults.execute =
     (await runStage(
       "EXECUTE",
-      execute,
+      () => execute(limit, executeDryRun),
       formatExecuteBatchReport,
       executeStageHardFailed,
     )) ?? undefined;
@@ -233,14 +326,16 @@ export async function runXAgentPipeline(
     const finished = now();
     const finishedAt = new Date(finished).toISOString();
     const durationMs = finished - started;
-    if (ok) {
-      log(`[agent:run-x] COMPLETE (${durationMs}ms)`);
-    } else {
-      log(
-        `[agent:run-x] COMPLETE with failure` +
-          (stoppedAtStage ? ` at ${stoppedAtStage}` : "") +
-          ` (${durationMs}ms)`,
-      );
+    if (!quiet) {
+      if (ok) {
+        log(`[agent:run-x] COMPLETE (${durationMs}ms)`);
+      } else {
+        log(
+          `[agent:run-x] COMPLETE with failure` +
+            (stoppedAtStage ? ` at ${stoppedAtStage}` : "") +
+            ` (${durationMs}ms)`,
+        );
+      }
     }
     return {
       ok,
@@ -248,6 +343,8 @@ export async function runXAgentPipeline(
       finishedAt,
       durationMs,
       stoppedAtStage,
+      budgetExhausted,
+      skippedDueToNoWork,
       stages,
       poll: stageResults.poll,
       judge: stageResults.judge,

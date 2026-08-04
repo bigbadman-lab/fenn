@@ -303,4 +303,51 @@ describe("x-pipeline-runtime", () => {
     assert.match(pkg.engines?.node ?? "", /24/);
     assert.match(pkg.scripts.test, /src\/lib\/ops\/\*\*\/\*\.test\.ts/);
   });
+
+  it("skips paid stages when poll creates nothing and internal probe is empty", async () => {
+    const order: string[] = [];
+    const result = await runXAgentPipeline({
+      log: () => {},
+      quiet: true,
+      hasInternalWork: async () => false,
+      poll: async () => {
+        order.push("POLL");
+        return {
+          fetched: 0,
+          created: 0,
+          existing: 0,
+          failed: 0,
+          pagesFetched: 0,
+          sinceIdBefore: null,
+          sinceIdAfter: null,
+          fennXUserId: "1",
+        };
+      },
+      judge: async () => {
+        order.push("JUDGE");
+        return {
+          scanned: 0,
+          judged: 0,
+          alreadyJudged: 0,
+          failed: 0,
+          empty: true,
+          results: [],
+        };
+      },
+      execute: async () => {
+        order.push("EXECUTE");
+        return {
+          scanned: 0,
+          completed: 0,
+          failed: 0,
+          dryRun: 0,
+          results: [],
+        };
+      },
+    });
+
+    assert.deepEqual(order, ["POLL"]);
+    assert.equal(result.skippedDueToNoWork, true);
+    assert.equal(result.ok, true);
+  });
 });
