@@ -1,5 +1,6 @@
 "use client";
 
+import { FennMapGatheringCall } from "@/components/home/fenn-map-gathering-call";
 import {
   GatheringCallBanner,
 } from "@/components/greenwood/gathering-call-banner";
@@ -8,6 +9,7 @@ import {
   GatheringFireCard,
 } from "@/components/greenwood/gathering-fire-card";
 import {
+  announcementStyleShowsGreenwoodBanner,
   gatheringAnnouncementStyleLabel,
   type GatheringAnnouncementStyle,
 } from "@/lib/greenwood/gatherings/announcement-style";
@@ -22,7 +24,7 @@ export type DeskGatheringPreviewProps = {
 };
 
 /**
- * Keeper preview — reuses member Fire card + optional call banner.
+ * Keeper preview — reuses member Fire card, call banner, and homepage map signal.
  * No fetches; driven by form state only.
  */
 export function DeskGatheringPreview({
@@ -69,15 +71,24 @@ export function DeskGatheringPreview({
         ) : null}
       </ul>
 
-      {announcementStyle === "fire_calling" ? (
+      {announcementStyleShowsGreenwoodBanner(announcementStyle) ? (
         <div className="desk-gathering-preview__banner">
           <GatheringCallBanner
             resolvedState="active"
             startsAt={new Date().toISOString()}
             endsAt={new Date().toISOString()}
-            announcementStyle="fire_calling"
+            announcementStyle={announcementStyle}
             mode="preview"
             durationMinutes={durationMinutes}
+          />
+        </div>
+      ) : null}
+
+      {announcementStyle === "world_call" ? (
+        <div className="desk-gathering-preview__home-map">
+          <FennMapGatheringCall
+            mode="preview"
+            previewDurationMinutes={durationMinutes}
           />
         </div>
       ) : null}

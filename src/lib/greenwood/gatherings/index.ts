@@ -1,5 +1,7 @@
 export {
   announcementStyleFromMetadata,
+  announcementStyleShowsGreenwoodBanner,
+  announcementStyleShowsHomepageMap,
   DEFAULT_GATHERING_ANNOUNCEMENT_STYLE,
   gatheringAnnouncementStyleLabel,
   GATHERING_ANNOUNCEMENT_STYLES,
@@ -45,3 +47,4 @@ export type {
 export const GREENWOOD_FIRE_GATHERING_REFRESH_MS = 25_000;
 
 // Server-only member/admin ops: import from member-ops.ts / admin-ops.ts.
+// Public homepage signal: public-home-signal.ts (server-only).

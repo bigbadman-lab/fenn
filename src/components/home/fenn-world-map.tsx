@@ -1,3 +1,4 @@
+import { FennMapGatheringCall } from "@/components/home/fenn-map-gathering-call";
 import { FennMapWanderer } from "@/components/home/fenn-map-wanderer";
 import Link from "next/link";
 
@@ -91,6 +92,9 @@ export function FennWorldMap() {
         </div>
         <p className="fenn-map__hint muted">&lt; the road continues &gt;</p>
       </div>
+
+      {/* Beside the map, near the Greenwood call — single public signal. */}
+      <FennMapGatheringCall className="fenn-map-world-call--map-foot" />
     </nav>
   );
 }

@@ -3,7 +3,10 @@
 import type { MouseEvent } from "react";
 
 import { GATHERING_FIRE_SECTION_ID } from "@/components/greenwood/gathering-fire-card";
-import type { GatheringAnnouncementStyle } from "@/lib/greenwood/gatherings/announcement-style";
+import {
+  announcementStyleShowsGreenwoodBanner,
+  type GatheringAnnouncementStyle,
+} from "@/lib/greenwood/gatherings/announcement-style";
 import {
   formatBeginsInLabel,
   formatRemainingDurationLabel,
@@ -23,7 +26,7 @@ export type GatheringCallBannerProps = {
 };
 
 /**
- * Restrained Greenwood banner for announcementStyle = fire_calling.
+ * Restrained Greenwood banner for Fire Calls and World Call.
  * Member-only surface; never shows hands/attendance.
  */
 export function GatheringCallBanner({
@@ -35,7 +38,7 @@ export function GatheringCallBanner({
   durationMinutes = null,
   serverNow = null,
 }: GatheringCallBannerProps) {
-  if (announcementStyle !== "fire_calling") return null;
+  if (!announcementStyleShowsGreenwoodBanner(announcementStyle)) return null;
   if (resolvedState !== "active" && resolvedState !== "scheduled" && mode !== "preview") {
     return null;
   }
@@ -50,7 +53,10 @@ export function GatheringCallBanner({
 
   if (mode === "preview") {
     heading = "THE FIRE WILL CALL";
-    body = "A Gathering appears as a live call across the Greenwood.";
+    body =
+      announcementStyle === "world_call"
+        ? "A Gathering appears as a live call across the Greenwood and on the public map."
+        : "A Gathering appears as a live call across the Greenwood.";
     detail =
       durationMinutes != null && durationMinutes > 0
         ? `Lasts for ${durationMinutes} minutes once begun.`

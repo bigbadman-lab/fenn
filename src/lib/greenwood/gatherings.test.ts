@@ -317,7 +317,7 @@ describe("Living Greenwood 3 Fire UI + pulse", () => {
     assert.match(card, /RAISE HAND/);
     assert.match(card, /LOWER HAND/);
     assert.match(card, /remain|Begins in|Begins when you press/);
-    assert.match(banner, /fire_calling/);
+    assert.match(banner, /announcementStyleShowsGreenwoodBanner|fire_calling|world_call/);
     assert.match(hook, /WORLD_PULSE_GREENWOOD_GATHERING_MS/);
     assert.match(hook, /usePagePulse/);
     assert.doesNotMatch(hook, /supabase\.channel|WebSocket/);

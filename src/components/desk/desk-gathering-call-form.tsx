@@ -336,6 +336,26 @@ export function DeskGatheringCallForm({
                   a live call.
                 </span>
               </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={announcementStyle === "world_call"}
+                className={
+                  announcementStyle === "world_call"
+                    ? "desk-gathering-call__style desk-gathering-call__style--selected"
+                    : "desk-gathering-call__style"
+                }
+                disabled={busy}
+                onClick={() => setAnnouncementStyle("world_call")}
+              >
+                <span className="desk-gathering-call__style-title">
+                  WORLD CALL
+                </span>
+                <span className="muted">
+                  Promote this Gathering at the Greenwood and on the homepage
+                  map.
+                </span>
+              </button>
             </div>
           </fieldset>
 

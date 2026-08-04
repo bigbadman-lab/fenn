@@ -35,15 +35,19 @@ describe("Gathering announcement style metadata", () => {
       announcementStyleFromMetadata({ announcementStyle: "fire_calling" }),
       "fire_calling",
     );
+    assert.equal(
+      announcementStyleFromMetadata({ announcementStyle: "world_call" }),
+      "world_call",
+    );
     assert.equal(DEFAULT_GATHERING_ANNOUNCEMENT_STYLE, "quiet");
   });
 
   it("stores only the announcementStyle key without channel flags", () => {
     const meta = metadataWithAnnouncementStyle(
       { unrelated: true },
-      "fire_calling",
+      "world_call",
     );
-    assert.equal(meta.announcementStyle, "fire_calling");
+    assert.equal(meta.announcementStyle, "world_call");
     assert.equal(meta.unrelated, true);
     assert.equal("channels" in meta, false);
     assert.equal("homepage" in meta, false);
@@ -103,6 +107,7 @@ describe("Desk Gatherings Keeper UX contracts", () => {
     assert.match(form, /Greenwood members/);
     assert.match(form, /QUIET NOTICE/);
     assert.match(form, /THE FIRE CALLS/);
+    assert.match(form, /WORLD CALL/);
     assert.match(form, /BEGIN GATHERING/);
     assert.match(form, /LIMIT THE FIRE/);
     assert.match(form, /AFTER THE FIRE/);
@@ -119,7 +124,8 @@ describe("Desk Gatherings Keeper UX contracts", () => {
     assert.match(preview, /HOW THE GREENWOOD WILL SEE IT/);
     assert.match(preview, /GatheringFireCard/);
     assert.match(preview, /GatheringCallBanner/);
-    assert.match(preview, /fire_calling/);
+    assert.match(preview, /announcementStyleShowsGreenwoodBanner/);
+    assert.match(preview, /FennMapGatheringCall/);
     assert.match(preview, /not automatic/);
   });
 
@@ -157,7 +163,7 @@ describe("Desk Gatherings Keeper UX contracts", () => {
 });
 
 describe("Greenwood Fire Calling member surface", () => {
-  it("banner only for fire_calling scheduled/active and shares pulse parent", () => {
+  it("banner for fire_calling/world_call scheduled/active and shares pulse parent", () => {
     const member = read("src/components/greenwood/greenwood-member.tsx");
     const banner = read(
       "src/components/greenwood/greenwood-gathering-call-banner.tsx",
@@ -165,7 +171,7 @@ describe("Greenwood Fire Calling member surface", () => {
     const call = read("src/components/greenwood/gathering-call-banner.tsx");
     assert.match(member, /useGreenwoodFireGatherings/);
     assert.match(member, /GreenwoodGatheringCallBanner snapshot=/);
-    assert.match(banner, /fire_calling/);
+    assert.match(banner, /announcementStyleShowsGreenwoodBanner/);
     assert.match(banner, /resolvedState !== "active"/);
     assert.doesNotMatch(banner, /handCount|attendance|openHand/i);
     assert.match(call, /THE FIRE IS CALLING|THE FIRE WILL CALL/);
@@ -173,11 +179,11 @@ describe("Greenwood Fire Calling member surface", () => {
     assert.doesNotMatch(call, /arrival_ceremony|greenwood_arrival/i);
   });
 
-  it("does not wire homepage, outlaw, wall, speaks, or map gathering alerts", () => {
+  it("does not auto-wire Wall, Speaks, or page-level gathering modals", () => {
     const home = read("src/app/page.tsx");
-    assert.doesNotMatch(home, /announcementStyle|fire_calling|greenwood_gatherings/i);
+    assert.doesNotMatch(home, /gathering-call|world_call|GreenwoodModal/i);
     const wallWrite = read("src/lib/wall/write.ts");
-    assert.doesNotMatch(wallWrite, /gathering|announcementStyle/i);
+    assert.doesNotMatch(wallWrite, /gathering|announcementStyle|world_call/i);
   });
 });
 

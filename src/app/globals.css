@@ -1051,6 +1051,102 @@ a.fenn-map__link:focus-visible {
   color: color-mix(in srgb, var(--color-bone) 58%, var(--color-night));
 }
 
+/* World Call — restrained public Gathering signal near the Greenwood map */
+.fenn-map-world-call {
+  text-align: center;
+  max-width: min(28rem, 92%);
+  margin: 0.85rem auto 0.25rem;
+  padding: 0.45rem 0.5rem 0.55rem;
+  letter-spacing: 0.06em;
+}
+
+.fenn-map-world-call--map-foot {
+  position: relative;
+}
+
+.fenn-map-world-call--preview {
+  position: relative;
+  max-width: 100%;
+  margin: 0 0 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.fenn-map-world-call__eyebrow {
+  margin: 0 0 0.45rem;
+  letter-spacing: 0.1em;
+  font-size: 0.82em;
+}
+
+.fenn-map-world-call__ember {
+  margin: 0 0 0.2rem;
+  color: color-mix(in srgb, var(--color-leaf) 70%, var(--color-bone));
+  animation: fenn-map-ember-pulse 3.6s ease-in-out infinite;
+}
+
+.fenn-map-world-call__message {
+  margin: 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--color-leaf) 55%, var(--color-bone));
+}
+
+.fenn-map-world-call__remain {
+  margin: 0.25rem 0 0.4rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-bone) 80%, var(--muted));
+}
+
+.fenn-map-world-call__link {
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--color-leaf) 65%, var(--color-bone));
+  text-decoration: none;
+}
+
+.fenn-map-world-call__link:hover,
+.fenn-map-world-call__link:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.fenn-map-world-call__note {
+  margin: 0.55rem 0 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+}
+
+@keyframes fenn-map-ember-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fenn-map-world-call__ember {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .fenn-map-world-call__message {
+    font-size: 0.72rem;
+  }
+
+  .fenn-map-world-call__remain {
+    font-size: 0.7rem;
+  }
+}
+
 .home-welcome {
   padding: 0.65rem 0 1rem;
   border-top: none;
