@@ -263,7 +263,15 @@ export function OutlawRegisterPanel({
         <InviteLedNotice />
         <p>the path asks for a wallet before a name.</p>
         <p>
-          <button type="button" className="btn-text" onClick={() => login()}>
+          <button
+            type="button"
+            className={
+              embedded
+                ? "btn-text home-register__begin"
+                : "btn-text"
+            }
+            onClick={() => login()}
+          >
             [ begin ]
           </button>
         </p>

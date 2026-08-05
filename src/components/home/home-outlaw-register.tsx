@@ -33,10 +33,11 @@ export function HomeOutlawRegister() {
 
   const showIntro = shouldShowOutlawThresholdIntro(audience);
   // Registered: panel becomes identity readout — keep a quieter heading.
-  const title =
-    audience === "outlaw" || audience === "greenwood"
-      ? "THE OUTLAW REGISTER"
-      : HOMEPAGE_OUTLAW_THRESHOLD.title;
+  const isBecomeTitle =
+    audience !== "outlaw" && audience !== "greenwood";
+  const title = isBecomeTitle
+    ? HOMEPAGE_OUTLAW_THRESHOLD.title
+    : "THE OUTLAW REGISTER";
 
   return (
     <section
@@ -44,7 +45,14 @@ export function HomeOutlawRegister() {
       className="home-section home-register"
       aria-labelledby="outlaw-register-title"
     >
-      <h2 id="outlaw-register-title" className="place__title">
+      <h2
+        id="outlaw-register-title"
+        className={
+          isBecomeTitle
+            ? "place__title home-register__title home-register__title--become"
+            : "place__title home-register__title"
+        }
+      >
         {title}
       </h2>
 

@@ -123,7 +123,7 @@ export function HomeWelcome() {
           {showBecome ? (
             <a
               href={`#${HOMEPAGE_ACTIONS.outlawThresholdId}`}
-              className="home-welcome__action"
+              className="home-welcome__action home-welcome__action--become"
             >
               {HOMEPAGE_ACTIONS.becomeOutlaw}
             </a>

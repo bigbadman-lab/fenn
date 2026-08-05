@@ -1241,6 +1241,55 @@ a.fenn-map__link:focus-visible {
   outline-offset: 3px;
 }
 
+/* Primary stranger CTAs — stronger call, still terminal-native (no bar/spinner). */
+@keyframes home-become-outlaw-call {
+  0%,
+  100% {
+    opacity: 0.48;
+    color: color-mix(in srgb, var(--color-leaf) 55%, var(--color-bone));
+    letter-spacing: 0.04em;
+  }
+  50% {
+    opacity: 1;
+    color: var(--color-leaf);
+    letter-spacing: 0.08em;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.16em;
+  }
+}
+
+.home-welcome__action--become,
+.home-register__begin {
+  animation: home-become-outlaw-call 1.7s ease-in-out infinite;
+  will-change: opacity, color, letter-spacing;
+}
+
+.home-welcome__action--become:hover,
+.home-welcome__action--become:focus-visible,
+.home-register__begin:hover,
+.home-register__begin:focus-visible {
+  animation: none;
+  opacity: 1;
+  color: var(--color-leaf);
+  letter-spacing: 0.08em;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.16em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-welcome__action--become,
+  .home-register__begin {
+    animation: none;
+    opacity: 1;
+    color: var(--color-leaf);
+    letter-spacing: 0.06em;
+    text-decoration: underline;
+    text-underline-offset: 0.14em;
+  }
+}
+
 .home-world-orient {
   margin: 0 0 0.85rem;
   max-width: 40rem;
@@ -1268,6 +1317,16 @@ a.fenn-map__link:focus-visible {
 
 .home-register__intro {
   margin-bottom: 1rem;
+}
+
+.home-register__title {
+  margin-bottom: 1.25rem;
+}
+
+/* Threshold title — distinct from bone place titles and leaf CTAs. */
+.home-register__title--become {
+  color: var(--color-hoard);
+  letter-spacing: 0.1em;
 }
 
 .home-register__wallet {

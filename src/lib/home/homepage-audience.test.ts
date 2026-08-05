@@ -160,6 +160,30 @@ describe("homepage V2 structure and wiring", () => {
     assert.doesNotMatch(welcome, /ENTER THE MAP/);
   });
 
+  it("become outlaw CTA carries a light motion call with reduced-motion off", () => {
+    const welcome = read("src/components/home/home-welcome.tsx");
+    const css = read("src/app/globals.css");
+    assert.match(welcome, /home-welcome__action--become/);
+    assert.match(css, /@keyframes home-become-outlaw-call/);
+    assert.match(css, /\.home-welcome__action--become/);
+    assert.match(css, /\.home-register__begin/);
+    assert.match(
+      css,
+      /prefers-reduced-motion:\s*reduce[\s\S]*?\.home-welcome__action--become[\s\S]*?animation:\s*none/,
+    );
+  });
+
+  it("homepage outlaw section title is distinct and begin shares the call motion", () => {
+    const panel = read("src/components/home/home-outlaw-register.tsx");
+    const register = read("src/components/outlaw/outlaw-register-panel.tsx");
+    const css = read("src/app/globals.css");
+    assert.match(panel, /home-register__title--become/);
+    assert.match(css, /\.home-register__title--become/);
+    assert.match(css, /--color-hoard/);
+    assert.match(register, /home-register__begin/);
+    assert.match(register, /embedded/);
+  });
+
   it("map keeps orientation copy and semantic nav", () => {
     const identity = read("src/components/home/home-identity.tsx");
     const map = read("src/components/home/fenn-world-map.tsx");
