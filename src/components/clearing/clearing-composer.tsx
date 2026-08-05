@@ -23,6 +23,8 @@ export type ComposerIdentity =
   | { kind: "pending" }
   | { kind: "read_only" }
   | { kind: "claim_name" }
+  /** Guest before first mint — may focus/type; Traveller created on intent. */
+  | { kind: "guest" }
   | {
       kind: "traveller";
       displayName: string;
@@ -79,6 +81,7 @@ export function ClearingComposer({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const sendingRef = useRef(false);
   const pendingRequestId = useRef<string | null>(null);
+  const mintStartedFromFocus = useRef(false);
 
   useEffect(() => {
     if (!slowModeUntil) return;
@@ -92,6 +95,11 @@ export function ClearingComposer({
     ? Math.max(1, Math.ceil((slowModeUntil - nowMs) / 1000))
     : 0;
 
+  const canDraft =
+    identity.kind === "guest" ||
+    identity.kind === "traveller" ||
+    identity.kind === "outlaw";
+
   const disabled =
     sending ||
     minting ||
@@ -104,10 +112,36 @@ export function ClearingComposer({
     (identity.kind === "outlaw" && identity.speaking !== "ok") ||
     (identity.kind === "traveller" && identity.messagesRemaining <= 0);
 
+  // Guests may type while mint is in flight after first focus.
+  const inputDisabled =
+    sending ||
+    slowActive ||
+    identity.kind === "pending" ||
+    identity.kind === "read_only" ||
+    identity.kind === "claim_name" ||
+    identity.kind === "registration_threshold" ||
+    (identity.kind === "traveller" && identity.speaking !== "ok") ||
+    (identity.kind === "outlaw" && identity.speaking !== "ok") ||
+    (identity.kind === "traveller" && identity.messagesRemaining <= 0);
+
   const showCharCount = draft.length >= Math.floor(CLEARING_MESSAGE_MAX_CHARS * 0.8);
 
+  const onComposerFocus = useCallback(() => {
+    if (identity.kind !== "guest") return;
+    if (mintStartedFromFocus.current || minting) return;
+    mintStartedFromFocus.current = true;
+    void onEnsureTraveller().then((ok) => {
+      if (!ok) mintStartedFromFocus.current = false;
+    });
+  }, [identity.kind, minting, onEnsureTraveller]);
+
   const submit = useCallback(async () => {
-    if (sendingRef.current || disabled) return;
+    if (sendingRef.current) return;
+    if (identity.kind === "pending" || identity.kind === "read_only") return;
+    if (identity.kind === "claim_name" || identity.kind === "registration_threshold")
+      return;
+    if (slowActive) return;
+
     const body = draft;
     if (!body.trim()) {
       setError("Say something, or wait.");
@@ -118,14 +152,26 @@ export function ClearingComposer({
       return;
     }
 
-    if (identity.kind === "traveller") {
+    // Travellers (and guests before name arrives): mint/resume before post.
+    if (identity.kind === "guest" || identity.kind === "traveller") {
       const ok = await onEnsureTraveller();
       if (!ok) return;
+    }
+
+    if (identity.kind === "traveller" && identity.messagesRemaining <= 0) {
+      return;
+    }
+    if (
+      (identity.kind === "traveller" || identity.kind === "outlaw") &&
+      identity.speaking !== "ok"
+    ) {
+      return;
     }
 
     sendingRef.current = true;
     setSending(true);
     setError(null);
+    setStatusAnnounce("Your words are entering the wood.");
 
     const clientRequestId = pendingRequestId.current ?? newClientRequestId();
     pendingRequestId.current = clientRequestId;
@@ -161,6 +207,7 @@ export function ClearingComposer({
       if (!res.ok || !data.ok || !data.message) {
         const code = data.code ?? "clearing_internal";
         const msg = data.error ?? "could not be heard.";
+        setStatusAnnounce("");
         if (
           code === "clearing_muted" ||
           code === "clearing_banned" ||
@@ -174,7 +221,6 @@ export function ClearingComposer({
             );
           }
           setError(msg);
-          // Exhausted allowance / ban: do not reuse id for a different body later
           if (code === "clearing_registration_required") {
             pendingRequestId.current = null;
           }
@@ -193,11 +239,11 @@ export function ClearingComposer({
       setDraft("");
       setStatusAnnounce("Your words reached the Clearing.");
       onAccepted(data.message, data.messagesRemaining);
-      // Soft local slow-mode floor after an accepted post (server still authoritative)
       if (!slowActive) {
         onSlowMode(3_000);
       }
     } catch {
+      setStatusAnnounce("");
       setError("the road did not answer. try again.");
     } finally {
       sendingRef.current = false;
@@ -205,15 +251,15 @@ export function ClearingComposer({
     }
   }, [
     authenticated,
-    disabled,
     draft,
     getAuthHeaders,
-    identity.kind,
+    identity,
     onAccepted,
     onEnsureTraveller,
     onSlowMode,
     onSpeakBlocked,
     registered,
+    slowActive,
     slowSecondsLeft,
   ]);
 
@@ -223,7 +269,6 @@ export function ClearingComposer({
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    // Match Camp: Ctrl/Cmd+Enter sends; Enter alone newlines (mobile-safe).
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       void submit();
@@ -232,9 +277,9 @@ export function ClearingComposer({
 
   if (identity.kind === "pending") {
     return (
-      <section className="clearing-composer" aria-label="Speak">
+      <section className="clearing-composer clearing-composer--ready" aria-label="Speak">
         <p className="muted clearing-composer__pending" aria-live="polite">
-          waiting for the road to know you...
+          The path is still opening…
         </p>
       </section>
     );
@@ -322,7 +367,6 @@ export function ClearingComposer({
   }
 
   if (identity.kind === "traveller" && identity.messagesRemaining <= 0) {
-    // Fallback if parent forgot threshold state
     return (
       <section className="clearing-composer" aria-label="Speak" aria-live="polite">
         <p className="clearing-composer__law">
@@ -341,15 +385,28 @@ export function ClearingComposer({
     );
   }
 
+  if (!canDraft) {
+    return null;
+  }
+
   const identityLine =
     identity.kind === "traveller"
       ? `YOU ARE ${identity.displayName.toUpperCase()}`
-      : `SPEAK AS ${identity.alias}`;
+      : identity.kind === "outlaw"
+        ? `SPEAK AS ${identity.alias}`
+        : "SPEAK AS A TRAVELLER";
 
   const allowance =
     identity.kind === "traveller"
       ? remainingLabel(identity.messagesRemaining)
-      : null;
+      : identity.kind === "guest"
+        ? "Three times from a travelling name."
+        : null;
+
+  const sendDisabled =
+    disabled ||
+    !draft.trim() ||
+    (identity.kind === "guest" && minting);
 
   return (
     <section className="clearing-composer" aria-label="Speak">
@@ -357,6 +414,11 @@ export function ClearingComposer({
         <p className="clearing-composer__who">{identityLine}</p>
         {allowance ? (
           <p className="muted clearing-composer__remain">{allowance}</p>
+        ) : null}
+        {identity.kind === "guest" && minting ? (
+          <p className="muted clearing-composer__minting" aria-live="polite">
+            Taking a temporary name…
+          </p>
         ) : null}
       </div>
 
@@ -371,6 +433,16 @@ export function ClearingComposer({
         </p>
       ) : null}
 
+      {sending ? (
+        <p
+          className="clearing-composer__writing"
+          aria-live="assertive"
+          role="status"
+        >
+          YOUR WORDS ARE ENTERING THE WOOD…
+        </p>
+      ) : null}
+
       <form className="clearing-composer__form" onSubmit={onForm}>
         <label className="clearing-composer__label" htmlFor="clearing-draft">
           Your words
@@ -381,9 +453,10 @@ export function ClearingComposer({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
+          onFocus={onComposerFocus}
           rows={3}
           maxLength={CLEARING_MESSAGE_MAX_CHARS}
-          disabled={disabled}
+          disabled={inputDisabled}
           placeholder="Speak into the Clearing…"
           autoComplete="off"
         />
@@ -398,9 +471,9 @@ export function ClearingComposer({
           <button
             type="submit"
             className="btn-text clearing-composer__send"
-            disabled={disabled || !draft.trim()}
+            disabled={sendDisabled}
           >
-            {sending ? "[ … ]" : "[ SPEAK ]"}
+            {sending ? "[ WRITING… ]" : "[ SPEAK ]"}
           </button>
         </div>
       </form>

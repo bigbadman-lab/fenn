@@ -10,16 +10,23 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/clearing/feed — public published messages only.
+ *
+ * Query:
+ * - limit — page size
+ * - cursor — older-than watermark (LOAD OLDER)
+ * - since — newer-than watermark (incremental poll)
  */
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const limit = url.searchParams.get("limit");
     const cursor = clampClearingCursor(url.searchParams.get("cursor"));
+    const since = clampClearingCursor(url.searchParams.get("since"));
 
     const page = await getClearingFeed({
       limit,
       cursor,
+      since,
     });
 
     return NextResponse.json(

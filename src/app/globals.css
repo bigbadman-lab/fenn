@@ -6697,8 +6697,14 @@ input[type="file"].deed-proof-field__control {
 
 .clearing__listening,
 .clearing__empty,
-.clearing__error {
+.clearing__error,
+.clearing__presence {
   margin: 0.5rem 0 0.75rem;
+}
+
+.clearing__presence--soft {
+  opacity: 0.75;
+  letter-spacing: 0.02em;
 }
 
 .clearing__error p {
@@ -6712,6 +6718,25 @@ input[type="file"].deed-proof-field__control {
 
 .clearing-message {
   min-width: 0;
+  animation: clearing-item-in 0.45s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clearing-message,
+  .clearing-wood {
+    animation: none;
+  }
+}
+
+@keyframes clearing-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .clearing-message__head {
@@ -6750,13 +6775,17 @@ input[type="file"].deed-proof-field__control {
 .clearing-wood {
   min-width: 0;
   max-width: 34rem;
-  padding: 0.15rem 0;
+  padding: 0.35rem 0.15rem 0.45rem;
+  margin: 0.15rem 0;
+  animation: clearing-item-in 0.55s ease-out both;
+  /* Distinguish system speech from human voice without chat chrome */
+  opacity: 0.96;
 }
 
 .clearing-wood__rule {
   height: 0;
   border: 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   margin: 0.35rem 0;
 }
 
@@ -6837,9 +6866,18 @@ input[type="file"].deed-proof-field__control {
 }
 
 .clearing-composer__pending,
-.clearing-composer__slow {
+.clearing-composer__slow,
+.clearing-composer__minting {
   margin: 0 0 0.55rem;
   max-width: 28rem;
+}
+
+.clearing-composer__writing {
+  margin: 0 0 0.55rem;
+  max-width: 30rem;
+  letter-spacing: 0.05em;
+  font-size: 0.88rem;
+  color: var(--color-leaf, #b7f34a);
 }
 
 .clearing-composer__form {

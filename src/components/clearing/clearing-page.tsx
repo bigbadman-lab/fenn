@@ -23,9 +23,12 @@ import type {
   SafeTravellerIdentity,
 } from "@/lib/clearing/dto";
 import {
+  clearingStateEqual,
+  encodeClientFeedCursor,
   filterFeedItems,
-  findNewMessages,
   mergeConversationMessages,
+  mergePollFeed,
+  newestFeedItem,
   newestFirstToConversation,
 } from "@/lib/clearing/feed-client";
 
@@ -77,9 +80,39 @@ export function ClearingPage() {
   const abortRef = useRef<AbortController | null>(null);
   const initialScrollDone = useRef(false);
   const mintPromiseRef = useRef<Promise<boolean> | null>(null);
+  /** Watermark for incremental poll; ref so poll tick stays stable. */
+  const newestWatermarkRef = useRef<string | null>(null);
+  /** Skip scroll following for pure no-op merges. */
+  const lastFeedTailIdRef = useRef<string | null>(null);
+  const forceScrollRef = useRef(false);
 
   const identityPending =
     !privyReady || (authenticated && (authLoading || !profileResolved));
+
+  const applyRoomState = useCallback(
+    (state: { readOnly?: boolean; slowModeSeconds?: number } | undefined) => {
+      if (!state) return;
+      const next: FeedState = {
+        readOnly: Boolean(state.readOnly),
+        slowModeSeconds: Math.max(0, Number(state.slowModeSeconds) || 0),
+      };
+      setClearingState((prev) =>
+        clearingStateEqual(prev, next) ? prev : next,
+      );
+    },
+    [],
+  );
+
+  const rememberNewest = useCallback((items: SafeClearingFeedItem[]) => {
+    const newest = newestFeedItem(items);
+    if (newest) {
+      newestWatermarkRef.current = encodeClientFeedCursor(
+        newest.occurredAt,
+        newest.id,
+      );
+      lastFeedTailIdRef.current = newest.id;
+    }
+  }, []);
 
   const applyFeedPayload = useCallback(
     (
@@ -89,51 +122,61 @@ export function ClearingPage() {
         state?: { readOnly?: boolean; slowModeSeconds?: number };
       },
       mode: "replace" | "merge" | "prepend",
-    ) => {
+    ): { items: SafeClearingFeedItem[]; changed: boolean } => {
       const page = filterFeedItems(data.items ?? []);
+      // API returns newest first; conversation is oldest first.
       const chronological = newestFirstToConversation(page);
 
-      if (data.state) {
-        setClearingState({
-          readOnly: Boolean(data.state.readOnly),
-          slowModeSeconds: Math.max(0, Number(data.state.slowModeSeconds) || 0),
-        });
-      }
+      applyRoomState(data.state);
 
       if (mode === "replace") {
         setFeedItems(chronological);
         setOlderCursor(data.nextCursor ?? null);
-        return chronological;
+        rememberNewest(chronological);
+        return { items: chronological, changed: true };
       }
 
       if (mode === "prepend") {
-        setFeedItems((prev) => mergeConversationMessages(prev, chronological));
+        setFeedItems((prev) => {
+          const next = mergeConversationMessages(prev, chronological);
+          // Keep newest watermark on tail for polls
+          rememberNewest(next);
+          return next;
+        });
         setOlderCursor(data.nextCursor ?? null);
-        return chronological;
+        return { items: chronological, changed: chronological.length > 0 };
       }
 
-      // merge (poll) — single request already includes world events
+      // Incremental poll merge — preserve array identity when nothing new.
+      let changed = false;
       setFeedItems((prev) => {
-        const fresh = findNewMessages(prev, chronological);
-        if (fresh.length > 0 && !stickToBottomRef.current) {
-          setUnseenCount((c) => c + fresh.length);
+        const { next, added } = mergePollFeed(prev, chronological);
+        if (added.length > 0) {
+          changed = true;
+          if (!stickToBottomRef.current) {
+            setUnseenCount((c) => c + added.length);
+          }
+          rememberNewest(next);
         }
-        return mergeConversationMessages(prev, chronological);
+        return next;
       });
-      return chronological;
+      return { items: chronological, changed };
     },
-    [],
+    [applyRoomState, rememberNewest],
   );
 
   const fetchFeed = useCallback(
     async (opts: {
       cursor?: string | null;
+      /** Incremental poll: only items newer than watermark. */
+      since?: string | null;
       mode: "replace" | "merge" | "prepend";
       signal?: AbortSignal;
     }) => {
       const params = new URLSearchParams();
       params.set("limit", String(INITIAL_LIMIT));
       if (opts.cursor) params.set("cursor", opts.cursor);
+      if (opts.since) params.set("since", opts.since);
 
       const res = await fetch(`/api/clearing/feed?${params.toString()}`, {
         method: "GET",
@@ -151,12 +194,12 @@ export function ClearingPage() {
       if (!res.ok || !data.ok) {
         throw new Error(data.error ?? "feed failed");
       }
-      applyFeedPayload(data, opts.mode);
+      return applyFeedPayload(data, opts.mode);
     },
     [applyFeedPayload],
   );
 
-  // Initial feed load
+  // Initial feed load — identity-independent.
   useEffect(() => {
     const ac = new AbortController();
     abortRef.current = ac;
@@ -165,7 +208,7 @@ export function ClearingPage() {
     void (async () => {
       try {
         await fetchFeed({ mode: "replace", signal: ac.signal });
-      } catch (e) {
+      } catch {
         if (ac.signal.aborted) return;
         setFeedError("THE CLEARING COULD NOT BE HEARD.");
       } finally {
@@ -175,7 +218,7 @@ export function ClearingPage() {
     return () => ac.abort();
   }, [fetchFeed]);
 
-  // Poll while visible
+  // Incremental poll while visible
   useEffect(() => {
     let cancelled = false;
     let timer: number | null = null;
@@ -184,9 +227,14 @@ export function ClearingPage() {
       if (cancelled || document.visibilityState === "hidden") return;
       if (fetchInFlight.current) return;
       fetchInFlight.current = true;
-      const ac = new AbortController();
       try {
-        await fetchFeed({ mode: "merge", signal: ac.signal });
+        const since = newestWatermarkRef.current;
+        await fetchFeed({
+          mode: "merge",
+          // Without a watermark, fall back to a head page of empty→first fill only.
+          // After initial load the watermark is set; empty room polls without since.
+          ...(since ? { since } : {}),
+        });
       } catch {
         /* tolerate missed polls */
       } finally {
@@ -220,7 +268,6 @@ export function ClearingPage() {
     };
   }, [fetchFeed]);
 
-  // Scroll: track near-bottom + initial stick
   const onFeedScroll = useCallback(() => {
     const el = feedScrollRef.current;
     if (!el) return;
@@ -229,22 +276,41 @@ export function ClearingPage() {
     if (stickToBottomRef.current) setUnseenCount(0);
   }, []);
 
+  // Scroll: initial stick; only follow when tail grows and user is near bottom.
   useEffect(() => {
-    if (feedLoading || feedItems.length === 0) return;
+    if (feedLoading) return;
+    if (feedItems.length === 0) return;
+
+    const tailId = feedItems[feedItems.length - 1]?.id ?? null;
+
     if (!initialScrollDone.current) {
       initialScrollDone.current = true;
+      lastFeedTailIdRef.current = tailId;
+      // Instant jump into the living room — no smooth scroll on first paint.
       bottomRef.current?.scrollIntoView({ block: "end" });
       stickToBottomRef.current = true;
       return;
     }
-    if (stickToBottomRef.current) {
-      bottomRef.current?.scrollIntoView({
-        block: "end",
-        behavior: "smooth",
-      });
-    }
+
+    const force = forceScrollRef.current;
+    forceScrollRef.current = false;
+    const tailChanged = tailId != null && tailId !== lastFeedTailIdRef.current;
+    lastFeedTailIdRef.current = tailId;
+
+    if (!force && !tailChanged) return;
+    if (!stickToBottomRef.current && !force) return;
+
+    // Own post: snap. Remote polls: gentle smooth when already near bottom.
+    const behavior: ScrollBehavior = force ? "auto" : "smooth";
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ block: "end", behavior });
+    });
   }, [feedItems, feedLoading]);
 
+  /**
+   * Lazy mint/resume — only when visitor intends to speak (focus or SPEAK).
+   * Never on passive page load.
+   */
   const mintTraveller = useCallback(async (): Promise<boolean> => {
     if (traveller) return true;
     if (mintPromiseRef.current) return mintPromiseRef.current;
@@ -286,13 +352,6 @@ export function ClearingPage() {
     return run;
   }, [traveller]);
 
-  // Resume traveller cookie quietly after identity resolves for guests
-  useEffect(() => {
-    if (identityPending) return;
-    if (authenticated) return;
-    void mintTraveller();
-  }, [authenticated, identityPending, mintTraveller]);
-
   const loadOlder = useCallback(async () => {
     if (!olderCursor || loadingOlder) return;
     const el = feedScrollRef.current;
@@ -315,14 +374,20 @@ export function ClearingPage() {
   const jumpToNew = useCallback(() => {
     setUnseenCount(0);
     stickToBottomRef.current = true;
+    forceScrollRef.current = true;
     bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, []);
 
   const onAccepted = useCallback(
     (message: SafeClearingMessage, messagesRemaining?: number) => {
-      setFeedItems((prev) => mergeConversationMessages(prev, [message]));
+      forceScrollRef.current = true;
       stickToBottomRef.current = true;
       setUnseenCount(0);
+      setFeedItems((prev) => {
+        const next = mergeConversationMessages(prev, [message]);
+        rememberNewest(next);
+        return next;
+      });
       if (typeof messagesRemaining === "number") {
         setTraveller((t) =>
           t
@@ -335,10 +400,9 @@ export function ClearingPage() {
         );
         if (messagesRemaining <= 0) setExhausted(true);
       }
-      // Soft refresh latest head
-      void fetchFeed({ mode: "merge" });
+      // Poll catches concurrent voices; no post-success full refresh.
     },
-    [fetchFeed],
+    [rememberNewest],
   );
 
   const onSpeakBlocked = useCallback((code: string) => {
@@ -359,14 +423,8 @@ export function ClearingPage() {
     setSlowModeUntil(Date.now() + retryAfterMs);
   }, []);
 
-  // Apply slow_mode floor from global state when set
-  useEffect(() => {
-    if (clearingState.slowModeSeconds > 0 && !slowModeUntil) {
-      // don't force on load — only after a post rejection or successful post would set it
-    }
-  }, [clearingState.slowModeSeconds, slowModeUntil]);
-
   const composerIdentity: ComposerIdentity = useMemo(() => {
+    // Auth identity resolving — feed is already independent.
     if (identityPending) return { kind: "pending" };
     if (clearingState.readOnly) return { kind: "read_only" };
     if (authenticated && !registered) return { kind: "claim_name" };
@@ -376,13 +434,12 @@ export function ClearingPage() {
         `OUTLAW ${String(profile.outlawNumber).padStart(5, "0")}`;
       return { kind: "outlaw", alias, speaking };
     }
-    // unauthenticated
+    // Guests: composer usable before mint — create Traveller only on intent.
     if (exhausted || (traveller && traveller.messagesRemaining <= 0)) {
       return { kind: "registration_threshold" };
     }
     if (!traveller) {
-      // Mint in flight or mint-on-speak — avoid false identity flash
-      return { kind: "pending" };
+      return { kind: "guest" };
     }
     return {
       kind: "traveller",
@@ -461,8 +518,8 @@ export function ClearingPage() {
           aria-busy={feedLoading}
         >
           {feedLoading && feedItems.length === 0 ? (
-            <p className="muted clearing__listening">
-              LISTENING TO THE CLEARING...
+            <p className="muted clearing__presence clearing__presence--soft">
+              The Clearing is here.
             </p>
           ) : null}
 
@@ -491,7 +548,7 @@ export function ClearingPage() {
           ) : null}
 
           {!feedLoading && !feedError && feedItems.length === 0 ? (
-            <div className="clearing__empty">
+            <div className="clearing__empty clearing__presence">
               <p>THE CLEARING IS QUIET.</p>
               <p className="muted">Speak if you will.</p>
             </div>

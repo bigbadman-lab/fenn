@@ -116,3 +116,71 @@ export function remainingLabel(remaining: number): string {
   if (remaining === 1) return "1 message remains.";
   return `${remaining} messages remain.`;
 }
+
+/**
+ * Newest item in chronological (oldest→newest) conversation order.
+ */
+export function newestFeedItem(
+  items: SafeClearingFeedItem[],
+): SafeClearingFeedItem | null {
+  if (items.length === 0) return null;
+  return items[items.length - 1] ?? null;
+}
+
+/**
+ * Encode client cursor for incremental poll (`since`) — same form as load-older cursor.
+ * Uses base64url of `occurredAt|id` without importing server-only Buffer on all targets.
+ */
+export function encodeClientFeedCursor(
+  occurredAt: string,
+  id: string,
+): string {
+  const raw = `${occurredAt}|${id}`;
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(raw, "utf8").toString("base64url");
+  }
+  // Browser: btoa with utf-8 care
+  const bytes = new TextEncoder().encode(raw);
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/**
+ * Whether merge would add any new ids (no-change poll detection).
+ */
+export function feedPollHasAdditions(
+  existing: SafeClearingFeedItem[],
+  incoming: SafeClearingFeedItem[],
+): boolean {
+  if (incoming.length === 0) return false;
+  return findNewMessages(existing, incoming).length > 0;
+}
+
+/**
+ * Merge for poll: return previous array reference when nothing new.
+ */
+export function mergePollFeed(
+  existing: SafeClearingFeedItem[],
+  incoming: SafeClearingFeedItem[],
+): { next: SafeClearingFeedItem[]; added: SafeClearingFeedItem[] } {
+  if (incoming.length === 0) {
+    return { next: existing, added: [] };
+  }
+  const added = findNewMessages(existing, incoming);
+  if (added.length === 0) {
+    return { next: existing, added: [] };
+  }
+  return {
+    next: mergeConversationMessages(existing, incoming),
+    added,
+  };
+}
+
+/** Compare public feed room state without unnecessary updates. */
+export function clearingStateEqual(
+  a: { readOnly: boolean; slowModeSeconds: number },
+  b: { readOnly: boolean; slowModeSeconds: number },
+): boolean {
+  return a.readOnly === b.readOnly && a.slowModeSeconds === b.slowModeSeconds;
+}

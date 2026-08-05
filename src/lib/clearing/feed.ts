@@ -47,6 +47,16 @@ function postgrestOlderThan(
   return `${timeColumn}.lt.${createdAt},and(${timeColumn}.eq.${createdAt},id.lt.${id})`;
 }
 
+/** Rows strictly newer than the client watermark (for incremental poll). */
+function postgrestNewerThan(
+  timeColumn: string,
+  cursor: { createdAt: string; id: string },
+): string {
+  const createdAt = `"${cursor.createdAt.replace(/"/g, "")}"`;
+  const id = cursor.id;
+  return `${timeColumn}.gt.${createdAt},and(${timeColumn}.eq.${createdAt},id.gt.${id})`;
+}
+
 async function loadTokenDecimals(
   admin: SupabaseClient,
 ): Promise<{ decimals: number; symbol: string }> {
@@ -106,16 +116,26 @@ function toSafeMarketWatchItem(
 /**
  * Public Clearing feed: published human messages + published acquisition world events.
  * Newest first. Server-side merge only. Suppresses observed/disposal/reorged.
+ *
+ * Modes:
+ * - default / `cursor` (older): history pages for initial load + LOAD OLDER
+ * - `since`: only items strictly newer than watermark (incremental poll)
+ *
+ * `since` and `cursor` together: `since` wins (poll path).
  */
 export async function getClearingFeed(input: {
   limit?: unknown;
   cursor?: string | null;
+  /** Watermark of newest item the client already has. Returns newer only. */
+  since?: string | null;
   admin?: SupabaseClient;
 }): Promise<SafeClearingFeedPage> {
   const admin = input.admin ?? (await defaultAdmin());
   const limit = clampFeedLimit(input.limit);
-  const cursor = decodeFeedCursor(input.cursor);
+  const since = decodeFeedCursor(input.since);
+  const cursor = since ? null : decodeFeedCursor(input.cursor);
   const fetchLimit = limit + 1;
+  const incremental = since != null;
 
   let messagesQuery = admin
     .from("clearing_messages")
@@ -127,7 +147,11 @@ export async function getClearingFeed(input: {
     .order("id", { ascending: false })
     .limit(fetchLimit);
 
-  if (cursor) {
+  if (since) {
+    messagesQuery = messagesQuery.or(
+      postgrestNewerThan("created_at", since),
+    );
+  } else if (cursor) {
     messagesQuery = messagesQuery.or(
       postgrestOlderThan("created_at", cursor),
     );
@@ -146,7 +170,9 @@ export async function getClearingFeed(input: {
     .order("id", { ascending: false })
     .limit(fetchLimit);
 
-  if (cursor) {
+  if (since) {
+    marketQuery = marketQuery.or(postgrestNewerThan("published_at", since));
+  } else if (cursor) {
     marketQuery = marketQuery.or(postgrestOlderThan("published_at", cursor));
   }
 
@@ -212,7 +238,8 @@ export async function getClearingFeed(input: {
 
   rows.sort(compareNewestFirst);
   const pageRows = rows.slice(0, limit);
-  const hasMore = rows.length > limit;
+  // Incremental poll: no "load older" cursor — client keeps existing history.
+  const hasMore = !incremental && rows.length > limit;
   const last = pageRows[pageRows.length - 1];
   const nextCursor =
     hasMore && last
