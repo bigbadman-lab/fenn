@@ -5,10 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   CLEARING_DEFAULT_COOLDOWN_SECONDS,
   CLEARING_RATE_LIMITS,
-  CLEARING_TRAVELLER_COOLDOWN_SECONDS,
-  CLEARING_TRAVELLER_MESSAGE_LIMIT,
 } from "@/lib/clearing/config";
-import { openTravellerCookie } from "@/lib/clearing/cookie";
 import {
   toSafeClearingMessage,
   type SafeClearingMessage,
@@ -19,11 +16,7 @@ import { ClearingError } from "@/lib/clearing/errors";
 import { logClearing } from "@/lib/clearing/log";
 import {
   assertOutlawCanSpeak,
-  assertTravellerCanSpeak,
-  countAcceptedTravellerMessages,
   getOutlawModeration,
-  getTravellerById,
-  messagesRemainingForTraveller,
 } from "@/lib/clearing/moderation";
 import {
   assertAuthorCooldown,
@@ -59,7 +52,7 @@ function mapRpcError(message: string): ClearingError {
   if (m.includes("registration_required")) {
     return new ClearingError(
       "clearing_registration_required",
-      "Your travelling name has carried you this far.",
+      "Only Outlaws may speak in the Clearing. Take a permanent name.",
       403,
       {
         messagesRemaining: 0,
@@ -315,126 +308,16 @@ export async function postClearingMessage(
     };
   }
 
-  // Traveller path
-  const travellerId = openTravellerCookie(input.travellerCookieRaw);
-  if (!travellerId) {
-    throw new ClearingError(
-      "clearing_unauthorized",
-      "A Traveller name is required before speaking.",
-      401,
-    );
-  }
-
-  const traveller = await getTravellerById(travellerId, admin);
-  if (!traveller) {
-    throw new ClearingError(
-      "clearing_cookie_invalid",
-      "Traveller session is not known",
-      401,
-    );
-  }
-  try {
-    assertTravellerCanSpeak(traveller);
-  } catch (e) {
-    if (e instanceof ClearingError) {
-      logClearing({
-        event: "voice_block",
-        ok: false,
-        code: e.code,
-        authorType: "traveller",
-      });
-    }
-    throw e;
-  }
-
-  const existingTraveller = await findExistingByClientRequest(admin, {
-    clientRequestId,
-    travellerId,
-    profileId: null,
-  });
-  if (existingTraveller) {
-    const remaining = messagesRemainingForTraveller(
-      await countAcceptedTravellerMessages(travellerId, admin),
-    );
-    logClearing({
-      event: "message_accepted",
-      ok: true,
-      authorType: "traveller",
-      reused: true,
-      messageId: existingTraveller.id,
-    });
-    return {
-      message: toSafeClearingMessage(existingTraveller),
-      reused: true,
-      messagesRemaining: remaining,
-    };
-  }
-
-  const accepted = await countAcceptedTravellerMessages(travellerId, admin);
-  if (accepted >= CLEARING_TRAVELLER_MESSAGE_LIMIT) {
-    logClearing({
-      event: "registration_required",
-      ok: false,
-      authorType: "traveller",
-    });
-    throw new ClearingError(
-      "clearing_registration_required",
-      "Your travelling name has carried you this far.",
-      403,
-      {
-        messagesRemaining: 0,
-        registrationRequired: true,
-      },
-    );
-  }
-
-  await consumeRateBucket({
-    bucketKey: `traveller:${travellerId}`,
-    windowSeconds: CLEARING_RATE_LIMITS.travellerWindowSeconds,
-    maxHits: CLEARING_RATE_LIMITS.travellerPostsPerWindow,
-    admin,
-  });
-  await consumeRateBucket({
-    bucketKey: `net:${input.networkKey}`,
-    windowSeconds: CLEARING_RATE_LIMITS.networkWindowSeconds,
-    maxHits: CLEARING_RATE_LIMITS.networkPostsPerWindow,
-    admin,
-  });
-
-  const cooldown = Math.max(
-    state.slowModeSeconds,
-    CLEARING_TRAVELLER_COOLDOWN_SECONDS,
-  );
-  await assertAuthorCooldown({
-    authorKey: `traveller:${travellerId}`,
-    cooldownSeconds: cooldown,
-    admin,
-  });
-
-  const row = await callPostRpc(admin, {
-    authorType: "traveller",
-    travellerId,
-    profileId: null,
-    displayName: traveller.display_name,
-    body,
-    clientRequestId,
-  });
-
-  const remaining = messagesRemainingForTraveller(
-    await countAcceptedTravellerMessages(travellerId, admin),
-  );
-
+  // Traveller / anonymous speech is retired — Outlaws only.
   logClearing({
-    event: "message_accepted",
-    ok: true,
-    authorType: "traveller",
-    reused: Boolean(row._reused),
-    messageId: row.id,
+    event: "registration_required",
+    ok: false,
+    detail: "outlaw_only",
   });
-
-  return {
-    message: toSafeClearingMessage(row),
-    reused: Boolean(row._reused),
-    messagesRemaining: remaining,
-  };
+  throw new ClearingError(
+    "clearing_registration_required",
+    "Only Outlaws may speak in the Clearing. Take a permanent name.",
+    403,
+    { registrationRequired: true, messagesRemaining: 0 },
+  );
 }

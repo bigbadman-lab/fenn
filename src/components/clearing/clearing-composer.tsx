@@ -13,7 +13,6 @@ import Link from "next/link";
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { CLEARING_MESSAGE_MAX_CHARS } from "@/lib/clearing/config";
 import type { SafeClearingMessage } from "@/lib/clearing/dto";
-import { remainingLabel } from "@/lib/clearing/feed-client";
 import {
   CLEARING_REGISTER_HREF,
   markClearingRegistrationOrigin,
@@ -23,28 +22,18 @@ export type ComposerIdentity =
   | { kind: "pending" }
   | { kind: "read_only" }
   | { kind: "claim_name" }
-  /** Guest before first mint — may focus/type; Traveller created on intent. */
-  | { kind: "guest" }
-  | {
-      kind: "traveller";
-      displayName: string;
-      messagesRemaining: number;
-      speaking: "ok" | "muted" | "banned";
-    }
+  /** Unauthenticated — may listen; speaking is for Outlaws only. */
+  | { kind: "outlaw_required" }
   | {
       kind: "outlaw";
       alias: string;
       speaking: "ok" | "muted" | "banned";
-    }
-  | { kind: "registration_threshold" };
+    };
 
 type Props = {
   identity: ComposerIdentity;
   slowModeUntil: number | null;
-  minting: boolean;
-  mintError: string | null;
-  onEnsureTraveller: () => Promise<boolean>;
-  onAccepted: (message: SafeClearingMessage, messagesRemaining?: number) => void;
+  onAccepted: (message: SafeClearingMessage) => void;
   onSpeakBlocked: (code: string, message: string) => void;
   onSlowMode: (retryAfterMs: number) => void;
 };
@@ -55,20 +44,17 @@ function newClientRequestId(): string {
   }
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    const v = (c === "x" ? r : (r & 0x3) | 0x8);
     return v.toString(16);
   });
 }
 
 /**
- * Message composer — plain text only. Identity never chosen by the browser.
+ * Message composer — plain text only. Outlaws may speak; others may listen.
  */
 export function ClearingComposer({
   identity,
   slowModeUntil,
-  minting,
-  mintError,
-  onEnsureTraveller,
   onAccepted,
   onSpeakBlocked,
   onSlowMode,
@@ -81,7 +67,6 @@ export function ClearingComposer({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const sendingRef = useRef(false);
   const pendingRequestId = useRef<string | null>(null);
-  const mintStartedFromFocus = useRef(false);
 
   useEffect(() => {
     if (!slowModeUntil) return;
@@ -95,119 +80,70 @@ export function ClearingComposer({
     ? Math.max(1, Math.ceil((slowModeUntil - nowMs) / 1000))
     : 0;
 
-  const canDraft =
-    identity.kind === "guest" ||
-    identity.kind === "traveller" ||
-    identity.kind === "outlaw";
+  const canDraft = identity.kind === "outlaw";
 
   const disabled =
     sending ||
-    minting ||
     slowActive ||
     identity.kind === "pending" ||
     identity.kind === "read_only" ||
     identity.kind === "claim_name" ||
-    identity.kind === "registration_threshold" ||
-    (identity.kind === "traveller" && identity.speaking !== "ok") ||
-    (identity.kind === "outlaw" && identity.speaking !== "ok") ||
-    (identity.kind === "traveller" && identity.messagesRemaining <= 0);
+    identity.kind === "outlaw_required" ||
+    (identity.kind === "outlaw" && identity.speaking !== "ok");
 
-  // Guests may type while mint is in flight after first focus.
-  const inputDisabled =
-    sending ||
-    slowActive ||
-    identity.kind === "pending" ||
-    identity.kind === "read_only" ||
-    identity.kind === "claim_name" ||
-    identity.kind === "registration_threshold" ||
-    (identity.kind === "traveller" && identity.speaking !== "ok") ||
-    (identity.kind === "outlaw" && identity.speaking !== "ok") ||
-    (identity.kind === "traveller" && identity.messagesRemaining <= 0);
+  const inputDisabled = disabled;
 
-  const showCharCount = draft.length >= Math.floor(CLEARING_MESSAGE_MAX_CHARS * 0.8);
-
-  const onComposerFocus = useCallback(() => {
-    if (identity.kind !== "guest") return;
-    if (mintStartedFromFocus.current || minting) return;
-    mintStartedFromFocus.current = true;
-    void onEnsureTraveller().then((ok) => {
-      if (!ok) mintStartedFromFocus.current = false;
-    });
-  }, [identity.kind, minting, onEnsureTraveller]);
+  const showCharCount = draft.length > CLEARING_MESSAGE_MAX_CHARS * 0.75;
 
   const submit = useCallback(async () => {
     if (sendingRef.current) return;
-    if (identity.kind === "pending" || identity.kind === "read_only") return;
-    if (identity.kind === "claim_name" || identity.kind === "registration_threshold")
-      return;
+    if (identity.kind !== "outlaw" || identity.speaking !== "ok") return;
     if (slowActive) return;
 
-    const body = draft;
-    if (!body.trim()) {
-      setError("Say something, or wait.");
-      return;
-    }
-    if (body.trim().length > CLEARING_MESSAGE_MAX_CHARS) {
-      setError(`At most ${CLEARING_MESSAGE_MAX_CHARS} characters.`);
-      return;
-    }
+    const text = draft.trim();
+    if (!text) return;
 
-    // Travellers (and guests before name arrives): mint/resume before post.
-    if (identity.kind === "guest" || identity.kind === "traveller") {
-      const ok = await onEnsureTraveller();
-      if (!ok) return;
-    }
-
-    if (identity.kind === "traveller" && identity.messagesRemaining <= 0) {
-      return;
-    }
-    if (
-      (identity.kind === "traveller" || identity.kind === "outlaw") &&
-      identity.speaking !== "ok"
-    ) {
+    if (!(authenticated && registered)) {
+      onSpeakBlocked(
+        "clearing_registration_required",
+        "Only Outlaws may speak in the Clearing.",
+      );
       return;
     }
 
     sendingRef.current = true;
     setSending(true);
     setError(null);
-    setStatusAnnounce("Your words are entering the wood.");
+    setStatusAnnounce("YOUR WORDS ARE ENTERING THE WOOD…");
 
-    const clientRequestId = pendingRequestId.current ?? newClientRequestId();
+    const clientRequestId =
+      pendingRequestId.current ?? newClientRequestId();
     pendingRequestId.current = clientRequestId;
 
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (authenticated && registered) {
-        const auth = await getAuthHeaders();
-        if (auth) Object.assign(headers, auth);
-      }
-
+      const authHeaders = (await getAuthHeaders()) ?? {};
       const res = await fetch("/api/clearing/messages", {
         method: "POST",
-        headers,
         credentials: "same-origin",
-        body: JSON.stringify({
-          body,
-          clientRequestId,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
+        body: JSON.stringify({ body: text, clientRequestId }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         message?: SafeClearingMessage;
-        messagesRemaining?: number;
-        reused?: boolean;
         error?: string;
         code?: string;
-        registrationRequired?: boolean;
+        retryAfterMs?: number;
       };
 
       if (!res.ok || !data.ok || !data.message) {
-        const code = data.code ?? "clearing_internal";
-        const msg = data.error ?? "could not be heard.";
         setStatusAnnounce("");
+        const code = data.code ?? "clearing_internal";
+        const msg =
+          data.error ?? "the road did not take those words. try again.";
         if (
           code === "clearing_muted" ||
           code === "clearing_banned" ||
@@ -215,19 +151,15 @@ export function ClearingComposer({
           code === "clearing_registration_required"
         ) {
           onSpeakBlocked(code, msg);
-          if (code === "clearing_registration_required") {
-            setStatusAnnounce(
-              "Your travelling name has carried you this far.",
-            );
-          }
           setError(msg);
-          if (code === "clearing_registration_required") {
-            pendingRequestId.current = null;
-          }
           return;
         }
-        if (code === "clearing_slow_mode" || code === "clearing_rate_limited") {
-          onSlowMode(Math.max(3, slowSecondsLeft || 5) * 1000);
+        if (code === "clearing_rate_limited" || code === "clearing_slow_mode") {
+          const retry =
+            typeof data.retryAfterMs === "number"
+              ? data.retryAfterMs
+              : Math.max(3, slowSecondsLeft || 5) * 1000;
+          onSlowMode(retry);
           setError(msg);
           return;
         }
@@ -238,7 +170,7 @@ export function ClearingComposer({
       pendingRequestId.current = null;
       setDraft("");
       setStatusAnnounce("Your words reached the Clearing.");
-      onAccepted(data.message, data.messagesRemaining);
+      onAccepted(data.message);
       if (!slowActive) {
         onSlowMode(3_000);
       }
@@ -255,7 +187,6 @@ export function ClearingComposer({
     getAuthHeaders,
     identity,
     onAccepted,
-    onEnsureTraveller,
     onSlowMode,
     onSpeakBlocked,
     registered,
@@ -314,18 +245,12 @@ export function ClearingComposer({
     );
   }
 
-  if (identity.kind === "registration_threshold") {
+  if (identity.kind === "outlaw_required") {
     return (
-      <section
-        className="clearing-composer"
-        aria-label="Speak"
-        aria-live="polite"
-      >
-        <p className="clearing-composer__law">
-          YOUR TRAVELLING NAME HAS CARRIED YOU THIS FAR.
-        </p>
+      <section className="clearing-composer" aria-label="Speak">
+        <p className="clearing-composer__law">ONLY OUTLAWS MAY SPEAK HERE.</p>
         <p className="muted">
-          Choose the name the Register will remember.
+          Anyone may listen. Take a permanent name if you would join the circle.
         </p>
         <p className="clearing-composer__actions">
           <Link
@@ -340,10 +265,7 @@ export function ClearingComposer({
     );
   }
 
-  if (
-    (identity.kind === "traveller" || identity.kind === "outlaw") &&
-    identity.speaking === "muted"
-  ) {
+  if (identity.kind === "outlaw" && identity.speaking === "muted") {
     return (
       <section className="clearing-composer" aria-label="Speak">
         <p className="clearing-composer__law">
@@ -353,10 +275,7 @@ export function ClearingComposer({
     );
   }
 
-  if (
-    (identity.kind === "traveller" || identity.kind === "outlaw") &&
-    identity.speaking === "banned"
-  ) {
+  if (identity.kind === "outlaw" && identity.speaking === "banned") {
     return (
       <section className="clearing-composer" aria-label="Speak">
         <p className="clearing-composer__law">
@@ -366,60 +285,16 @@ export function ClearingComposer({
     );
   }
 
-  if (identity.kind === "traveller" && identity.messagesRemaining <= 0) {
-    return (
-      <section className="clearing-composer" aria-label="Speak" aria-live="polite">
-        <p className="clearing-composer__law">
-          YOUR TRAVELLING NAME HAS CARRIED YOU THIS FAR.
-        </p>
-        <p className="clearing-composer__actions">
-          <Link
-            href={CLEARING_REGISTER_HREF}
-            className="btn-text"
-            onClick={() => markClearingRegistrationOrigin()}
-          >
-            [ BECOME AN OUTLAW ]
-          </Link>
-        </p>
-      </section>
-    );
-  }
-
   if (!canDraft) {
     return null;
   }
 
-  const identityLine =
-    identity.kind === "traveller"
-      ? `YOU ARE ${identity.displayName.toUpperCase()}`
-      : identity.kind === "outlaw"
-        ? `SPEAK AS ${identity.alias}`
-        : "SPEAK AS A TRAVELLER";
-
-  const allowance =
-    identity.kind === "traveller"
-      ? remainingLabel(identity.messagesRemaining)
-      : identity.kind === "guest"
-        ? "Three times from a travelling name."
-        : null;
-
-  const sendDisabled =
-    disabled ||
-    !draft.trim() ||
-    (identity.kind === "guest" && minting);
+  const sendDisabled = disabled || !draft.trim();
 
   return (
     <section className="clearing-composer" aria-label="Speak">
       <div className="clearing-composer__identity">
-        <p className="clearing-composer__who">{identityLine}</p>
-        {allowance ? (
-          <p className="muted clearing-composer__remain">{allowance}</p>
-        ) : null}
-        {identity.kind === "guest" && minting ? (
-          <p className="muted clearing-composer__minting" aria-live="polite">
-            Taking a temporary name…
-          </p>
-        ) : null}
+        <p className="clearing-composer__who">{`SPEAK AS ${identity.alias}`}</p>
       </div>
 
       {slowActive ? (
@@ -453,7 +328,6 @@ export function ClearingComposer({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
-          onFocus={onComposerFocus}
           rows={3}
           maxLength={CLEARING_MESSAGE_MAX_CHARS}
           disabled={inputDisabled}
@@ -478,11 +352,6 @@ export function ClearingComposer({
         </div>
       </form>
 
-      {mintError ? (
-        <p className="clearing-composer__error muted" role="status">
-          {mintError}
-        </p>
-      ) : null}
       {error ? (
         <p className="clearing-composer__error" role="alert">
           {error}

@@ -20,7 +20,6 @@ import { CLEARING_PUBLIC_POLL_MS } from "@/lib/clearing/config";
 import type {
   SafeClearingFeedItem,
   SafeClearingMessage,
-  SafeTravellerIdentity,
 } from "@/lib/clearing/dto";
 import {
   clearingStateEqual,
@@ -63,13 +62,7 @@ export function ClearingPage() {
     slowModeSeconds: 0,
   });
 
-  const [traveller, setTraveller] = useState<SafeTravellerIdentity | null>(
-    null,
-  );
   const [speaking, setSpeaking] = useState<Speaking>("ok");
-  const [minting, setMinting] = useState(false);
-  const [mintError, setMintError] = useState<string | null>(null);
-  const [exhausted, setExhausted] = useState(false);
   const [slowModeUntil, setSlowModeUntil] = useState<number | null>(null);
 
   const [unseenCount, setUnseenCount] = useState(0);
@@ -79,7 +72,6 @@ export function ClearingPage() {
   const fetchInFlight = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const initialScrollDone = useRef(false);
-  const mintPromiseRef = useRef<Promise<boolean> | null>(null);
   /** Watermark for incremental poll; ref so poll tick stays stable. */
   const newestWatermarkRef = useRef<string | null>(null);
   /** Skip scroll following for pure no-op merges. */
@@ -317,51 +309,6 @@ export function ClearingPage() {
     });
   }, [feedItems, feedLoading]);
 
-  /**
-   * Lazy mint/resume — only when visitor intends to speak (focus or SPEAK).
-   * Never on passive page load.
-   */
-  const mintTraveller = useCallback(async (): Promise<boolean> => {
-    if (traveller) return true;
-    if (mintPromiseRef.current) return mintPromiseRef.current;
-
-    const run = (async () => {
-      setMinting(true);
-      setMintError(null);
-      try {
-        const res = await fetch("/api/clearing/traveller", {
-          method: "POST",
-          credentials: "same-origin",
-        });
-        const data = (await res.json().catch(() => ({}))) as {
-          ok?: boolean;
-          traveller?: SafeTravellerIdentity;
-          speaking?: Speaking;
-          error?: string;
-        };
-        if (!res.ok || !data.ok || !data.traveller) {
-          setMintError(
-            data.error ??
-              "could not take a temporary name. you may still read.",
-          );
-          return false;
-        }
-        setTraveller(data.traveller);
-        setSpeaking(data.speaking ?? "ok");
-        if (data.traveller.messagesRemaining <= 0) setExhausted(true);
-        return true;
-      } catch {
-        setMintError("could not take a temporary name. you may still read.");
-        return false;
-      } finally {
-        setMinting(false);
-        mintPromiseRef.current = null;
-      }
-    })();
-    mintPromiseRef.current = run;
-    return run;
-  }, [traveller]);
-
   const loadOlder = useCallback(async () => {
     if (!olderCursor || loadingOlder) return;
     const el = feedScrollRef.current;
@@ -389,7 +336,7 @@ export function ClearingPage() {
   }, []);
 
   const onAccepted = useCallback(
-    (message: SafeClearingMessage, messagesRemaining?: number) => {
+    (message: SafeClearingMessage) => {
       // Defensive: never throw into the React tree after a successful post.
       if (
         !message ||
@@ -413,19 +360,6 @@ export function ClearingPage() {
         });
         return next;
       });
-
-      if (typeof messagesRemaining === "number") {
-        setTraveller((t) =>
-          t
-            ? { ...t, messagesRemaining }
-            : {
-                displayName: message.author.label,
-                messagesRemaining,
-                messagesLimit: 3,
-              },
-        );
-        if (messagesRemaining <= 0) setExhausted(true);
-      }
       // Poll catches concurrent voices; no post-success full refresh.
     },
     [rememberNewest],
@@ -436,12 +370,6 @@ export function ClearingPage() {
     if (code === "clearing_banned") setSpeaking("banned");
     if (code === "clearing_read_only") {
       setClearingState((s) => ({ ...s, readOnly: true }));
-    }
-    if (code === "clearing_registration_required") {
-      setExhausted(true);
-      setTraveller((t) =>
-        t ? { ...t, messagesRemaining: 0 } : t,
-      );
     }
   }, []);
 
@@ -460,28 +388,15 @@ export function ClearingPage() {
         `OUTLAW ${String(profile.outlawNumber).padStart(5, "0")}`;
       return { kind: "outlaw", alias, speaking };
     }
-    // Guests: composer usable before mint — create Traveller only on intent.
-    if (exhausted || (traveller && traveller.messagesRemaining <= 0)) {
-      return { kind: "registration_threshold" };
-    }
-    if (!traveller) {
-      return { kind: "guest" };
-    }
-    return {
-      kind: "traveller",
-      displayName: traveller.displayName,
-      messagesRemaining: traveller.messagesRemaining,
-      speaking,
-    };
+    // Listening is public; speaking is Outlaw-only.
+    return { kind: "outlaw_required" };
   }, [
     authenticated,
     clearingState.readOnly,
-    exhausted,
     identityPending,
     profile,
     registered,
     speaking,
-    traveller,
   ]);
 
   return (
@@ -494,12 +409,13 @@ export function ClearingPage() {
           subtitle={
             <>
               <p className="clearing__lede">The trees thin here.</p>
-              <p className="clearing__lede">Anyone may listen.</p>
-              <p className="clearing__lede">
-                Travellers may speak three times.
-                <br />
-                Outlaws may remain.
+              <p className="clearing__telegram-note">
+                This is our version of a group chat in the wood — one open circle
+                where Outlaws speak in the open, plain as a Telegram thread, but
+                under the law of the Camp.
               </p>
+              <p className="clearing__lede">Anyone may listen.</p>
+              <p className="clearing__lede">Only Outlaws may speak.</p>
               <p className="muted clearing__leaf-note">
                 Nothing spoken here earns LEAF automatically.
               </p>
@@ -591,26 +507,10 @@ export function ClearingPage() {
         <ClearingComposer
           identity={composerIdentity}
           slowModeUntil={slowModeUntil}
-          minting={minting}
-          mintError={mintError}
-          onEnsureTraveller={mintTraveller}
           onAccepted={onAccepted}
           onSpeakBlocked={onSpeakBlocked}
           onSlowMode={onSlowMode}
         />
-
-        {mintError && !traveller && !identityPending && !authenticated ? (
-          <p className="clearing-composer__error muted" role="status">
-            {mintError}{" "}
-            <button
-              type="button"
-              className="btn-text"
-              onClick={() => void mintTraveller()}
-            >
-              [ TRY AGAIN ]
-            </button>
-          </p>
-        ) : null}
       </div>
     </div>
   );

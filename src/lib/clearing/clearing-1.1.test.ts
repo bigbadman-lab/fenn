@@ -36,24 +36,16 @@ function msg(id: string, at: string): SafeClearingMessage {
   };
 }
 
-describe("Clearing 1.1 lazy Traveller minting", () => {
-  it("does not mint Traveller on automatic page load", () => {
+describe("Clearing 1.1 outlaw-only speaking", () => {
+  it("does not mint Travellers and requires Outlaw identity to speak", () => {
     const page = read("src/components/clearing/clearing-page.tsx");
-    // No mount effect that mints guests after identity
-    assert.doesNotMatch(
-      page,
-      /useEffect\(\(\) => \{\s*if \(identityPending\) return;\s*if \(authenticated\) return;\s*void mintTraveller/,
-    );
-    assert.match(page, /Lazy mint/);
-    assert.match(page, /kind: "guest"/);
-  });
+    assert.doesNotMatch(page, /mintTraveller|\/api\/clearing\/traveller/);
+    assert.match(page, /kind: "outlaw_required"/);
+    assert.match(page, /Only Outlaws may speak/);
 
-  it("composer mints on focus or SPEAK intent", () => {
     const composer = read("src/components/clearing/clearing-composer.tsx");
-    assert.match(composer, /kind: "guest"/);
-    assert.match(composer, /onFocus=\{onComposerFocus\}/);
-    assert.match(composer, /onEnsureTraveller/);
-    assert.match(composer, /identity\.kind === "guest"/);
+    assert.doesNotMatch(composer, /onEnsureTraveller|kind: "guest"/);
+    assert.match(composer, /ONLY OUTLAWS MAY SPEAK|outlaw_required/);
   });
 });
 

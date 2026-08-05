@@ -6653,6 +6653,15 @@ input[type="file"].deed-proof-field__control {
   max-width: 26rem;
 }
 
+.clearing__telegram-note {
+  margin: 0.55rem 0 0.75rem;
+  max-width: 28rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--muted, inherit);
+  opacity: 0.92;
+}
+
 .clearing__leaf-note {
   margin: 0.85rem 0 0;
   max-width: 28rem;

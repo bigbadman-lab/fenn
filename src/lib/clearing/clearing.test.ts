@@ -234,12 +234,13 @@ describe("Clearing network key hash", () => {
 });
 
 describe("Clearing post domain rules (source)", () => {
-  it("rejects authenticated-unregistered and enforces three-cap / no LEAF", () => {
+  it("rejects unregistered speakers and enforces outlaw-only / no LEAF", () => {
     const post = read("src/lib/clearing/post.ts");
     assert.match(post, /registration_required/);
     assert.match(post, /registered === false/);
-    assert.match(post, /CLEARING_TRAVELLER_MESSAGE_LIMIT/);
+    assert.match(post, /outlaw_only|Only Outlaws may speak/);
     assert.match(post, /post_clearing_message/);
+    assert.doesNotMatch(post, /assertTravellerCanSpeak|countAcceptedTravellerMessages/);
     assert.doesNotMatch(post, /leaf|reward|camp_message|applyCamp/i);
 
     const route = read("src/app/api/clearing/messages/route.ts");
@@ -353,7 +354,9 @@ describe("Clearing security validation", () => {
   it("post maps read-only, mute, ban, slow mode", () => {
     const post = read("src/lib/clearing/post.ts");
     assert.match(post, /clearing_read_only/);
-    assert.match(post, /assertTravellerCanSpeak|assertOutlawCanSpeak/);
+    assert.match(post, /assertOutlawCanSpeak/);
+    assert.match(post, /outlaw_only|Only Outlaws may speak/);
+    assert.doesNotMatch(post, /assertTravellerCanSpeak/);
     assert.match(post, /assertAuthorCooldown/);
     assert.match(post, /slowModeSeconds|slow_mode/);
   });

@@ -117,8 +117,10 @@ export function CampGround() {
           THE CLEARING
         </h2>
         <div className="camp__how-body">
-          <p>Where Travellers pass</p>
-          <p>and Outlaws gather.</p>
+          <p>Where Outlaws gather in the open.</p>
+          <p className="muted">
+            Anyone may listen. Only Outlaws may speak.
+          </p>
           <p className="muted">
             No LEAF is awarded automatically here.
           </p>

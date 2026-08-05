@@ -102,13 +102,14 @@ describe("Clearing 1.0D rate limit atomicity", () => {
 });
 
 describe("Clearing 1.0D three-cap & idempotency", () => {
-  it("post resolves client_request_id before rate limit", () => {
+  it("post accepts Outlaws only; traveller speak path is retired", () => {
     const post = read("src/lib/clearing/post.ts");
     const body = post.slice(post.indexOf("export async function postClearingMessage"));
     assert.ok(
       body.indexOf("findExistingByClientRequest") < body.indexOf("consumeRateBucket"),
     );
-    assert.match(post, /countAcceptedTravellerMessages/);
+    assert.match(post, /outlaw_only|Only Outlaws may speak/);
+    assert.doesNotMatch(post, /countAcceptedTravellerMessages/);
     assert.equal(CLEARING_TRAVELLER_MESSAGE_LIMIT, 3);
   });
 

@@ -12,7 +12,6 @@ import {
   isClearingMessageItem,
   mergeConversationMessages,
   newestFirstToConversation,
-  remainingLabel,
 } from "@/lib/clearing/feed-client";
 import {
   CLEARING_PATH,
@@ -57,8 +56,10 @@ describe("Clearing 1.0B route and orientation", () => {
     const ui = read("src/components/clearing/clearing-page.tsx");
     assert.match(ui, /The trees thin here/);
     assert.match(ui, /Anyone may listen/);
-    assert.match(ui, /Travellers may speak three times/);
+    assert.match(ui, /Only Outlaws may speak/);
+    assert.match(ui, /group chat in the wood|Telegram/);
     assert.match(ui, /Nothing spoken here earns LEAF automatically/);
+    assert.doesNotMatch(ui, /Travellers may speak three times/);
     assert.doesNotMatch(ui, /earn LEAF|awarded LEAF|LEAF for speaking/i);
   });
 
@@ -66,6 +67,7 @@ describe("Clearing 1.0B route and orientation", () => {
     const camp = read("src/components/camp/camp-ground.tsx");
     assert.match(camp, /href="\/camp\/clearing"/);
     assert.match(camp, /GO TO THE CLEARING/);
+    assert.match(camp, /Only Outlaws may speak/);
     assert.match(camp, /No LEAF is awarded automatically here/);
     assert.match(camp, /FENN, WREN, ROOK/);
   });
@@ -134,11 +136,12 @@ describe("Clearing relative time", () => {
   });
 });
 
-describe("Clearing traveller allowance copy", () => {
-  it("pluralises remaining", () => {
-    assert.equal(remainingLabel(3), "3 messages remain.");
-    assert.equal(remainingLabel(1), "1 message remains.");
-    assert.equal(remainingLabel(0), "0 messages remain.");
+describe("Clearing outlaw-only speak gate", () => {
+  it("composer does not offer traveller mint or guest draft", () => {
+    const composer = read("src/components/clearing/clearing-composer.tsx");
+    assert.match(composer, /outlaw_required|ONLY OUTLAWS MAY SPEAK/);
+    assert.doesNotMatch(composer, /onEnsureTraveller|kind: "guest"|kind: "traveller"/);
+    assert.match(composer, /BECOME AN OUTLAW|CLAIM A NAME/);
   });
 });
 
@@ -159,7 +162,7 @@ describe("Clearing composer and feed UI sources", () => {
     assert.match(composer, /\/api\/clearing\/messages/);
     assert.doesNotMatch(composer, /author_type|profileId|displayName:\s*input/);
     assert.match(composer, /BECOME AN OUTLAW|CLAIM A NAME/);
-    assert.match(composer, /clearing_registration_required|registration_threshold/);
+    assert.match(composer, /clearing_registration_required|outlaw_required/);
   });
 
   it("polls with visibility awareness and no full-feed aria-live", () => {
