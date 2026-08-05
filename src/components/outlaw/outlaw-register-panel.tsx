@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useRef, useState, type ReactNode } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import {
+  isClearingRegisterOrigin,
+  markClearingRegistrationOrigin,
+} from "@/lib/clearing/origin";
 import {
   CONTRIBUTION_TYPES,
   GREENWOOD_TERMS_VERSION,
@@ -32,18 +36,35 @@ function formatJoinedDate(iso: string): string {
 }
 
 function InviteLedNotice() {
-  const searchParams = useSearchParams();
-  const led = searchParams.get("led") === "1";
-  if (!led) return null;
+  const [state, setState] = useState<{
+    led: boolean;
+    safeFrom: string | null;
+  }>({ led: false, safeFrom: null });
 
-  const from = searchParams.get("from")?.trim() ?? "";
-  const safeFrom =
-    from.length > 0 && /^OUTLAW\s+\d{1,8}$/i.test(from) ? from.toUpperCase() : null;
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const led = params.get("led") === "1";
+      const from = params.get("from")?.trim() ?? "";
+      // Invite-only: OUTLAW N. Do not treat from=clearing as invite copy.
+      const safeFrom =
+        from.length > 0 && /^OUTLAW\s+\d{1,8}$/i.test(from)
+          ? from.toUpperCase()
+          : null;
+      setState({ led, safeFrom });
+    } catch {
+      setState({ led: false, safeFrom: null });
+    }
+  }, []);
+
+  if (!state.led) return null;
 
   return (
     <div className="invite-landing" aria-label="Invite arrival">
       <p className="invite-landing__kicker">
-        {safeFrom ? `${safeFrom} LED YOU TO THE ROAD` : "AN OUTLAW LED YOU HERE"}
+        {state.safeFrom
+          ? `${state.safeFrom} LED YOU TO THE ROAD`
+          : "AN OUTLAW LED YOU HERE"}
       </p>
       <p>The road is still yours to walk.</p>
       <p className="muted">
@@ -87,6 +108,18 @@ export function OutlawRegisterPanel({
   const [formError, setFormError] = useState<string | null>(null);
   /** One authoritative navigation path after a successful write. */
   const navigatedRef = useRef(false);
+
+  // Safe, non-useSearchParams origin mark (embedded homepage must not bail CSR).
+  useEffect(() => {
+    try {
+      const from = new URLSearchParams(window.location.search).get("from");
+      if (isClearingRegisterOrigin(from)) {
+        markClearingRegistrationOrigin();
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const selectedWallet =
     wallets.length === 1

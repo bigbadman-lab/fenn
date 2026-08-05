@@ -1,0 +1,138 @@
+import {
+  CLEARING_FEED_DEFAULT_LIMIT,
+  CLEARING_FEED_MAX_LIMIT,
+  CLEARING_MESSAGE_MAX_CHARS,
+} from "@/lib/clearing/config";
+import { ClearingError } from "@/lib/clearing/errors";
+import { isClearingUuid } from "@/lib/clearing/cookie";
+
+/**
+ * Safe public message DTO — no profile ids, cookies, or moderation private fields.
+ */
+export type SafeClearingMessage = {
+  kind: "message";
+  id: string;
+  occurredAt: string;
+  author: {
+    type: "traveller" | "outlaw" | "keeper";
+    label: string;
+  };
+  body: string;
+};
+
+export type SafeClearingFeedPage = {
+  items: SafeClearingMessage[];
+  nextCursor: string | null;
+  /** Public global mode — safe for UI lock/composer. */
+  state?: {
+    readOnly: boolean;
+    slowModeSeconds: number;
+  };
+};
+
+export type SafeTravellerIdentity = {
+  displayName: string;
+  messagesRemaining: number;
+  /** Always three for allowance display; remaining is authoritative. */
+  messagesLimit: number;
+};
+
+export function toSafeClearingMessage(row: {
+  id: string;
+  author_type: string;
+  author_display_name_snapshot: string;
+  body: string;
+  created_at: string;
+}): SafeClearingMessage {
+  const type =
+    row.author_type === "traveller" ||
+    row.author_type === "outlaw" ||
+    row.author_type === "keeper"
+      ? row.author_type
+      : "traveller";
+  return {
+    kind: "message",
+    id: row.id,
+    occurredAt: row.created_at,
+    author: {
+      type,
+      label: row.author_display_name_snapshot,
+    },
+    body: row.body,
+  };
+}
+
+/**
+ * Authoritative body validation — plain text, no HTML interpretation.
+ * Strips NUL; rejects scripts only by not allowing markup (stored as plain text).
+ */
+export function validateClearingMessageBody(raw: unknown): string {
+  if (typeof raw !== "string") {
+    throw new ClearingError(
+      "clearing_invalid_body",
+      "Message must be a string",
+      400,
+    );
+  }
+  // Strip null bytes & normalize newlines
+  let text = raw.replace(/\u0000/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  text = text.trim();
+  if (!text) {
+    throw new ClearingError(
+      "clearing_invalid_body",
+      "Message cannot be empty",
+      400,
+    );
+  }
+  if (text.length > CLEARING_MESSAGE_MAX_CHARS) {
+    throw new ClearingError(
+      "clearing_invalid_body",
+      `Message exceeds ${CLEARING_MESSAGE_MAX_CHARS} characters`,
+      400,
+    );
+  }
+  return text;
+}
+
+export function requireClientRequestId(raw: unknown): string {
+  if (typeof raw !== "string" || !isClearingUuid(raw.trim())) {
+    throw new ClearingError(
+      "clearing_invalid_request",
+      "client_request_id must be a UUID",
+      400,
+    );
+  }
+  return raw.trim().toLowerCase();
+}
+
+export function clampFeedLimit(raw: unknown): number {
+  if (raw == null || raw === "") return CLEARING_FEED_DEFAULT_LIMIT;
+  const n = typeof raw === "number" ? raw : Number.parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n < 1) return CLEARING_FEED_DEFAULT_LIMIT;
+  return Math.min(Math.floor(n), CLEARING_FEED_MAX_LIMIT);
+}
+
+/**
+ * Cursor: `${created_at_iso}|${id}` for reverse chrono.
+ */
+export function encodeFeedCursor(createdAt: string, id: string): string {
+  return Buffer.from(`${createdAt}|${id}`, "utf8").toString("base64url");
+}
+
+export function decodeFeedCursor(
+  raw: string | null | undefined,
+): { createdAt: string; id: string } | null {
+  if (!raw || typeof raw !== "string") return null;
+  try {
+    const decoded = Buffer.from(raw, "base64url").toString("utf8");
+    const pipe = decoded.indexOf("|");
+    if (pipe <= 0) return null;
+    const createdAt = decoded.slice(0, pipe);
+    const id = decoded.slice(pipe + 1);
+    if (!createdAt || !isClearingUuid(id)) return null;
+    if (Number.isNaN(Date.parse(createdAt))) return null;
+    return { createdAt, id };
+  } catch {
+    return null;
+  }
+}

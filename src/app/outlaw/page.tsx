@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { OutlawFirstThirty } from "@/components/outlaw/outlaw-first-thirty";
 import { OutlawInvite } from "@/components/outlaw/outlaw-invite";
 import { OutlawWallet } from "@/components/outlaw/outlaw-wallet";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import {
+  CLEARING_PATH,
+  peekClearingRegistrationOrigin,
+} from "@/lib/clearing/origin";
 import { formatOutlawNumber } from "@/lib/profiles/types";
-import type { ReactNode } from "react";
 
 function formatJoinedDate(iso: string): string {
   const date = new Date(iso);
@@ -44,6 +48,11 @@ export default function OutlawPage() {
     error,
     login,
   } = useFennAuth();
+
+  const [fromClearing, setFromClearing] = useState(false);
+  useEffect(() => {
+    setFromClearing(peekClearingRegistrationOrigin());
+  }, []);
 
   // Single intentional full-content gate while bootstrap resolves.
   // No fake Outlaw number / LEAF zeros.
@@ -136,6 +145,17 @@ export default function OutlawPage() {
           </p>
         }
       />
+
+      {fromClearing ? (
+        <div className="place__body outlaw-page__clearing-return">
+          <p>YOUR NAME IS WRITTEN.</p>
+          <p>
+            <Link href={CLEARING_PATH} className="btn-text">
+              [ RETURN TO THE CLEARING ]
+            </Link>
+          </p>
+        </div>
+      ) : null}
 
       <div className="place__body profile-block outlaw-page__identity">
         <p>

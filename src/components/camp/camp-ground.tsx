@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { CampCharacterCard } from "@/components/camp/camp-character-card";
 import {
@@ -108,6 +109,28 @@ export function CampGround() {
         </ul>
         <p className="camp__how-aside muted">
           conversations will persist when the wood is ready to remember them.
+        </p>
+      </section>
+
+      <section className="camp__clearing" aria-labelledby="camp-clearing-title">
+        <h2 id="camp-clearing-title" className="camp__how-title">
+          THE CLEARING
+        </h2>
+        <div className="camp__how-body">
+          <p>Where Travellers pass</p>
+          <p>and Outlaws gather.</p>
+          <p className="muted">
+            No LEAF is awarded automatically here.
+          </p>
+          <p className="muted">
+            The voices below — FENN, WREN, ROOK — remain one-to-one Camp
+            conversations; those still follow their own LEAF law.
+          </p>
+        </div>
+        <p className="camp__clearing-action">
+          <Link href="/camp/clearing" className="btn-text">
+            [ GO TO THE CLEARING ]
+          </Link>
         </p>
       </section>
 
