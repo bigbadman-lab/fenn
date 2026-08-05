@@ -4102,6 +4102,21 @@ button.wall-mark__action:focus-visible {
   letter-spacing: 0.03em;
 }
 
+.greenwood-gate__law-heading {
+  margin: 0 0 0.4rem;
+  letter-spacing: 0.08em;
+  font-size: 0.88rem;
+  color: color-mix(in srgb, var(--color-greenwood) 40%, var(--color-bone));
+}
+
+.greenwood-gate__continuations {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 1.35rem 0 0;
+}
+
 /* Fire hub accents — desaturated, heading-only */
 .greenwood-fire {
   --gw-accent-hero: color-mix(in srgb, #a86b3c 58%, var(--color-bone));

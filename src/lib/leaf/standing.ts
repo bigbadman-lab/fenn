@@ -57,6 +57,17 @@ async function readConfiguredGreenwoodThreshold(): Promise<number | null> {
 }
 
 /**
+ * Public-safe configured lifetime LEAF required for Greenwood admission.
+ * Does not invent a default — null when missing or invalid.
+ * Trusted server paths only (service role).
+ */
+export async function getConfiguredGreenwoodLifetimeThreshold(): Promise<
+  number | null
+> {
+  return readConfiguredGreenwoodThreshold();
+}
+
+/**
  * Standing foundation from lifetime LEAF only.
  * Does not invent rank names or default Greenwood thresholds.
  */

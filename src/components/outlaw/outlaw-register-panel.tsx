@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState, type ReactNode } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
@@ -10,6 +10,7 @@ import {
   CONTRIBUTION_TYPES,
   GREENWOOD_TERMS_VERSION,
 } from "@/lib/profiles/constants";
+import { OUTLAW_REGISTRATION_ARRIVAL_PATH } from "@/lib/profiles/registration-arrival";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 import { abbreviateEvmAddress } from "@/lib/wallet/evm";
 
@@ -55,6 +56,7 @@ type OutlawRegisterPanelProps = {
 export function OutlawRegisterPanel({
   embedded = false,
 }: OutlawRegisterPanelProps) {
+  const router = useRouter();
   const {
     privyReady,
     loading,
@@ -78,7 +80,8 @@ export function OutlawRegisterPanel({
   const [manualWallet, setManualWallet] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [successNumber, setSuccessNumber] = useState<number | null>(null);
+  /** Successful registration is navigating to /outlaw — hold form chrome. */
+  const [arriving, setArriving] = useState(false);
 
   const selectedWallet =
     wallets.length === 1
@@ -93,6 +96,10 @@ export function OutlawRegisterPanel({
     event.preventDefault();
     setFormError(null);
 
+    if (submitting || arriving) {
+      return;
+    }
+
     if (!vowAccepted) {
       setFormError("the vow must be accepted.");
       return;
@@ -104,6 +111,7 @@ export function OutlawRegisterPanel({
     }
 
     setSubmitting(true);
+    let didSucceed = false;
     try {
       const headers = await getAuthHeaders();
       if (!headers) {
@@ -138,12 +146,21 @@ export function OutlawRegisterPanel({
         return;
       }
 
-      setSuccessNumber(data.profile?.outlawNumber ?? null);
+      // Created (201) or idempotent re-register (200): profile exists.
+      // Invite side effects complete server-side before this response.
+      didSucceed = true;
+      setArriving(true);
       await refreshMe();
+      router.replace(OUTLAW_REGISTRATION_ARRIVAL_PATH);
     } catch {
       setFormError("registration failed.");
+      setArriving(false);
+      didSucceed = false;
     } finally {
-      setSubmitting(false);
+      // Keep submit locked while replace runs; unmount drops this UI.
+      if (!didSucceed) {
+        setSubmitting(false);
+      }
     }
   }
 
@@ -162,6 +179,14 @@ export function OutlawRegisterPanel({
         ) : null}
         <div className="place__body">{body}</div>
       </article>
+    );
+  }
+
+  if (arriving) {
+    return wrap(
+      <p className="muted" aria-live="polite">
+        the road opens...
+      </p>,
     );
   }
 
@@ -245,18 +270,6 @@ export function OutlawRegisterPanel({
           <Link href="/outlaw">[ the outlaw ]</Link>
         </p>
       </div>,
-    );
-  }
-
-  if (successNumber !== null) {
-    return wrap(
-      <>
-        <p>accepted.</p>
-        <p>outlaw {formatOutlawNumber(successNumber)}</p>
-        <p>
-          <Link href="/outlaw">[ continue ]</Link>
-        </p>
-      </>,
     );
   }
 

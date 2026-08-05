@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { GreenwoodGateway } from "@/components/greenwood/greenwood-gateway";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import { getConfiguredGreenwoodLifetimeThreshold } from "@/lib/leaf/standing";
 import { buildPublicMetadata } from "@/lib/site/metadata";
 
 export const metadata: Metadata = buildPublicMetadata({
@@ -10,6 +11,9 @@ export const metadata: Metadata = buildPublicMetadata({
   description: "The path is free to see. Entry is earned.",
   path: "/greenwood",
 });
+
+/** Threshold law is configuration — never invent a number at build time. */
+export const dynamic = "force-dynamic";
 
 function GreenwoodFallback() {
   return (
@@ -24,10 +28,17 @@ function GreenwoodFallback() {
   );
 }
 
-export default function GreenwoodPage() {
+export default async function GreenwoodPage() {
+  let configuredThreshold: number | null = null;
+  try {
+    configuredThreshold = await getConfiguredGreenwoodLifetimeThreshold();
+  } catch {
+    configuredThreshold = null;
+  }
+
   return (
     <Suspense fallback={<GreenwoodFallback />}>
-      <GreenwoodGateway />
+      <GreenwoodGateway configuredThreshold={configuredThreshold} />
     </Suspense>
   );
 }

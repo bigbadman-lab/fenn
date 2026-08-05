@@ -7,12 +7,13 @@ import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { GreenwoodArrivalCeremony } from "@/components/greenwood/greenwood-arrival-ceremony";
 import { GreenwoodCrossing } from "@/components/greenwood/greenwood-crossing";
 import {
-  GreenwoodGate,
   GreenwoodGateEligible,
   GreenwoodGateEnterError,
   GreenwoodGateIneligible,
   GreenwoodGateListening,
   GreenwoodGateStatusError,
+  GreenwoodGateStranger,
+  GreenwoodGateUnnamed,
 } from "@/components/greenwood/greenwood-gate";
 import { GreenwoodMember } from "@/components/greenwood/greenwood-member";
 import {
@@ -284,7 +285,7 @@ function RegisteredGreenwoodGate({
           standing={registeredGate.standing}
           enterDisabled={registeredGate.view === "entering" || admitPending}
           entering={registeredGate.view === "entering" || admitPending}
-          onEnter={() => {
+          onCross={() => {
             void handleAdmit();
           }}
         />
@@ -330,14 +331,20 @@ function RegisteredGreenwoodGate({
 
 type GreenwoodGatewaySessionProps = {
   startCrossing: boolean;
+  /** Configured lifetime LEAF law for this threshold (null when not set). */
+  configuredThreshold: number | null;
 };
 
 /**
  * Greenwood gateway: optional road crossing → gate → admission →
  * one-time arrival ceremony → member interior.
+ *
+ * Reference Book of the Road threshold: strangers and unnamed visitors
+ * see law + continuation without calling membership APIs.
  */
 function GreenwoodGatewaySession({
   startCrossing,
+  configuredThreshold,
 }: GreenwoodGatewaySessionProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
@@ -349,7 +356,6 @@ function GreenwoodGatewaySession({
     loading,
     walletResolving,
     profileResolved,
-    login,
     getAuthHeaders,
   } = useFennAuth();
 
@@ -363,29 +369,6 @@ function GreenwoodGatewaySession({
       router.replace("/greenwood", { scroll: false });
     }
   }, [router, startCrossing]);
-
-  const handlePublicEnter = useCallback(() => {
-    if (!privyReady || loading || walletResolving) {
-      return;
-    }
-
-    const branch = resolveAuthGateBranch({ authenticated, registered });
-    if (branch === "login") {
-      login();
-      return;
-    }
-    if (branch === "register") {
-      router.push("/#outlaw-register");
-    }
-  }, [
-    authenticated,
-    loading,
-    login,
-    privyReady,
-    registered,
-    router,
-    walletResolving,
-  ]);
 
   if (phase === "crossing") {
     return (
@@ -412,23 +395,25 @@ function GreenwoodGatewaySession({
     );
   }
 
-  const enterPending =
-    authenticated && (loading || walletResolving || !privyReady);
-  const publicDisabled =
-    !privyReady ||
-    enterPending ||
-    (authenticated && registered && authSettling);
+  // Auth still settling for a registered Outlaw — hold gate state stable.
+  if (authenticated && registered && authSettling) {
+    return <GreenwoodGateListening />;
+  }
 
-  return (
-    <GreenwoodGate
-      enterDisabled={publicDisabled}
-      enterPending={enterPending || (branch === "status" && authSettling)}
-      onEnter={handlePublicEnter}
-    />
-  );
+  if (branch === "register" || (authenticated && !registered && !authSettling)) {
+    return <GreenwoodGateUnnamed threshold={configuredThreshold} />;
+  }
+
+  if (authSettling && authenticated) {
+    return <GreenwoodGateListening />;
+  }
+
+  return <GreenwoodGateStranger threshold={configuredThreshold} />;
 }
 
-export function GreenwoodGateway() {
+export function GreenwoodGateway(props: {
+  configuredThreshold: number | null;
+}) {
   const searchParams = useSearchParams();
   const startCrossing = searchParams.get("crossing") === "1";
 
@@ -437,6 +422,7 @@ export function GreenwoodGateway() {
     <GreenwoodGatewaySession
       key={startCrossing ? "crossing" : "direct"}
       startCrossing={startCrossing}
+      configuredThreshold={props.configuredThreshold}
     />
   );
 }
