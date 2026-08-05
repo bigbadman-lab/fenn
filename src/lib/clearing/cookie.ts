@@ -1,12 +1,17 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 import {
+  CLEARING_COOKIE_SECRET_MIN_DEV,
+  CLEARING_COOKIE_SECRET_MIN_PROD,
   CLEARING_TRAVELLER_COOKIE_MAX_AGE_SECONDS,
   CLEARING_TRAVELLER_COOKIE_NAME,
 } from "@/lib/clearing/config";
 import { ClearingError } from "@/lib/clearing/errors";
 
-export { CLEARING_TRAVELLER_COOKIE_NAME, CLEARING_TRAVELLER_COOKIE_MAX_AGE_SECONDS };
+export {
+  CLEARING_TRAVELLER_COOKIE_NAME,
+  CLEARING_TRAVELLER_COOKIE_MAX_AGE_SECONDS,
+};
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -15,22 +20,64 @@ export function isClearingUuid(value: string): boolean {
   return UUID_RE.test(value.trim());
 }
 
+function isProductionEnv(env: NodeJS.ProcessEnv): boolean {
+  if (env.NODE_ENV === "production") return true;
+  if (env.VERCEL_ENV === "production") return true;
+  return false;
+}
+
 /**
- * Resolve HMAC secret. Prefer dedicated secret; fall back to service role for
- * single-box deploys. Never empty.
+ * Resolve HMAC secret for Traveller cookies.
+ *
+ * Production: requires dedicated FENN_CLEARING_COOKIE_SECRET (min 32 chars).
+ * Never falls back to SUPABASE_SERVICE_ROLE_KEY in production.
+ *
+ * Development/test: dedicated secret preferred; may fall back to service role
+ * for single-box deploys. Never empty. Never log the value.
  */
 export function resolveClearingCookieSecret(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  const dedicated = env.FENN_CLEARING_COOKIE_SECRET?.trim();
-  if (dedicated && dedicated.length >= 16) return dedicated;
-  const fallback = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (fallback && fallback.length >= 16) return fallback;
+  const dedicated = env.FENN_CLEARING_COOKIE_SECRET?.trim() ?? "";
+  const production = isProductionEnv(env);
+
+  if (production) {
+    if (dedicated.length < CLEARING_COOKIE_SECRET_MIN_PROD) {
+      throw new ClearingError(
+        "clearing_config",
+        "FENN_CLEARING_COOKIE_SECRET is required in production (min 32 characters)",
+        500,
+      );
+    }
+    return dedicated;
+  }
+
+  if (dedicated.length >= CLEARING_COOKIE_SECRET_MIN_DEV) {
+    return dedicated;
+  }
+
+  const fallback = env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
+  if (fallback.length >= CLEARING_COOKIE_SECRET_MIN_DEV) {
+    return fallback;
+  }
+
   throw new ClearingError(
-    "clearing_internal",
+    "clearing_config",
     "Clearing cookie secret is not configured",
     500,
   );
+}
+
+/** Whether dedicated production secret appears configured (no value returned). */
+export function isClearingCookieSecretConfigured(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  try {
+    resolveClearingCookieSecret(env);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 type Payload = {
@@ -97,6 +144,7 @@ export function openTravellerCookie(
 ): string | null {
   if (!raw || typeof raw !== "string") return null;
   const trimmed = raw.trim();
+  if (trimmed.length > 800) return null;
   const dot = trimmed.lastIndexOf(".");
   if (dot <= 0) return null;
   const body = trimmed.slice(0, dot);
@@ -133,7 +181,6 @@ export function openTravellerCookie(
 }
 
 export function generateTravellerId(): string {
-  // RFC4122-ish from random bytes (uuid v4)
   const b = randomBytes(16);
   b[6] = (b[6]! & 0x0f) | 0x40;
   b[8] = (b[8]! & 0x3f) | 0x80;

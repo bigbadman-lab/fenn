@@ -11,7 +11,10 @@ export type ClearingErrorCode =
   | "clearing_not_found"
   | "clearing_conflict"
   | "clearing_internal"
-  | "clearing_cookie_invalid";
+  | "clearing_cookie_invalid"
+  | "clearing_config"
+  | "clearing_payload_too_large";
+
 
 export class ClearingError extends Error {
   code: ClearingErrorCode;

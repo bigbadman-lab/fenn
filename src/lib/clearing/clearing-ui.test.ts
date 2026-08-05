@@ -157,7 +157,7 @@ describe("Clearing composer and feed UI sources", () => {
   it("polls with visibility awareness and no full-feed aria-live", () => {
     const page = read("src/components/clearing/clearing-page.tsx");
     assert.match(page, /visibilitychange|visibilityState/);
-    assert.match(page, /POLL_MS|4000/);
+    assert.match(page, /POLL_MS|CLEARING_PUBLIC_POLL_MS|5000/);
     assert.match(page, /NEW IN THE CLEARING/);
     assert.match(page, /LOAD OLDER/);
     assert.match(page, /role="log"/);

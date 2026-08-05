@@ -11,6 +11,7 @@ import {
 
 import { useDeskGate } from "@/components/desk/desk-gate";
 import type {
+  ClearingDeskHealth,
   ClearingDeskMessage,
   ClearingDeskMessageFilter,
   ClearingDeskSnapshot,
@@ -20,8 +21,9 @@ import {
   CLEARING_MUTE_PRESETS_SECONDS,
   CLEARING_SLOW_MODE_PRESETS,
 } from "@/lib/clearing/desk-types";
+import { CLEARING_DESK_POLL_MS } from "@/lib/clearing/config";
 
-const POLL_MS = 15_000;
+const POLL_MS = CLEARING_DESK_POLL_MS;
 
 function formatWhen(iso: string): string {
   const d = new Date(iso);
@@ -43,8 +45,10 @@ function actionLabel(action: string): string {
 export function DeskClearingPanel() {
   const { getAuthHeaders } = useDeskGate();
   const [snapshot, setSnapshot] = useState<ClearingDeskSnapshot | null>(null);
+  const [health, setHealth] = useState<ClearingDeskHealth | null>(null);
   const [filter, setFilter] = useState<ClearingDeskMessageFilter>("all");
   const [loading, setLoading] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -53,10 +57,10 @@ export function DeskClearingPanel() {
   const inFlight = useRef(false);
 
   const load = useCallback(
-    async (opts?: { quiet?: boolean }) => {
-      if (inFlight.current) return;
-      inFlight.current = true;
-      if (!opts?.quiet) setError(null);
+    async (opts?: { quiet?: boolean; cursor?: string | null; append?: boolean }) => {
+      if (inFlight.current && !opts?.append) return;
+      if (!opts?.append) inFlight.current = true;
+      if (!opts?.quiet && !opts?.append) setError(null);
       const headers = await getAuthHeaders();
       if (!headers) {
         setError("Desk session is not ready.");
@@ -66,6 +70,7 @@ export function DeskClearingPanel() {
       }
       try {
         const params = new URLSearchParams({ filter });
+        if (opts?.cursor) params.set("cursor", opts.cursor);
         const response = await fetch(`/api/desk/clearing?${params}`, {
           headers,
           cache: "no-store",
@@ -73,6 +78,7 @@ export function DeskClearingPanel() {
         const data = (await response.json().catch(() => ({}))) as {
           ok?: boolean;
           clearing?: ClearingDeskSnapshot;
+          health?: ClearingDeskHealth;
           error?: string;
         };
         if (!response.ok || !data.ok || !data.clearing) {
@@ -80,14 +86,30 @@ export function DeskClearingPanel() {
           setLoading(false);
           return;
         }
-        setSnapshot(data.clearing);
-        setSlowPick(
-          (CLEARING_SLOW_MODE_PRESETS as readonly number[]).includes(
-            data.clearing.state.slowModeSeconds,
-          )
-            ? (data.clearing.state.slowModeSeconds as ClearingSlowModeSeconds)
-            : 0,
-        );
+        if (opts?.append) {
+          setSnapshot((prev) => {
+            if (!prev) return data.clearing ?? null;
+            const seen = new Set(prev.messages.map((m) => m.id));
+            const extra = (data.clearing?.messages ?? []).filter(
+              (m) => !seen.has(m.id),
+            );
+            return {
+              ...data.clearing!,
+              messages: [...prev.messages, ...extra],
+              nextCursor: data.clearing?.nextCursor ?? null,
+            };
+          });
+        } else {
+          setSnapshot(data.clearing);
+          setSlowPick(
+            (CLEARING_SLOW_MODE_PRESETS as readonly number[]).includes(
+              data.clearing.state.slowModeSeconds,
+            )
+              ? (data.clearing.state.slowModeSeconds as ClearingSlowModeSeconds)
+              : 0,
+          );
+        }
+        if (data.health) setHealth(data.health);
         setLoading(false);
       } catch {
         setError("The Clearing could not be read.");
@@ -235,6 +257,14 @@ export function DeskClearingPanel() {
                 : ""}
             </p>
           ) : null}
+          {health ? (
+            <p className="muted desk-clearing__health" aria-label="Clearing health">
+              Health: db {health.databaseReachable ? "ok" : "fail"} · state{" "}
+              {health.stateReadable ? "ok" : "fail"} · rate RPC{" "}
+              {health.rateLimitRpcAvailable ? "ok" : "fail"} · cookie config{" "}
+              {health.cookieSecretConfigured ? "ok" : "missing"}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -349,6 +379,25 @@ export function DeskClearingPanel() {
             />
           ))}
         </ul>
+        {snapshot?.nextCursor ? (
+          <p>
+            <button
+              type="button"
+              className="btn-text"
+              disabled={loadingOlder || Boolean(busyKey)}
+              onClick={() => {
+                setLoadingOlder(true);
+                void load({
+                  quiet: true,
+                  append: true,
+                  cursor: snapshot.nextCursor,
+                }).finally(() => setLoadingOlder(false));
+              }}
+            >
+              {loadingOlder ? "[ … ]" : "[ LOAD OLDER ]"}
+            </button>
+          </p>
+        ) : null}
       </section>
 
       <section aria-labelledby="clearing-log-title">

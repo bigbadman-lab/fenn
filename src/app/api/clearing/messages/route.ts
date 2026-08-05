@@ -7,8 +7,10 @@ import {
 } from "@/lib/auth/get-verified-privy-user";
 import { CLEARING_TRAVELLER_COOKIE_NAME } from "@/lib/clearing/config";
 import { ClearingError } from "@/lib/clearing/errors";
+import { logClearing } from "@/lib/clearing/log";
 import { postClearingMessage } from "@/lib/clearing/post";
 import { networkKeyFromRequest } from "@/lib/clearing/rate-limit";
+import { readClearingJsonBody } from "@/lib/clearing/request";
 import {
   findProfileByPrivyUserId,
   profileDto,
@@ -24,19 +26,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request) {
   try {
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Invalid JSON body",
-          code: "clearing_invalid_request",
-        },
-        { status: 400 },
-      );
-    }
+    const body = await readClearingJsonBody(request);
 
     const payload = body as {
       body?: unknown;
@@ -49,7 +39,6 @@ export async function POST(request: Request) {
     const travellerCookie =
       store.get(CLEARING_TRAVELLER_COOKIE_NAME)?.value ?? null;
 
-    // Optional auth — soft probe (registration_required vs traveller)
     let auth:
       | null
       | { registered: false }
@@ -74,7 +63,6 @@ export async function POST(request: Request) {
         }
       } catch (error) {
         if (error instanceof AuthError) {
-          // Treat invalid token as unauthenticated Traveller path if cookie exists
           auth = null;
         } else {
           throw error;
@@ -100,6 +88,31 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof ClearingError) {
+      if (
+        error.code === "clearing_rate_limited" ||
+        error.code === "clearing_slow_mode" ||
+        error.code === "clearing_registration_required" ||
+        error.code === "clearing_read_only"
+      ) {
+        logClearing({
+          event:
+            error.code === "clearing_rate_limited"
+              ? "rate_limited"
+              : error.code === "clearing_registration_required"
+                ? "registration_required"
+                : error.code === "clearing_read_only"
+                  ? "read_only_block"
+                  : "message_rejected",
+          ok: false,
+          code: error.code,
+        });
+      } else {
+        logClearing({
+          event: "message_rejected",
+          ok: false,
+          code: error.code,
+        });
+      }
       return NextResponse.json(
         {
           ok: false,

@@ -7,15 +7,16 @@ import {
 } from "@/lib/clearing/config";
 import { travellerCookieOptions } from "@/lib/clearing/cookie";
 import { ClearingError } from "@/lib/clearing/errors";
+import { logClearing } from "@/lib/clearing/log";
 import {
   consumeRateBucket,
   networkKeyFromRequest,
 } from "@/lib/clearing/rate-limit";
-import { isMutedUntil } from "@/lib/clearing/moderation";
 import {
   mintOrResumeTraveller,
   resolveTravellerResume,
 } from "@/lib/clearing/traveller";
+import { isMutedUntil } from "@/lib/clearing/moderation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,14 +35,27 @@ function speakingForTraveller(row: {
 /**
  * Mint or resume a signed Traveller identity.
  * Browser never supplies id or display name.
+ * Empty body; no large payload required.
  */
 export async function POST(request: Request) {
   try {
+    // Reject oversized junk on mint posts (body optional)
+    const lengthHeader = request.headers.get("content-length");
+    if (lengthHeader) {
+      const n = Number.parseInt(lengthHeader, 10);
+      if (Number.isFinite(n) && n > 2048) {
+        throw new ClearingError(
+          "clearing_payload_too_large",
+          "Request body is too large",
+          413,
+        );
+      }
+    }
+
     const store = await cookies();
     const existing = store.get(CLEARING_TRAVELLER_COOKIE_NAME)?.value ?? null;
     const networkKey = networkKeyFromRequest(request);
 
-    // Rate-limit new mints (including orphaned cookies) before insert.
     const resume = await resolveTravellerResume({
       existingCookieRaw: existing,
     });
@@ -63,6 +77,13 @@ export async function POST(request: Request) {
       travellerCookieOptions(),
     );
 
+    logClearing({
+      event: "traveller_mint",
+      ok: true,
+      detail: result.created ? "created" : "resumed",
+      networkHashPrefix: networkKey,
+    });
+
     return NextResponse.json({
       ok: true,
       created: result.created,
@@ -71,6 +92,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof ClearingError) {
+      logClearing({
+        event: "traveller_mint_fail",
+        ok: false,
+        code: error.code,
+      });
       return NextResponse.json(
         {
           ok: false,

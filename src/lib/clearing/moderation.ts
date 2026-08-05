@@ -68,12 +68,24 @@ export async function countPublishedTravellerMessages(
   travellerId: string,
   admin?: SupabaseClient,
 ): Promise<number> {
+  // Alias for historical call sites; accepted includes hidden.
+  return countAcceptedTravellerMessages(travellerId, admin);
+}
+
+/**
+ * Accepted Traveller posts: published OR hidden.
+ * Hide does not free a three-message slot.
+ */
+export async function countAcceptedTravellerMessages(
+  travellerId: string,
+  admin?: SupabaseClient,
+): Promise<number> {
   const db = admin ?? (await defaultAdmin());
   const { count, error } = await db
     .from("clearing_messages")
     .select("id", { count: "exact", head: true })
     .eq("traveller_id", travellerId)
-    .eq("status", "published");
+    .in("status", ["published", "hidden"]);
   if (error) {
     throw new ClearingError(
       "clearing_internal",

@@ -16,6 +16,7 @@ import {
 } from "@/components/clearing/clearing-composer";
 import { ClearingFeedItem } from "@/components/clearing/clearing-feed-item";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
+import { CLEARING_PUBLIC_POLL_MS } from "@/lib/clearing/config";
 import type { SafeClearingMessage } from "@/lib/clearing/dto";
 import {
   filterMessageItems,
@@ -25,7 +26,7 @@ import {
 } from "@/lib/clearing/feed-client";
 import type { SafeTravellerIdentity } from "@/lib/clearing/dto";
 
-const POLL_MS = 4000;
+const POLL_MS = CLEARING_PUBLIC_POLL_MS;
 const NEAR_BOTTOM_PX = 96;
 const INITIAL_LIMIT = 40;
 

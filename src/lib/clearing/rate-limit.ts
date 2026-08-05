@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CLEARING_RATE_LIMITS } from "@/lib/clearing/config";
 import { ClearingError } from "@/lib/clearing/errors";
+import { logClearing } from "@/lib/clearing/log";
 import { createHash } from "node:crypto";
 
 async function defaultAdmin(): Promise<SupabaseClient> {
@@ -31,9 +32,16 @@ export function networkKeyFromRequest(request: Request): string {
   return hashClearingNetworkKey(raw);
 }
 
+export type ConsumeRateBucketResult = {
+  allowed: true;
+  hits: number;
+  remaining: number;
+  maxHits: number;
+};
+
 /**
- * Sliding fixed-window counter in Postgres.
- * Returns remaining hits or throws rate_limited.
+ * Atomic fixed-window counter via Postgres RPC.
+ * Fail closed on RPC failure (does not silently allow spam).
  */
 export async function consumeRateBucket(input: {
   bucketKey: string;
@@ -41,62 +49,74 @@ export async function consumeRateBucket(input: {
   maxHits: number;
   admin?: SupabaseClient;
   now?: Date;
-}): Promise<void> {
-  if (input.maxHits <= 0) return;
+}): Promise<ConsumeRateBucketResult> {
+  if (input.maxHits <= 0) {
+    return {
+      allowed: true,
+      hits: 0,
+      remaining: 0,
+      maxHits: 0,
+    };
+  }
   const admin = input.admin ?? (await defaultAdmin());
   const now = input.now ?? new Date();
   const windowMs = input.windowSeconds * 1000;
-  const windowStartMs =
-    Math.floor(now.getTime() / windowMs) * windowMs;
+  const windowStartMs = Math.floor(now.getTime() / windowMs) * windowMs;
   const windowStart = new Date(windowStartMs).toISOString();
 
-  const { data: existing } = await admin
-    .from("clearing_rate_buckets")
-    .select("bucket_key, window_start, hit_count")
-    .eq("bucket_key", input.bucketKey)
-    .maybeSingle();
-
-  if (!existing || existing.window_start !== windowStart) {
-    const { error } = await admin.from("clearing_rate_buckets").upsert(
-      {
-        bucket_key: input.bucketKey,
-        window_start: windowStart,
-        hit_count: 1,
-      },
-      { onConflict: "bucket_key" },
-    );
-    if (error) {
-      throw new ClearingError(
-        "clearing_internal",
-        "Rate limit storage failed",
-        500,
-      );
-    }
-    return;
-  }
-
-  const hits = Number(existing.hit_count) + 1;
-  if (hits > input.maxHits) {
-    throw new ClearingError(
-      "clearing_rate_limited",
-      "the road asks for a slower voice.",
-      429,
-    );
-  }
-
-  const { error } = await admin
-    .from("clearing_rate_buckets")
-    .update({ hit_count: hits })
-    .eq("bucket_key", input.bucketKey)
-    .eq("window_start", windowStart);
+  const { data, error } = await admin.rpc("consume_clearing_rate_bucket", {
+    p_bucket_key: input.bucketKey,
+    p_window_start: windowStart,
+    p_max_hits: input.maxHits,
+  });
 
   if (error) {
+    const msg = (error.message ?? "").toLowerCase();
+    if (msg.includes("rate_limited")) {
+      logClearing({
+        event: "rate_limited",
+        ok: false,
+        code: "clearing_rate_limited",
+        detail: input.bucketKey.split(":")[0],
+      });
+      throw new ClearingError(
+        "clearing_rate_limited",
+        "the road asks for a slower voice.",
+        429,
+        {
+          retryAfterSeconds: input.windowSeconds,
+        },
+      );
+    }
+    logClearing({
+      event: "rpc_fail",
+      ok: false,
+      code: "clearing_internal",
+      detail: "consume_clearing_rate_bucket",
+    });
+    // Fail closed — do not allow spam when rate storage is broken
     throw new ClearingError(
       "clearing_internal",
-      "Rate limit storage failed",
-      500,
+      "Rate limit unavailable",
+      503,
     );
   }
+
+  const hits = typeof data === "number" ? data : Number(data);
+  if (!Number.isFinite(hits)) {
+    throw new ClearingError(
+      "clearing_internal",
+      "Rate limit unavailable",
+      503,
+    );
+  }
+
+  return {
+    allowed: true,
+    hits,
+    remaining: Math.max(0, input.maxHits - hits),
+    maxHits: input.maxHits,
+  };
 }
 
 export async function assertAuthorCooldown(input: {
@@ -110,14 +130,13 @@ export async function assertAuthorCooldown(input: {
     Date.now() - input.cooldownSeconds * 1000,
   ).toISOString();
 
-  // authorKey: traveller:<uuid> or profile:<uuid>
   const [kind, id] = input.authorKey.split(":");
   if (!kind || !id) return;
 
   let query = admin
     .from("clearing_messages")
     .select("id, created_at")
-    .eq("status", "published")
+    .in("status", ["published", "hidden"])
     .gte("created_at", since)
     .order("created_at", { ascending: false })
     .limit(1);
@@ -130,10 +149,11 @@ export async function assertAuthorCooldown(input: {
 
   const { data, error } = await query.maybeSingle();
   if (error) {
+    // Fail closed — cannot verify cooldown
     throw new ClearingError(
       "clearing_internal",
       "Cooldown check failed",
-      500,
+      503,
     );
   }
   if (data) {
@@ -141,6 +161,7 @@ export async function assertAuthorCooldown(input: {
       "clearing_slow_mode",
       "wait a breath before speaking again.",
       429,
+      { retryAfterSeconds: input.cooldownSeconds },
     );
   }
 }

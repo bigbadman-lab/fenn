@@ -74,6 +74,18 @@ export type ClearingModerationLogItem = {
   messageId: string | null;
 };
 
+export type ClearingDeskHealth = {
+  databaseReachable: boolean;
+  stateReadable: boolean;
+  rateLimitRpcAvailable: boolean;
+  cookieSecretConfigured: boolean;
+  readOnly: boolean | null;
+  slowModeSeconds: number | null;
+  latestPublishedAt: string | null;
+  latestModerationAt: string | null;
+  checkedAt: string;
+};
+
 export type ClearingDeskSnapshot = {
   summary: ClearingDeskSummary;
   state: ClearingDeskState;

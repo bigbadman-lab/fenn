@@ -64,7 +64,7 @@ export function toSafeClearingMessage(row: {
 
 /**
  * Authoritative body validation — plain text, no HTML interpretation.
- * Strips NUL; rejects scripts only by not allowing markup (stored as plain text).
+ * Strips NUL; rejects control characters outside tab/newline.
  */
 export function validateClearingMessageBody(raw: unknown): string {
   if (typeof raw !== "string") {
@@ -74,8 +74,12 @@ export function validateClearingMessageBody(raw: unknown): string {
       400,
     );
   }
-  // Strip null bytes & normalize newlines
-  let text = raw.replace(/\u0000/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  // Strip null bytes & normalize newlines; drop other C0 controls
+  let text = raw
+    .replace(/\u0000/g, "")
+    .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
   text = text.trim();
   if (!text) {
     throw new ClearingError(

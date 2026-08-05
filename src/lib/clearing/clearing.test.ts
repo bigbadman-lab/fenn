@@ -297,11 +297,14 @@ describe("Clearing post domain rules (source)", () => {
 describe("Clearing concurrent three-cap authority", () => {
   it("SQL serialises allowance with FOR UPDATE before insert", () => {
     const mig = read(
-      "supabase/migrations/20260805120000_47_clearing_foundation.sql",
+      "supabase/migrations/20260805120000_49_clearing_hardening.sql",
     );
     const fn = mig.slice(mig.indexOf("post_clearing_message"));
     assert.ok(fn.indexOf("FOR UPDATE") < fn.indexOf("v_count >= 3"));
-    assert.ok(fn.indexOf("v_count >= 3") < fn.indexOf("INSERT INTO public.clearing_messages"));
+    assert.ok(
+      fn.indexOf("v_count >= 3") < fn.indexOf("INSERT INTO public.clearing_messages"),
+    );
+    assert.match(fn, /published.*hidden|hidden.*published/s);
   });
 });
 

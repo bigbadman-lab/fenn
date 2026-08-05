@@ -16,10 +16,11 @@ import {
   requireClientRequestId,
 } from "@/lib/clearing/dto";
 import { ClearingError } from "@/lib/clearing/errors";
+import { logClearing } from "@/lib/clearing/log";
 import {
   assertOutlawCanSpeak,
   assertTravellerCanSpeak,
-  countPublishedTravellerMessages,
+  countAcceptedTravellerMessages,
   getOutlawModeration,
   getTravellerById,
   messagesRemainingForTraveller,
@@ -40,17 +41,9 @@ async function defaultAdmin(): Promise<SupabaseClient> {
 export type PostClearingMessageInput = {
   body: unknown;
   clientRequestId: unknown;
-  /** Signed cookie raw value (unauthenticated path). */
   travellerCookieRaw?: string | null;
-  /**
-   * When Privy authenticated:
-   * - profile present → outlaw post
-   * - profile null → registration_required (never Traveller)
-   * When null: use Traveller cookie
-   */
   auth: null | { registered: false } | { registered: true; profile: SafeProfile };
   networkKey: string;
-  /** Optional: treat as keeper (Desk-verified path sets this). */
   asKeeper?: boolean;
   admin?: SupabaseClient;
 };
@@ -91,6 +84,106 @@ function mapRpcError(message: string): ClearingError {
   );
 }
 
+type RpcRow = {
+  id: string;
+  author_type: string;
+  author_display_name_snapshot: string;
+  body: string;
+  created_at: string;
+  client_request_id?: string;
+  _reused?: boolean;
+};
+
+/**
+ * Lookup prior message by client_request_id for lost-response recovery.
+ * Must run before rate limiting so idempotent retries do not burn budget.
+ */
+async function findExistingByClientRequest(
+  admin: SupabaseClient,
+  input: {
+    clientRequestId: string;
+    travellerId: string | null;
+    profileId: string | null;
+  },
+): Promise<RpcRow | null> {
+  let existingQuery = admin
+    .from("clearing_messages")
+    .select(
+      "id, author_type, author_display_name_snapshot, body, created_at, client_request_id",
+    )
+    .eq("client_request_id", input.clientRequestId)
+    .limit(1);
+
+  if (input.travellerId) {
+    existingQuery = existingQuery.eq("traveller_id", input.travellerId);
+  } else if (input.profileId) {
+    existingQuery = existingQuery.eq("profile_id", input.profileId);
+  } else {
+    return null;
+  }
+
+  const existing = await existingQuery.maybeSingle();
+  if (existing.data) {
+    return { ...(existing.data as RpcRow), _reused: true };
+  }
+  return null;
+}
+
+async function callPostRpc(
+  admin: SupabaseClient,
+  input: {
+    authorType: string;
+    travellerId: string | null;
+    profileId: string | null;
+    displayName: string;
+    body: string;
+    clientRequestId: string;
+  },
+): Promise<RpcRow> {
+  const pre = await findExistingByClientRequest(admin, {
+    clientRequestId: input.clientRequestId,
+    travellerId: input.travellerId,
+    profileId: input.profileId,
+  });
+  if (pre) return pre;
+
+  const { data, error } = await admin.rpc("post_clearing_message", {
+    p_author_type: input.authorType,
+    p_traveller_id: input.travellerId,
+    p_profile_id: input.profileId,
+    p_display_name: input.displayName,
+    p_body: input.body,
+    p_client_request_id: input.clientRequestId,
+  });
+
+  if (error) {
+    // Concurrent invent: unique conflict may race; re-read idempotent row
+    const again = await findExistingByClientRequest(admin, {
+      clientRequestId: input.clientRequestId,
+      travellerId: input.travellerId,
+      profileId: input.profileId,
+    });
+    if (again) return again;
+    logClearing({
+      event: "rpc_fail",
+      ok: false,
+      detail: "post_clearing_message",
+    });
+    throw mapRpcError(error.message ?? "");
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) {
+    throw new ClearingError(
+      "clearing_internal",
+      "Post returned no row",
+      500,
+    );
+  }
+
+  return row as RpcRow;
+}
+
 /**
  * Server-side message post. Never trusts client author fields.
  */
@@ -101,8 +194,19 @@ export async function postClearingMessage(
   const body = validateClearingMessageBody(input.body);
   const clientRequestId = requireClientRequestId(input.clientRequestId);
 
-  const state = await getClearingState(admin);
+  let state;
+  try {
+    state = await getClearingState(admin);
+  } catch {
+    throw new ClearingError(
+      "clearing_internal",
+      "Clearing state unavailable",
+      503,
+    );
+  }
+
   if (state.readOnly) {
+    logClearing({ event: "read_only_block", ok: false });
     throw new ClearingError(
       "clearing_read_only",
       "the clearing is quiet.",
@@ -110,8 +214,12 @@ export async function postClearingMessage(
     );
   }
 
-  // Authenticated unregistered — Road philosophy
   if (input.auth && input.auth.registered === false) {
+    logClearing({
+      event: "registration_required",
+      ok: false,
+      detail: "authenticated_unregistered",
+    });
     throw new ClearingError(
       "clearing_registration_required",
       "Claim a permanent name before speaking here.",
@@ -120,11 +228,41 @@ export async function postClearingMessage(
     );
   }
 
-  // Registered Outlaw / Keeper path
   if (input.auth && input.auth.registered === true) {
     const profile = input.auth.profile;
     const mod = await getOutlawModeration(profile.id, admin);
-    assertOutlawCanSpeak(mod);
+    try {
+      assertOutlawCanSpeak(mod);
+    } catch (e) {
+      if (e instanceof ClearingError) {
+        logClearing({
+          event: "voice_block",
+          ok: false,
+          code: e.code,
+          authorType: "outlaw",
+        });
+      }
+      throw e;
+    }
+
+    const existing = await findExistingByClientRequest(admin, {
+      clientRequestId,
+      travellerId: null,
+      profileId: profile.id,
+    });
+    if (existing) {
+      logClearing({
+        event: "message_accepted",
+        ok: true,
+        authorType: existing.author_type,
+        reused: true,
+        messageId: existing.id,
+      });
+      return {
+        message: toSafeClearingMessage(existing),
+        reused: true,
+      };
+    }
 
     await consumeRateBucket({
       bucketKey: `outlaw:${profile.id}`,
@@ -163,6 +301,14 @@ export async function postClearingMessage(
       clientRequestId,
     });
 
+    logClearing({
+      event: "message_accepted",
+      ok: true,
+      authorType,
+      reused: Boolean(row._reused),
+      messageId: row.id,
+    });
+
     return {
       message: toSafeClearingMessage(row),
       reused: Boolean(row._reused),
@@ -187,10 +333,50 @@ export async function postClearingMessage(
       401,
     );
   }
-  assertTravellerCanSpeak(traveller);
+  try {
+    assertTravellerCanSpeak(traveller);
+  } catch (e) {
+    if (e instanceof ClearingError) {
+      logClearing({
+        event: "voice_block",
+        ok: false,
+        code: e.code,
+        authorType: "traveller",
+      });
+    }
+    throw e;
+  }
 
-  const accepted = await countPublishedTravellerMessages(travellerId, admin);
+  const existingTraveller = await findExistingByClientRequest(admin, {
+    clientRequestId,
+    travellerId,
+    profileId: null,
+  });
+  if (existingTraveller) {
+    const remaining = messagesRemainingForTraveller(
+      await countAcceptedTravellerMessages(travellerId, admin),
+    );
+    logClearing({
+      event: "message_accepted",
+      ok: true,
+      authorType: "traveller",
+      reused: true,
+      messageId: existingTraveller.id,
+    });
+    return {
+      message: toSafeClearingMessage(existingTraveller),
+      reused: true,
+      messagesRemaining: remaining,
+    };
+  }
+
+  const accepted = await countAcceptedTravellerMessages(travellerId, admin);
   if (accepted >= CLEARING_TRAVELLER_MESSAGE_LIMIT) {
+    logClearing({
+      event: "registration_required",
+      ok: false,
+      authorType: "traveller",
+    });
     throw new ClearingError(
       "clearing_registration_required",
       "Your travelling name has carried you this far.",
@@ -235,76 +421,20 @@ export async function postClearingMessage(
   });
 
   const remaining = messagesRemainingForTraveller(
-    await countPublishedTravellerMessages(travellerId, admin),
+    await countAcceptedTravellerMessages(travellerId, admin),
   );
+
+  logClearing({
+    event: "message_accepted",
+    ok: true,
+    authorType: "traveller",
+    reused: Boolean(row._reused),
+    messageId: row.id,
+  });
 
   return {
     message: toSafeClearingMessage(row),
     reused: Boolean(row._reused),
     messagesRemaining: remaining,
   };
-}
-
-type RpcRow = {
-  id: string;
-  author_type: string;
-  author_display_name_snapshot: string;
-  body: string;
-  created_at: string;
-  client_request_id?: string;
-  _reused?: boolean;
-};
-
-async function callPostRpc(
-  admin: SupabaseClient,
-  input: {
-    authorType: string;
-    travellerId: string | null;
-    profileId: string | null;
-    displayName: string;
-    body: string;
-    clientRequestId: string;
-  },
-): Promise<RpcRow> {
-  // Pre-check for reused marker
-  let existingQuery = admin
-    .from("clearing_messages")
-    .select("id, author_type, author_display_name_snapshot, body, created_at, client_request_id")
-    .eq("client_request_id", input.clientRequestId)
-    .limit(1);
-
-  if (input.travellerId) {
-    existingQuery = existingQuery.eq("traveller_id", input.travellerId);
-  } else if (input.profileId) {
-    existingQuery = existingQuery.eq("profile_id", input.profileId);
-  }
-
-  const existing = await existingQuery.maybeSingle();
-  if (existing.data) {
-    return { ...(existing.data as RpcRow), _reused: true };
-  }
-
-  const { data, error } = await admin.rpc("post_clearing_message", {
-    p_author_type: input.authorType,
-    p_traveller_id: input.travellerId,
-    p_profile_id: input.profileId,
-    p_display_name: input.displayName,
-    p_body: input.body,
-    p_client_request_id: input.clientRequestId,
-  });
-
-  if (error) {
-    throw mapRpcError(error.message ?? "");
-  }
-
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row) {
-    throw new ClearingError(
-      "clearing_internal",
-      "Post returned no row",
-      500,
-    );
-  }
-
-  return row as RpcRow;
 }
