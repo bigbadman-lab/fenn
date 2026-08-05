@@ -5,7 +5,8 @@
 
 export const CLEARING_ORIGIN_STORAGE_KEY = "fenn_clearing_origin";
 export const CLEARING_PATH = "/camp/clearing";
-export const CLEARING_REGISTER_HREF = "/outlaw/register?from=clearing";
+/** Homepage Outlaw Register section — not the standalone /outlaw/register route. */
+export const CLEARING_REGISTER_HREF = "/#outlaw-register";
 
 export function isClearingRegisterOrigin(from: string | null | undefined): boolean {
   return from === "clearing";

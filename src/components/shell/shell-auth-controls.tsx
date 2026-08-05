@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
+import { CLEARING_PATH } from "@/lib/clearing/origin";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 
 function LeaveConfirmDialog({
@@ -186,6 +187,9 @@ export function ShellAuthControls() {
     <div className="shell-auth">
       <Link href="/outlaw" className="btn-text">
         [ outlaw {formatOutlawNumber(profile.outlawNumber)} ]
+      </Link>
+      <Link href={CLEARING_PATH} className="btn-text">
+        [ clearing ]
       </Link>
       <button type="button" className="btn-text" onClick={requestLeave}>
         [ leave ]

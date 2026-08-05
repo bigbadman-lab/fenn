@@ -126,7 +126,7 @@ export default function OutlawPage() {
             <>
               <p>the wood does not know your name yet.</p>
               <p>
-                <Link href="/outlaw/register">[ register ]</Link>
+                <Link href="/#outlaw-register">[ register ]</Link>
               </p>
             </>
           }
@@ -146,16 +146,16 @@ export default function OutlawPage() {
         }
       />
 
-      {fromClearing ? (
-        <div className="place__body outlaw-page__clearing-return">
-          <p>YOUR NAME IS WRITTEN.</p>
-          <p>
-            <Link href={CLEARING_PATH} className="btn-text">
-              [ RETURN TO THE CLEARING ]
-            </Link>
-          </p>
-        </div>
-      ) : null}
+      <div className="place__body outlaw-page__clearing-return">
+        {fromClearing ? <p>YOUR NAME IS WRITTEN.</p> : null}
+        <p>
+          <Link href={CLEARING_PATH} className="btn-text">
+            {fromClearing
+              ? "[ RETURN TO THE CLEARING ]"
+              : "[ THE CLEARING ]"}
+          </Link>
+        </p>
+      </div>
 
       <div className="place__body profile-block outlaw-page__identity">
         <p>

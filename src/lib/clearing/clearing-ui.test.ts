@@ -146,12 +146,12 @@ describe("Clearing outlaw-only speak gate", () => {
 });
 
 describe("Clearing registration origin safety", () => {
-  it("only accepts from=clearing to a fixed path", () => {
+  it("routes Clearing register CTAs to the homepage section and fixed path", () => {
     assert.equal(isClearingRegisterOrigin("clearing"), true);
     assert.equal(isClearingRegisterOrigin("https://evil"), false);
     assert.equal(isClearingRegisterOrigin("//evil"), false);
     assert.equal(CLEARING_PATH, "/camp/clearing");
-    assert.equal(CLEARING_REGISTER_HREF, "/outlaw/register?from=clearing");
+    assert.equal(CLEARING_REGISTER_HREF, "/#outlaw-register");
   });
 });
 
@@ -204,13 +204,18 @@ describe("Clearing composer and feed UI sources", () => {
     assert.match(feed, /slowModeSeconds/);
   });
 
-  it("outlaw page can return to Clearing from safe origin", () => {
+  it("outlaw page offers Clearing and register uses homepage section", () => {
     const outlaw = read("src/app/outlaw/page.tsx");
-    assert.match(outlaw, /RETURN TO THE CLEARING/);
+    assert.match(outlaw, /RETURN TO THE CLEARING|THE CLEARING/);
+    assert.match(outlaw, /CLEARING_PATH|\/camp\/clearing/);
+    assert.match(outlaw, /\/#outlaw-register/);
     assert.match(outlaw, /peekClearingRegistrationOrigin/);
-    const reg = read("src/components/outlaw/outlaw-register-panel.tsx");
-    assert.match(reg, /markClearingRegistrationOrigin/);
-    assert.match(reg, /isClearingRegisterOrigin/);
+    const composer = read("src/components/clearing/clearing-composer.tsx");
+    assert.match(composer, /CLEARING_REGISTER_HREF|\/#outlaw-register/);
+    assert.match(composer, /markClearingRegistrationOrigin/);
+    const shell = read("src/components/shell/shell-auth-controls.tsx");
+    assert.match(shell, /\[ clearing \]/);
+    assert.match(shell, /CLEARING_PATH|\/camp\/clearing/);
   });
 
   it("does not use Supabase from browser components", () => {
