@@ -139,8 +139,30 @@ export async function hideClearingMessage(input: {
   hiddenBy: string;
   reason?: string | null;
   admin?: SupabaseClient;
-}): Promise<void> {
+}): Promise<{ previousStatus: string; authorLabel: string }> {
   const db = input.admin ?? (await defaultAdmin());
+  const existing = await db
+    .from("clearing_messages")
+    .select("id, status, author_display_name_snapshot")
+    .eq("id", input.messageId)
+    .maybeSingle();
+  if (existing.error || !existing.data) {
+    throw new ClearingError("clearing_not_found", "Message not found", 404);
+  }
+  if (existing.data.status === "rejected") {
+    throw new ClearingError(
+      "clearing_invalid_request",
+      "Rejected messages cannot be hidden",
+      400,
+    );
+  }
+  if (existing.data.status === "hidden") {
+    return {
+      previousStatus: "hidden",
+      authorLabel: String(existing.data.author_display_name_snapshot),
+    };
+  }
+
   const { data, error } = await db
     .from("clearing_messages")
     .update({
@@ -150,7 +172,8 @@ export async function hideClearingMessage(input: {
       moderation_reason: input.reason?.trim().slice(0, 500) || null,
     })
     .eq("id", input.messageId)
-    .select("id")
+    .eq("status", "published")
+    .select("id, author_display_name_snapshot")
     .maybeSingle();
   if (error) {
     throw new ClearingError(
@@ -162,13 +185,39 @@ export async function hideClearingMessage(input: {
   if (!data) {
     throw new ClearingError("clearing_not_found", "Message not found", 404);
   }
+  return {
+    previousStatus: "published",
+    authorLabel: String(data.author_display_name_snapshot),
+  };
 }
 
 export async function unhideClearingMessage(input: {
   messageId: string;
   admin?: SupabaseClient;
-}): Promise<void> {
+}): Promise<{ previousStatus: string; authorLabel: string }> {
   const db = input.admin ?? (await defaultAdmin());
+  const existing = await db
+    .from("clearing_messages")
+    .select("id, status, author_display_name_snapshot")
+    .eq("id", input.messageId)
+    .maybeSingle();
+  if (existing.error || !existing.data) {
+    throw new ClearingError("clearing_not_found", "Message not found", 404);
+  }
+  if (existing.data.status === "published") {
+    return {
+      previousStatus: "published",
+      authorLabel: String(existing.data.author_display_name_snapshot),
+    };
+  }
+  if (existing.data.status !== "hidden") {
+    throw new ClearingError(
+      "clearing_invalid_request",
+      "Only hidden messages can be restored",
+      400,
+    );
+  }
+
   const { data, error } = await db
     .from("clearing_messages")
     .update({
@@ -178,7 +227,8 @@ export async function unhideClearingMessage(input: {
       moderation_reason: null,
     })
     .eq("id", input.messageId)
-    .select("id")
+    .eq("status", "hidden")
+    .select("id, author_display_name_snapshot")
     .maybeSingle();
   if (error) {
     throw new ClearingError(
@@ -190,6 +240,10 @@ export async function unhideClearingMessage(input: {
   if (!data) {
     throw new ClearingError("clearing_not_found", "Message not found", 404);
   }
+  return {
+    previousStatus: "hidden",
+    authorLabel: String(data.author_display_name_snapshot),
+  };
 }
 
 export async function setTravellerModeration(input: {
@@ -197,29 +251,50 @@ export async function setTravellerModeration(input: {
   mutedUntil?: string | null;
   banned?: boolean;
   admin?: SupabaseClient;
-}): Promise<void> {
+}): Promise<{
+  displayName: string;
+  previous: { muted_until: string | null; banned_at: string | null };
+  next: { muted_until: string | null; banned_at: string | null };
+}> {
   const db = input.admin ?? (await defaultAdmin());
-  const patch: Record<string, unknown> = {};
-  if (input.mutedUntil !== undefined) patch.muted_until = input.mutedUntil;
-  if (input.banned === true) patch.banned_at = new Date().toISOString();
-  if (input.banned === false) patch.banned_at = null;
+  const existing = await getTravellerById(input.travellerId, db);
+  if (!existing) {
+    throw new ClearingError("clearing_not_found", "Traveller not found", 404);
+  }
+
+  let mutedUntil = existing.muted_until;
+  let bannedAt = existing.banned_at;
+  if (input.mutedUntil !== undefined) mutedUntil = input.mutedUntil;
+  if (input.banned === true) bannedAt = new Date().toISOString();
+  if (input.banned === false) bannedAt = null;
 
   const { data, error } = await db
     .from("clearing_travellers")
-    .update(patch)
+    .update({
+      muted_until: mutedUntil,
+      banned_at: bannedAt,
+    })
     .eq("id", input.travellerId)
-    .select("id")
+    .select("id, display_name, muted_until, banned_at")
     .maybeSingle();
-  if (error) {
+  if (error || !data) {
     throw new ClearingError(
       "clearing_internal",
       "Failed to update Traveller moderation",
       500,
     );
   }
-  if (!data) {
-    throw new ClearingError("clearing_not_found", "Traveller not found", 404);
-  }
+  return {
+    displayName: String(data.display_name),
+    previous: {
+      muted_until: existing.muted_until,
+      banned_at: existing.banned_at,
+    },
+    next: {
+      muted_until: data.muted_until ?? null,
+      banned_at: data.banned_at ?? null,
+    },
+  };
 }
 
 export async function setOutlawModeration(input: {
@@ -228,7 +303,10 @@ export async function setOutlawModeration(input: {
   banned?: boolean;
   updatedBy: string;
   admin?: SupabaseClient;
-}): Promise<void> {
+}): Promise<{
+  previous: { muted_until: string | null; banned_at: string | null };
+  next: { muted_until: string | null; banned_at: string | null };
+}> {
   const db = input.admin ?? (await defaultAdmin());
   const now = new Date().toISOString();
   const existing = await getOutlawModeration(input.profileId, db);
@@ -257,4 +335,11 @@ export async function setOutlawModeration(input: {
       500,
     );
   }
+  return {
+    previous: {
+      muted_until: existing?.muted_until ?? null,
+      banned_at: existing?.banned_at ?? null,
+    },
+    next: { muted_until: mutedUntil, banned_at: bannedAt },
+  };
 }

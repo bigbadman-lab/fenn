@@ -4,6 +4,15 @@ import {
   DeskAuthError,
   requireFennDeskAccess,
 } from "@/lib/desk/auth";
+import { isClearingUuid } from "@/lib/clearing/cookie";
+import {
+  deskActorLabel,
+  logClearingModeration,
+} from "@/lib/clearing/desk-ops";
+import {
+  isAllowedSlowModeSeconds,
+  muteUntilFromPresetSeconds,
+} from "@/lib/clearing/desk-types";
 import { ClearingError } from "@/lib/clearing/errors";
 import {
   hideClearingMessage,
@@ -12,14 +21,13 @@ import {
   unhideClearingMessage,
 } from "@/lib/clearing/moderation";
 import { updateClearingState } from "@/lib/clearing/state";
-import { isClearingUuid } from "@/lib/clearing/cookie";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * POST /api/clearing/moderation
- * Desk-only moderation actions. No UI in this stage.
+ * Desk-only moderation actions with durable audit log.
  *
  * body.action:
  *   hide | unhide | mute_traveller | ban_traveller |
@@ -29,6 +37,10 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const desk = await requireFennDeskAccess(request);
+    const actorLabel = deskActorLabel({
+      outlawAlias: desk.outlawAlias,
+      outlawNumber: desk.outlawNumber,
+    });
 
     let body: unknown;
     try {
@@ -46,9 +58,11 @@ export async function POST(request: Request) {
       travellerId?: string;
       profileId?: string;
       mutedUntil?: string | null;
+      muteSeconds?: number;
       reason?: string | null;
       readOnly?: boolean;
       slowModeSeconds?: number;
+      targetLabel?: string | null;
     };
 
     const action = payload.action?.trim();
@@ -59,6 +73,26 @@ export async function POST(request: Request) {
       );
     }
 
+    const reason = payload.reason?.trim().slice(0, 500) || null;
+
+    const resolveMuteUntil = (): string => {
+      if (
+        typeof payload.muteSeconds === "number" &&
+        Number.isFinite(payload.muteSeconds) &&
+        payload.muteSeconds > 0 &&
+        payload.muteSeconds <= 7 * 24 * 60 * 60
+      ) {
+        return muteUntilFromPresetSeconds(Math.trunc(payload.muteSeconds));
+      }
+      if (payload.mutedUntil && typeof payload.mutedUntil === "string") {
+        const t = Date.parse(payload.mutedUntil);
+        if (!Number.isNaN(t) && t > Date.now()) {
+          return new Date(t).toISOString();
+        }
+      }
+      return muteUntilFromPresetSeconds(24 * 60 * 60);
+    };
+
     switch (action) {
       case "hide": {
         if (!payload.messageId || !isClearingUuid(payload.messageId)) {
@@ -68,12 +102,28 @@ export async function POST(request: Request) {
             400,
           );
         }
-        await hideClearingMessage({
+        const result = await hideClearingMessage({
           messageId: payload.messageId,
           hiddenBy: desk.profileId,
-          reason: payload.reason,
+          reason,
         });
-        return NextResponse.json({ ok: true, action });
+        if (result.previousStatus !== "hidden") {
+          await logClearingModeration({
+            action: "hide",
+            actorProfileId: desk.profileId,
+            actorLabel,
+            messageId: payload.messageId,
+            targetLabel: result.authorLabel,
+            previousState: { status: result.previousStatus },
+            nextState: { status: "hidden" },
+            reason,
+          });
+        }
+        return NextResponse.json({
+          ok: true,
+          action,
+          message: "THE MESSAGE IS HIDDEN.",
+        });
       }
       case "unhide": {
         if (!payload.messageId || !isClearingUuid(payload.messageId)) {
@@ -83,8 +133,26 @@ export async function POST(request: Request) {
             400,
           );
         }
-        await unhideClearingMessage({ messageId: payload.messageId });
-        return NextResponse.json({ ok: true, action });
+        const result = await unhideClearingMessage({
+          messageId: payload.messageId,
+        });
+        if (result.previousStatus === "hidden") {
+          await logClearingModeration({
+            action: "unhide",
+            actorProfileId: desk.profileId,
+            actorLabel,
+            messageId: payload.messageId,
+            targetLabel: result.authorLabel,
+            previousState: { status: "hidden" },
+            nextState: { status: "published" },
+            reason,
+          });
+        }
+        return NextResponse.json({
+          ok: true,
+          action,
+          message: "THE MESSAGE IS RESTORED.",
+        });
       }
       case "mute_traveller": {
         if (!payload.travellerId || !isClearingUuid(payload.travellerId)) {
@@ -94,13 +162,26 @@ export async function POST(request: Request) {
             400,
           );
         }
-        await setTravellerModeration({
+        const until = resolveMuteUntil();
+        const result = await setTravellerModeration({
           travellerId: payload.travellerId,
-          mutedUntil:
-            payload.mutedUntil ??
-            new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          mutedUntil: until,
         });
-        return NextResponse.json({ ok: true, action });
+        await logClearingModeration({
+          action: "mute_traveller",
+          actorProfileId: desk.profileId,
+          actorLabel,
+          travellerId: payload.travellerId,
+          targetLabel: result.displayName,
+          previousState: result.previous,
+          nextState: result.next,
+          reason,
+        });
+        return NextResponse.json({
+          ok: true,
+          action,
+          message: "THE TRAVELLER HAS BEEN SILENCED.",
+        });
       }
       case "unmute_traveller": {
         if (!payload.travellerId || !isClearingUuid(payload.travellerId)) {
@@ -110,11 +191,25 @@ export async function POST(request: Request) {
             400,
           );
         }
-        await setTravellerModeration({
+        const result = await setTravellerModeration({
           travellerId: payload.travellerId,
           mutedUntil: null,
         });
-        return NextResponse.json({ ok: true, action });
+        await logClearingModeration({
+          action: "unmute_traveller",
+          actorProfileId: desk.profileId,
+          actorLabel,
+          travellerId: payload.travellerId,
+          targetLabel: result.displayName,
+          previousState: result.previous,
+          nextState: result.next,
+          reason,
+        });
+        return NextResponse.json({
+          ok: true,
+          action,
+          message: "THE TRAVELLER MAY SPEAK AGAIN.",
+        });
       }
       case "ban_traveller": {
         if (!payload.travellerId || !isClearingUuid(payload.travellerId)) {
@@ -124,11 +219,25 @@ export async function POST(request: Request) {
             400,
           );
         }
-        await setTravellerModeration({
+        const result = await setTravellerModeration({
           travellerId: payload.travellerId,
           banned: true,
         });
-        return NextResponse.json({ ok: true, action });
+        await logClearingModeration({
+          action: "ban_traveller",
+          actorProfileId: desk.profileId,
+          actorLabel,
+          travellerId: payload.travellerId,
+          targetLabel: result.displayName,
+          previousState: result.previous,
+          nextState: result.next,
+          reason,
+        });
+        return NextResponse.json({
+          ok: true,
+          action,
+          message: "THIS TRAVELLER ROAD IS CLOSED.",
+        });
       }
       case "unban_traveller": {
         if (!payload.travellerId || !isClearingUuid(payload.travellerId)) {
@@ -138,11 +247,25 @@ export async function POST(request: Request) {
             400,
           );
         }
-        await setTravellerModeration({
+        const result = await setTravellerModeration({
           travellerId: payload.travellerId,
           banned: false,
         });
-        return NextResponse.json({ ok: true, action });
+        await logClearingModeration({
+          action: "unban_traveller",
+          actorProfileId: desk.profileId,
+          actorLabel,
+          travellerId: payload.travellerId,
+          targetLabel: result.displayName,
+          previousState: result.previous,
+          nextState: result.next,
+          reason,
+        });
+        return NextResponse.json({
+          ok: true,
+          action,
+          message: "THE TRAVELLER ROAD IS OPEN AGAIN.",
+        });
       }
       case "mute_outlaw": {
         if (!payload.profileId || !isClearingUuid(payload.profileId)) {
@@ -152,14 +275,27 @@ export async function POST(request: Request) {
             400,
           );
         }
-        await setOutlawModeration({
+        const until = resolveMuteUntil();
+        const result = await setOutlawModeration({
           profileId: payload.profileId,
-          mutedUntil:
-            payload.mutedUntil ??
-            new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          mutedUntil: until,
           updatedBy: desk.profileId,
         });
-        return NextResponse.json({ ok: true, action });
+        await logClearingModeration({
+          action: "mute_outlaw",
+          actorProfileId: desk.profileId,
+          actorLabel,
+          profileId: payload.profileId,
+          targetLabel: payload.targetLabel?.slice(0, 120) ?? "Outlaw",
+          previousState: result.previous,
+          nextState: result.next,
+          reason,
+        });
+        return NextResponse.json({
+          ok: true,
+          action,
+          message: "THE OUTLAW VOICE IS SILENCED IN THE CLEARING.",
+        });
       }
       case "unmute_outlaw": {
         if (!payload.profileId || !isClearingUuid(payload.profileId)) {
@@ -169,12 +305,26 @@ export async function POST(request: Request) {
             400,
           );
         }
-        await setOutlawModeration({
+        const result = await setOutlawModeration({
           profileId: payload.profileId,
           mutedUntil: null,
           updatedBy: desk.profileId,
         });
-        return NextResponse.json({ ok: true, action });
+        await logClearingModeration({
+          action: "unmute_outlaw",
+          actorProfileId: desk.profileId,
+          actorLabel,
+          profileId: payload.profileId,
+          targetLabel: payload.targetLabel?.slice(0, 120) ?? "Outlaw",
+          previousState: result.previous,
+          nextState: result.next,
+          reason,
+        });
+        return NextResponse.json({
+          ok: true,
+          action,
+          message: "THE OUTLAW MAY SPEAK IN THE CLEARING AGAIN.",
+        });
       }
       case "ban_outlaw": {
         if (!payload.profileId || !isClearingUuid(payload.profileId)) {
@@ -184,12 +334,26 @@ export async function POST(request: Request) {
             400,
           );
         }
-        await setOutlawModeration({
+        const result = await setOutlawModeration({
           profileId: payload.profileId,
           banned: true,
           updatedBy: desk.profileId,
         });
-        return NextResponse.json({ ok: true, action });
+        await logClearingModeration({
+          action: "ban_outlaw",
+          actorProfileId: desk.profileId,
+          actorLabel,
+          profileId: payload.profileId,
+          targetLabel: payload.targetLabel?.slice(0, 120) ?? "Outlaw",
+          previousState: result.previous,
+          nextState: result.next,
+          reason,
+        });
+        return NextResponse.json({
+          ok: true,
+          action,
+          message: "THIS OUTLAW VOICE IS CLOSED IN THE CLEARING.",
+        });
       }
       case "unban_outlaw": {
         if (!payload.profileId || !isClearingUuid(payload.profileId)) {
@@ -199,20 +363,84 @@ export async function POST(request: Request) {
             400,
           );
         }
-        await setOutlawModeration({
+        const result = await setOutlawModeration({
           profileId: payload.profileId,
           banned: false,
           updatedBy: desk.profileId,
         });
-        return NextResponse.json({ ok: true, action });
+        await logClearingModeration({
+          action: "unban_outlaw",
+          actorProfileId: desk.profileId,
+          actorLabel,
+          profileId: payload.profileId,
+          targetLabel: payload.targetLabel?.slice(0, 120) ?? "Outlaw",
+          previousState: result.previous,
+          nextState: result.next,
+          reason,
+        });
+        return NextResponse.json({
+          ok: true,
+          action,
+          message: "THE OUTLAW VOICE MAY RETURN TO THE CLEARING.",
+        });
       }
       case "set_state": {
+        if (
+          payload.slowModeSeconds !== undefined &&
+          !isAllowedSlowModeSeconds(payload.slowModeSeconds)
+        ) {
+          throw new ClearingError(
+            "clearing_invalid_request",
+            "slow_mode_seconds must be 0, 3, 5, 10, 30, or 60",
+            400,
+          );
+        }
+        if (
+          payload.readOnly === undefined &&
+          payload.slowModeSeconds === undefined
+        ) {
+          throw new ClearingError(
+            "clearing_invalid_request",
+            "readOnly or slowModeSeconds required",
+            400,
+          );
+        }
         const state = await updateClearingState({
           readOnly: payload.readOnly,
           slowModeSeconds: payload.slowModeSeconds,
           updatedBy: desk.profileId,
         });
-        return NextResponse.json({ ok: true, action, state });
+        await logClearingModeration({
+          action: "set_state",
+          actorProfileId: desk.profileId,
+          actorLabel,
+          targetLabel: "clearing_state",
+          previousState: {
+            readOnly: state.previous.readOnly,
+            slowModeSeconds: state.previous.slowModeSeconds,
+          },
+          nextState: {
+            readOnly: state.readOnly,
+            slowModeSeconds: state.slowModeSeconds,
+          },
+          reason,
+        });
+        const message =
+          payload.readOnly === true
+            ? "THE CLEARING HAS BEEN CLOSED TO NEW VOICES."
+            : payload.readOnly === false
+              ? "THE CLEARING IS OPEN TO VOICES AGAIN."
+              : "SLOW MODE HAS BEEN SET.";
+        return NextResponse.json({
+          ok: true,
+          action,
+          state: {
+            readOnly: state.readOnly,
+            slowModeSeconds: state.slowModeSeconds,
+            updatedAt: state.updatedAt,
+          },
+          message,
+        });
       }
       default:
         return NextResponse.json(

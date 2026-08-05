@@ -49,8 +49,9 @@ export async function updateClearingState(input: {
   slowModeSeconds?: number;
   updatedBy: string;
   admin?: SupabaseClient;
-}): Promise<ClearingGlobalState> {
+}): Promise<ClearingGlobalState & { previous: ClearingGlobalState }> {
   const db = input.admin ?? (await defaultAdmin());
+  const previous = await getClearingState(db);
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
     updated_by: input.updatedBy,
@@ -58,6 +59,7 @@ export async function updateClearingState(input: {
   if (input.readOnly !== undefined) patch.read_only = input.readOnly;
   if (input.slowModeSeconds !== undefined) {
     const n = Math.trunc(input.slowModeSeconds);
+    // Bound: 0–3600; Desk UI uses discrete presets; open API still validates range.
     if (n < 0 || n > 3600) {
       throw new ClearingError(
         "clearing_invalid_request",
@@ -87,5 +89,6 @@ export async function updateClearingState(input: {
     readOnly: Boolean(data.read_only),
     slowModeSeconds: Math.max(0, Number(data.slow_mode_seconds) || 0),
     updatedAt: String(data.updated_at),
+    previous,
   };
 }
