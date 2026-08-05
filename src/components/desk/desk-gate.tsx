@@ -59,6 +59,7 @@ function DeskNav() {
   const speaksActive = pathname.startsWith("/desk/speaks");
   const agentActive = pathname.startsWith("/desk/agent");
   const clearingActive = pathname.startsWith("/desk/clearing");
+  const marketWatchActive = pathname.startsWith("/desk/market-watch");
 
   return (
     <nav className="desk__nav" aria-label="Desk">
@@ -91,6 +92,16 @@ function DeskNav() {
         }
       >
         CLEARING
+      </Link>
+      <Link
+        href="/desk/market-watch"
+        className={
+          marketWatchActive
+            ? "desk__nav-link desk__nav-link--active"
+            : "desk__nav-link"
+        }
+      >
+        MARKET WATCH
       </Link>
       <Link
         href="/desk/gatherings"

@@ -17,3 +17,7 @@ export {
 } from "@/lib/market-watch/config";
 export { getMarketWatchHealth } from "@/lib/market-watch/health";
 export { MarketWatchError } from "@/lib/market-watch/errors";
+export type {
+  MarketWatchDeskSnapshot,
+  MarketWatchReadinessVerdict,
+} from "@/lib/market-watch/desk-types";
