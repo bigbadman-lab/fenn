@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import {
   HOMEPAGE_ACTIONS,
@@ -71,11 +73,24 @@ export function HomeWelcome() {
             ))}
           </div>
           <div className="home-welcome__body">
-            {HOMEPAGE_STRANGER_LINES.deeds.map((line) => (
-              <p key={line} className="home-welcome__line">
-                {line}
-              </p>
-            ))}
+            <p className="home-welcome__line">
+              Do{" "}
+              <Link href="/deeds" className="home-welcome__inline-link">
+                deeds
+              </Link>
+              . Speak in{" "}
+              <Link href="/camp" className="home-welcome__inline-link">
+                Camp
+              </Link>
+              . Earn LEAF.
+            </p>
+            <p className="home-welcome__line">
+              When FENN is satisfied, the{" "}
+              <Link href="/greenwood" className="home-welcome__inline-link">
+                Greenwood
+              </Link>{" "}
+              opens.
+            </p>
           </div>
           <p className="home-welcome__closing">
             {HOMEPAGE_STRANGER_LINES.closing}

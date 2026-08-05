@@ -160,6 +160,23 @@ describe("homepage V2 structure and wiring", () => {
     assert.doesNotMatch(welcome, /ENTER THE MAP/);
   });
 
+  it("stranger welcome links deeds, Camp, and Greenwood with underlines", () => {
+    const welcome = read("src/components/home/home-welcome.tsx");
+    const css = read("src/app/globals.css");
+    assert.match(welcome, /href="\/deeds"/);
+    assert.match(welcome, /href="\/camp"/);
+    assert.match(welcome, /href="\/greenwood"/);
+    assert.match(welcome, /home-welcome__inline-link/);
+    assert.match(welcome, /href="\/deeds"[\s\S]*?deeds/);
+    assert.match(welcome, /href="\/camp"[\s\S]*?Camp/);
+    assert.match(welcome, /href="\/greenwood"[\s\S]*?Greenwood/);
+    assert.match(css, /a\.home-welcome__inline-link/);
+    assert.match(
+      css.slice(css.indexOf("a.home-welcome__inline-link")),
+      /text-decoration:\s*underline/,
+    );
+  });
+
   it("become outlaw CTA carries a light motion call with reduced-motion off", () => {
     const welcome = read("src/components/home/home-welcome.tsx");
     const css = read("src/app/globals.css");

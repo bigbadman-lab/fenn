@@ -1184,6 +1184,27 @@ a.fenn-map__link:focus-visible {
   color: var(--color-bone);
 }
 
+/* Place names in welcome orientation — always underlined, navigable. */
+a.home-welcome__inline-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.14em;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+}
+
+a.home-welcome__inline-link:hover {
+  color: var(--color-leaf);
+  text-decoration-thickness: 2px;
+  text-decoration-color: currentColor;
+}
+
+a.home-welcome__inline-link:focus-visible {
+  outline: 1px solid var(--color-leaf);
+  outline-offset: 2px;
+  text-decoration-thickness: 2px;
+}
+
 .home-welcome__closing {
   margin: 0 0 0.85rem;
   max-width: 40rem;
