@@ -5,6 +5,7 @@
 
 import type { MarketWatchMode } from "@/lib/market-watch/types";
 import { MARKET_WATCH_MODES } from "@/lib/market-watch/types";
+import { MARKET_WATCH_WORKER_VERSION } from "@/lib/market-watch/thresholds";
 
 export const FENN_MARKET_WATCH_MODE_ENV = "FENN_MARKET_WATCH_MODE";
 export const FENN_MARKET_WATCH_POLL_SECONDS_ENV =
@@ -25,7 +26,7 @@ export const MARKET_WATCH_MIN_BLOCK_RANGE = 1;
 export const MARKET_WATCH_MAX_BLOCK_RANGE_CAP = 2000;
 export const MARKET_WATCH_DEFAULT_RPC_TIMEOUT_MS = 20_000;
 export const MARKET_WATCH_LEASE_TTL_PADDING_SECONDS = 45;
-export const MARKET_WATCH_WORKER_VERSION = "1.0a";
+export { MARKET_WATCH_WORKER_VERSION };
 export const MARKET_WATCH_CLASSIFICATION_VERSION = "mw_v1";
 export const MARKET_WATCH_SOURCE_KEY_PREFIX = "official_pool";
 export const MARKET_WATCH_CHAIN_ID = 4663;

@@ -42,6 +42,8 @@ export type ProcessRangeDeps = {
   admin?: SupabaseClient;
   /** Fetch tx.from for ops only when true. */
   resolveTxFrom?: boolean;
+  /** Safe reclassify of observed/suppressed on conflict (CLI only). */
+  reclassify?: boolean;
   log?: typeof logMarketWatch;
 };
 
@@ -66,7 +68,11 @@ export async function processConfirmedRange(input: {
     throw new MarketWatchError("mw_range_invalid", "Invalid block range", 400);
   }
 
-  const logs = await fetchOfficialPoolSwapLogs({
+  const {
+    logs,
+    effectiveToBlock,
+    rangeUsed,
+  } = await fetchOfficialPoolSwapLogs({
     rpc,
     poolAddress: config.poolAddress,
     swapTopic: config.swapTopic,
@@ -79,8 +85,9 @@ export async function processConfirmedRange(input: {
     ok: true,
     mode,
     fromBlock: fromBlock.toString(),
-    toBlock: toBlock.toString(),
+    toBlock: effectiveToBlock.toString(),
     logCount: logs.length,
+    detail: `range=${rangeUsed}`,
   });
 
   // Sort for deterministic processing.
@@ -122,8 +129,8 @@ export async function processConfirmedRange(input: {
         detail: "missing block/tx/log index",
       });
       throw new MarketWatchError(
-        "mw_internal",
-        "Incomplete log from RPC",
+        "mw_classification_fatal",
+        "Incomplete log from RPC — cursor not advanced",
         502,
       );
     }
@@ -138,15 +145,19 @@ export async function processConfirmedRange(input: {
     });
 
     if (classified.kind === "error") {
+      // Malformed canonical Swap at official pool — not dust suppress.
       log({
         event: "classification_error",
         ok: false,
         code: classified.reason,
         transactionHash: canon.transactionHash,
+        logIndex: canon.logIndex,
+        fromBlock: canon.blockNumber.toString(),
+        detail: "cursor_not_advanced",
       });
       throw new MarketWatchError(
-        "mw_internal",
-        `Classification error: ${classified.reason}`,
+        "mw_classification_fatal",
+        `Classification fatal at ${canon.transactionHash}:${canon.logIndex} (${classified.reason})`,
         500,
       );
     }
@@ -225,6 +236,7 @@ export async function processConfirmedRange(input: {
         },
       },
       input.deps?.admin,
+      { reclassify: input.deps?.reclassify === true },
     );
 
     if (persistResult.outcome === "duplicate") {
@@ -239,26 +251,28 @@ export async function processConfirmedRange(input: {
     }
   }
 
+  // Cursor only advances through the range we actually scanned.
+  const cursorTo = effectiveToBlock;
   let cursorAdvancedTo: bigint | null = null;
   if (advanceCursor) {
-    const endMeta = await metaFor(toBlock);
+    const endMeta = await metaFor(cursorTo);
     await writeMarketWatchCursor(
       {
         sourceKey: config.sourceKey,
         chainId: config.chainId,
         poolAddress: config.poolAddress,
-        lastSafeBlock: toBlock,
+        lastSafeBlock: cursorTo,
         lastSafeBlockHash: endMeta.hash,
         classificationVersion: config.classificationVersion,
       },
       input.deps?.admin,
     );
-    cursorAdvancedTo = toBlock;
+    cursorAdvancedTo = cursorTo;
     log({
       event: "cursor_advanced",
       ok: true,
       mode,
-      toBlock: toBlock.toString(),
+      toBlock: cursorTo.toString(),
     });
   }
 
@@ -274,7 +288,7 @@ export async function processConfirmedRange(input: {
 
   return {
     fromBlock,
-    toBlock,
+    toBlock: cursorTo,
     logsFetched: logs.length,
     acquisitions,
     disposals,

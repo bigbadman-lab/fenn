@@ -7,8 +7,17 @@ import "server-only";
 
 import type { Hex, Log } from "viem";
 
+import {
+  classifyRpcFailure,
+  nextRangeAfterLimitError,
+  rpcBackoffMs,
+} from "@/lib/market-watch/adaptive-range";
 import { MarketWatchError } from "@/lib/market-watch/errors";
 import { logMarketWatch } from "@/lib/market-watch/log";
+import {
+  MARKET_WATCH_BLOCK_RANGE_FLOOR,
+  MARKET_WATCH_RPC_MAX_ATTEMPTS,
+} from "@/lib/market-watch/thresholds";
 import {
   createRobinhoodPublicClient,
   type RobinhoodPublicClient,
@@ -29,6 +38,7 @@ export type MarketWatchRpcClient = {
   getTransaction?: (args: {
     hash: Hex;
   }) => Promise<{ from: string } | null>;
+  getChainId?: () => Promise<number>;
 };
 
 export async function withRpcRetry<T>(
@@ -38,13 +48,14 @@ export async function withRpcRetry<T>(
     baseDelayMs?: number;
     sleep?: (ms: number) => Promise<void>;
     label?: string;
+    random?: () => number;
   } = {},
 ): Promise<T> {
-  const attempts = options.attempts ?? 3;
-  const baseDelayMs = options.baseDelayMs ?? 400;
+  const attempts = options.attempts ?? MARKET_WATCH_RPC_MAX_ATTEMPTS;
   const sleep =
     options.sleep ??
     ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+  const random = options.random ?? Math.random;
 
   let lastError: unknown;
   for (let i = 0; i < attempts; i++) {
@@ -52,18 +63,45 @@ export async function withRpcRetry<T>(
       return await op();
     } catch (error) {
       lastError = error;
+      const classified = classifyRpcFailure(error);
+      // Range limits are structural — adaptive getLogs handles them; do not burn retries.
+      if (
+        classified.kind === "range_limit" ||
+        classified.kind === "malformed"
+      ) {
+        throw error;
+      }
       if (i < attempts - 1) {
-        logMarketWatch({
-          event: "rpc_retry",
-          ok: false,
-          code: "mw_rpc_failed",
-          detail: options.label ?? "rpc",
-        });
-        await sleep(baseDelayMs * 2 ** i);
+        if (classified.kind === "rate_limit") {
+          logMarketWatch({
+            event: "rpc_rate_limited",
+            ok: false,
+            code: "mw_rpc_rate_limited",
+            detail: options.label ?? "rpc",
+          });
+        } else {
+          logMarketWatch({
+            event: "rpc_retry",
+            ok: false,
+            code: "mw_rpc_failed",
+            detail: `${options.label ?? "rpc"}:${classified.kind}`,
+          });
+        }
+        await sleep(
+          rpcBackoffMs(i, options.baseDelayMs, undefined, random),
+        );
       }
     }
   }
   if (lastError instanceof MarketWatchError) throw lastError;
+  const classified = classifyRpcFailure(lastError);
+  if (classified.kind === "rate_limit") {
+    throw new MarketWatchError(
+      "mw_rpc_rate_limited",
+      "Robinhood Chain RPC rate limited",
+      429,
+    );
+  }
   throw new MarketWatchError(
     "mw_rpc_failed",
     "Robinhood Chain RPC request failed",
@@ -90,6 +128,10 @@ export function createMarketWatchRpcClient(
 
   return {
     getBlockNumber: () => client.getBlockNumber(),
+    getChainId: async () => {
+      const id = await client.getChainId();
+      return Number(id);
+    },
     getBlock: async ({ blockNumber }) => {
       const block = await client.getBlock({ blockNumber });
       return {
@@ -113,7 +155,8 @@ export function createMarketWatchRpcClient(
 }
 
 /**
- * Fetch Swap logs for official pool address + topic only.
+ * Fetch Swap logs with adaptive range halving on provider range limits.
+ * Returns logs plus the effective end block actually scanned.
  */
 export async function fetchOfficialPoolSwapLogs(input: {
   rpc: MarketWatchRpcClient;
@@ -121,7 +164,9 @@ export async function fetchOfficialPoolSwapLogs(input: {
   swapTopic: string;
   fromBlock: bigint;
   toBlock: bigint;
-}): Promise<Log[]> {
+  /** Optional initial max span (defaults to full requested range). */
+  maxSpan?: number;
+}): Promise<{ logs: Log[]; effectiveToBlock: bigint; rangeUsed: number }> {
   if (input.fromBlock > input.toBlock) {
     throw new MarketWatchError(
       "mw_range_invalid",
@@ -129,20 +174,68 @@ export async function fetchOfficialPoolSwapLogs(input: {
       400,
     );
   }
-  return withRpcRetry(
-    () =>
-      input.rpc.getLogs({
-        address: input.poolAddress as `0x${string}`,
-        fromBlock: input.fromBlock,
-        toBlock: input.toBlock,
-        topics: [input.swapTopic as Hex],
-      }),
-    { label: "getLogs" },
-  ).then((logs) =>
-    logs.filter((log) => {
-      const t0 = log.topics[0]?.toLowerCase();
-      return t0 === input.swapTopic.toLowerCase();
-    }),
+
+  const fullSpan =
+    Number(input.toBlock - input.fromBlock) + 1;
+  let span = Math.min(
+    input.maxSpan ?? fullSpan,
+    fullSpan,
+  );
+  span = Math.max(MARKET_WATCH_BLOCK_RANGE_FLOOR, span);
+
+  // Progressive try: shrink on range_limit errors within the same request.
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const endCandidate =
+      input.fromBlock + BigInt(span) - BigInt(1) > input.toBlock
+        ? input.toBlock
+        : input.fromBlock + BigInt(span) - BigInt(1);
+
+    try {
+      const logs = await withRpcRetry(
+        () =>
+          input.rpc.getLogs({
+            address: input.poolAddress as `0x${string}`,
+            fromBlock: input.fromBlock,
+            toBlock: endCandidate,
+            topics: [input.swapTopic as Hex],
+          }),
+        { label: "getLogs" },
+      );
+      const filtered = logs.filter((log) => {
+        const t0 = log.topics[0]?.toLowerCase();
+        return t0 === input.swapTopic.toLowerCase();
+      });
+      return {
+        logs: filtered,
+        effectiveToBlock: endCandidate,
+        rangeUsed: span,
+      };
+    } catch (error) {
+      const classified = classifyRpcFailure(error);
+      if (
+        classified.kind === "range_limit" &&
+        span > MARKET_WATCH_BLOCK_RANGE_FLOOR
+      ) {
+        const next = nextRangeAfterLimitError(span);
+        logMarketWatch({
+          event: "range_reduced",
+          ok: true,
+          code: "mw_range_reduced",
+          detail: `${span}->${next}`,
+          fromBlock: input.fromBlock.toString(),
+          toBlock: endCandidate.toString(),
+        });
+        span = next;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new MarketWatchError(
+    "mw_rpc_failed",
+    "getLogs failed after adaptive range attempts",
+    502,
   );
 }
 
@@ -172,4 +265,27 @@ export async function readBlockMeta(
       ? new Date(Number(block.timestamp) * 1000).toISOString()
       : null;
   return { hash, timestamp };
+}
+
+export async function assertRobinhoodChainId(
+  rpc: MarketWatchRpcClient,
+  expected = 4663,
+): Promise<void> {
+  if (!rpc.getChainId) return;
+  const id = await withRpcRetry(() => rpc.getChainId!(), {
+    label: "getChainId",
+  });
+  if (id !== expected) {
+    logMarketWatch({
+      event: "chain_mismatch",
+      ok: false,
+      code: "mw_chain_mismatch",
+      detail: `got=${id}`,
+    });
+    throw new MarketWatchError(
+      "mw_chain_mismatch",
+      "RPC chain id is not Robinhood Chain 4663",
+      502,
+    );
+  }
 }

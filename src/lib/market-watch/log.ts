@@ -17,11 +17,18 @@ export type MarketWatchLogEvent =
   | "duplicate"
   | "cursor_advanced"
   | "rpc_retry"
+  | "rpc_rate_limited"
+  | "range_reduced"
   | "classification_error"
   | "database_error"
+  | "reorg_detected"
+  | "reorg_recovered"
+  | "reorg_stall"
   | "reorg_suspicion"
   | "mode_disabled"
-  | "replay_summary";
+  | "replay_summary"
+  | "verify_summary"
+  | "chain_mismatch";
 
 export type MarketWatchLogFields = {
   event: MarketWatchLogEvent;
@@ -31,6 +38,7 @@ export type MarketWatchLogFields = {
   fromBlock?: number | string;
   toBlock?: number | string;
   logCount?: number;
+  logIndex?: number;
   acquisitions?: number;
   disposals?: number;
   suppressed?: number;
@@ -64,6 +72,7 @@ export function logMarketWatch(fields: MarketWatchLogFields): void {
     fromBlock: fields.fromBlock,
     toBlock: fields.toBlock,
     logCount: fields.logCount,
+    logIndex: fields.logIndex,
     acquisitions: fields.acquisitions,
     disposals: fields.disposals,
     suppressed: fields.suppressed,

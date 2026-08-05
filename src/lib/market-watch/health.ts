@@ -9,10 +9,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MarketWatchMode } from "@/lib/market-watch/types";
 import type { MarketWatchHealthSnapshot } from "@/lib/market-watch/types";
 import {
-  MARKET_WATCH_WORKER_VERSION,
   parseMarketWatchMode,
   resolveMarketWatchRuntimeConfig,
 } from "@/lib/market-watch/config";
+import { MARKET_WATCH_WORKER_VERSION } from "@/lib/market-watch/thresholds";
+import { MARKET_WATCH_HEARTBEAT_STALE_SECONDS } from "@/lib/market-watch/thresholds";
 
 type WorkerStateRow = {
   mode: string;
@@ -189,7 +190,7 @@ export async function getMarketWatchHealth(
     const running =
       lastTickAt != null &&
       Date.now() - Date.parse(lastTickAt) <
-        (runtime.pollSeconds + 30) * 1000;
+        MARKET_WATCH_HEARTBEAT_STALE_SECONDS * 1000;
 
     return {
       configured: row.configured,

@@ -1,6 +1,7 @@
 /**
  * Manual bounded-range replay for Market Watch (CLI).
  * Default mode dry_run; live requires explicit --live-replay.
+ * Optional --reclassify updates observed/suppressed only (never published/reorged).
  */
 
 import "server-only";
@@ -22,6 +23,7 @@ import {
   createMarketWatchRpcClient,
   type MarketWatchRpcClient,
 } from "@/lib/market-watch/rpc";
+import { MARKET_WATCH_VERIFY_MAX_SPAN } from "@/lib/market-watch/thresholds";
 import { POOL_TOKEN_ORDER_ABI } from "@/lib/market-watch/topics";
 import type { MarketWatchMode } from "@/lib/market-watch/types";
 import { createRobinhoodPublicClient } from "@/lib/treasury/chain";
@@ -30,9 +32,10 @@ export type ReplayArgs = {
   fromBlock: bigint;
   toBlock: bigint;
   mode: MarketWatchMode;
-  /** When true and mode live, allow live status decisions + no cursor advance default. */
+  /** When true and mode live, allow live status decisions. */
   liveReplay: boolean;
   advanceCursor: boolean;
+  reclassify: boolean;
 };
 
 export function parseReplayArgs(argv: string[]): ReplayArgs {
@@ -41,6 +44,7 @@ export function parseReplayArgs(argv: string[]): ReplayArgs {
   let mode: MarketWatchMode = "dry_run";
   let liveReplay = false;
   let advanceCursor = false;
+  let reclassify = false;
 
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -57,6 +61,8 @@ export function parseReplayArgs(argv: string[]): ReplayArgs {
       liveReplay = true;
     } else if (a === "--advance-cursor") {
       advanceCursor = true;
+    } else if (a === "--reclassify") {
+      reclassify = true;
     }
   }
 
@@ -75,10 +81,10 @@ export function parseReplayArgs(argv: string[]): ReplayArgs {
     );
   }
   const span = toBlock - fromBlock + BigInt(1);
-  if (span > BigInt(5000)) {
+  if (span > BigInt(MARKET_WATCH_VERIFY_MAX_SPAN)) {
     throw new MarketWatchError(
       "mw_range_invalid",
-      "Replay range too large (max 5000 blocks)",
+      `Replay range too large (max ${MARKET_WATCH_VERIFY_MAX_SPAN} blocks)`,
       400,
     );
   }
@@ -97,7 +103,14 @@ export function parseReplayArgs(argv: string[]): ReplayArgs {
     );
   }
 
-  return { fromBlock, toBlock, mode, liveReplay, advanceCursor };
+  return {
+    fromBlock,
+    toBlock,
+    mode,
+    liveReplay,
+    advanceCursor,
+    reclassify,
+  };
 }
 
 export type ReplayDeps = {
@@ -155,7 +168,11 @@ export async function runMarketWatchReplay(
     fromBlock: args.fromBlock,
     toBlock: args.toBlock,
     advanceCursor: args.advanceCursor,
-    deps: { admin: deps.admin, log },
+    deps: {
+      admin: deps.admin,
+      log,
+      reclassify: args.reclassify,
+    },
   });
 
   log({
@@ -169,6 +186,9 @@ export async function runMarketWatchReplay(
     disposals: result.disposals,
     suppressed: result.suppressed,
     duplicates: result.duplicates,
+    detail: args.reclassify
+      ? `reclassify advancesCursor=${args.advanceCursor} envMode=${runtime.mode}`
+      : `advancesCursor=${args.advanceCursor} envMode=${runtime.mode}`,
   });
 
   return result;

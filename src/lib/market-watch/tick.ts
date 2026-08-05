@@ -17,14 +17,16 @@ import { patchMarketWatchWorkerState } from "@/lib/market-watch/health";
 import { logMarketWatch } from "@/lib/market-watch/log";
 import { processConfirmedRange } from "@/lib/market-watch/process-range";
 import {
+  assertRobinhoodChainId,
   createMarketWatchRpcClient,
   getConfirmedHead,
-  readBlockMeta,
   type MarketWatchRpcClient,
   withRpcRetry,
 } from "@/lib/market-watch/rpc";
+import { recoverFromCursorReorg } from "@/lib/market-watch/reorg";
 import { POOL_TOKEN_ORDER_ABI } from "@/lib/market-watch/topics";
 import { createRobinhoodPublicClient } from "@/lib/treasury/chain";
+import { readBlockMeta } from "@/lib/market-watch/rpc";
 
 export type TickResult = {
   ok: boolean;
@@ -52,8 +54,78 @@ export type TickDeps = {
 };
 
 /**
- * Detect cursor block-hash mismatch (reorg foundation). Fail closed.
+ * Detect cursor block-hash mismatch and recover when possible.
+ * Returns rewound cursor info when recovery advances work; throws stall codes.
  */
+export async function ensureCursorCanonical(input: {
+  rpc: MarketWatchRpcClient;
+  cursor: {
+    sourceKey: string;
+    chainId: number;
+    poolAddress: string;
+    lastSafeBlock: bigint;
+    lastSafeBlockHash: string | null;
+    classificationVersion: string;
+  };
+  admin?: import("@supabase/supabase-js").SupabaseClient;
+  log?: typeof logMarketWatch;
+}): Promise<{ lastSafeBlock: bigint; lastSafeBlockHash: string | null }> {
+  if (!input.cursor.lastSafeBlockHash) {
+    return {
+      lastSafeBlock: input.cursor.lastSafeBlock,
+      lastSafeBlockHash: input.cursor.lastSafeBlockHash,
+    };
+  }
+  const meta = await readBlockMeta(input.rpc, input.cursor.lastSafeBlock);
+  if (!meta.hash) {
+    throw new MarketWatchError(
+      "mw_cursor_reorg",
+      "Unable to verify cursor block hash",
+      503,
+    );
+  }
+  if (meta.hash.toLowerCase() === input.cursor.lastSafeBlockHash.toLowerCase()) {
+    return {
+      lastSafeBlock: input.cursor.lastSafeBlock,
+      lastSafeBlockHash: input.cursor.lastSafeBlockHash,
+    };
+  }
+
+  if (!input.admin) {
+    throw new MarketWatchError(
+      "mw_cursor_reorg",
+      "Cursor block hash mismatch — possible reorg",
+      503,
+    );
+  }
+
+  const recovery = await recoverFromCursorReorg({
+    rpc: input.rpc,
+    cursor: input.cursor,
+    admin: input.admin,
+    log: input.log,
+  });
+
+  if (recovery.outcome === "no_reorg") {
+    return {
+      lastSafeBlock: input.cursor.lastSafeBlock,
+      lastSafeBlockHash: input.cursor.lastSafeBlockHash,
+    };
+  }
+  if (recovery.outcome === "stalled") {
+    throw new MarketWatchError(
+      "mw_reorg_stall",
+      "Reorg recovery could not find a common ancestor within rewind limit",
+      503,
+    );
+  }
+  return {
+    lastSafeBlock: recovery.ancestorBlock,
+    lastSafeBlockHash: recovery.ancestorHash,
+  };
+}
+
+/** @deprecated Use ensureCursorCanonical — throws when unrecovered only. */
 export async function assertCursorHashStillValid(input: {
   rpc: MarketWatchRpcClient;
   lastSafeBlock: bigint;
@@ -196,20 +268,27 @@ export async function runMarketWatchTick(
       deps.rpc ??
       createMarketWatchRpcClient(process.env.ROBINHOOD_CHAIN_RPC_URL);
 
-    // Ensure RPC reachable.
+    // Ensure RPC reachable + correct chain.
     await withRpcRetry(() => rpc.getBlockNumber(), { label: "tick_head" });
+    await assertRobinhoodChainId(rpc);
 
-    const cursor = await readMarketWatchCursor(
+    let cursor = await readMarketWatchCursor(
       config.sourceKey,
       deps.admin,
     );
 
     if (cursor) {
-      await assertCursorHashStillValid({
+      const safe = await ensureCursorCanonical({
         rpc,
-        lastSafeBlock: cursor.lastSafeBlock,
-        lastSafeBlockHash: cursor.lastSafeBlockHash,
+        cursor,
+        admin: deps.admin,
+        log,
       });
+      cursor = {
+        ...cursor,
+        lastSafeBlock: safe.lastSafeBlock,
+        lastSafeBlockHash: safe.lastSafeBlockHash,
+      };
     }
 
     const { latest, confirmedHead } = await getConfirmedHead({
@@ -279,7 +358,8 @@ export async function runMarketWatchTick(
       deps: { admin: deps.admin, log },
     });
 
-    const lag = latest - end;
+    const processedTo = result.toBlock;
+    const lag = latest - processedTo;
     await patchMarketWatchWorkerState(
       {
         mode: runtime.mode,
@@ -289,7 +369,7 @@ export async function runMarketWatchTick(
         lastErrorAt: null,
         lastErrorCode: null,
         latestChainBlock: latest,
-        lastProcessedBlock: end,
+        lastProcessedBlock: processedTo,
         cursorLagBlocks: lag < BigInt(0) ? BigInt(0) : lag,
         eventsSeenDelta: result.logsFetched,
         acquisitionsDelta: result.acquisitions,
@@ -306,7 +386,7 @@ export async function runMarketWatchTick(
       ok: true,
       mode: runtime.mode,
       fromBlock: start.toString(),
-      toBlock: end.toString(),
+      toBlock: processedTo.toString(),
       acquisitions: result.acquisitions,
       disposals: result.disposals,
       suppressed: result.suppressed,
@@ -318,7 +398,7 @@ export async function runMarketWatchTick(
       mode: runtime.mode,
       processed: {
         fromBlock: start.toString(),
-        toBlock: end.toString(),
+        toBlock: processedTo.toString(),
         logsFetched: result.logsFetched,
         acquisitions: result.acquisitions,
         disposals: result.disposals,
@@ -330,7 +410,17 @@ export async function runMarketWatchTick(
     const code =
       error instanceof MarketWatchError ? error.code : "mw_internal";
     log({
-      event: code === "mw_cursor_reorg" ? "reorg_suspicion" : "database_error",
+      event:
+        code === "mw_cursor_reorg" || code === "mw_reorg_stall"
+          ? "reorg_suspicion"
+          : code === "mw_classification_fatal"
+            ? "classification_error"
+            : code === "mw_rpc_failed" ||
+                code === "mw_rpc_rate_limited" ||
+                code === "mw_rpc_unavailable" ||
+                code === "mw_chain_mismatch"
+              ? "rpc_retry"
+              : "database_error",
       ok: false,
       code,
       mode: runtime.mode,

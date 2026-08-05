@@ -480,7 +480,10 @@ export async function getMarketWatchDeskSnapshot(input: {
   const confDepth =
     config.confirmationDepth ?? row?.confirmation_depth ?? 5;
 
-  const reorg = health.lastErrorCode === "mw_cursor_reorg";
+  const reorg =
+    health.lastErrorCode === "mw_cursor_reorg" ||
+    health.lastErrorCode === "mw_reorg_stall" ||
+    health.lastErrorCode === "mw_classification_fatal";
   const stalledHeart =
     workerMode !== "disabled" &&
     (heartbeatStatus === "stale" || heartbeatStatus === "absent");
@@ -541,6 +544,20 @@ export async function getMarketWatchDeskSnapshot(input: {
     warnings.push({
       code: "mw_live_config_disabled",
       message: "WORKER MODE IS LIVE BUT CONFIG ENABLED IS NO.",
+    });
+  }
+  if (health.lastErrorCode === "mw_reorg_stall") {
+    warnings.push({
+      code: "mw_reorg_stall_ops",
+      message:
+        "REORG STALLED — SWITCH TO DRY_RUN, INSPECT COMMON ANCESTOR, RUN VERIFY/REPLAY, THEN RESUME.",
+    });
+  }
+  if (health.lastErrorCode === "mw_reorg_recovered") {
+    warnings.push({
+      code: "mw_reorg_recovered_ops",
+      message:
+        "REORG RECOVERED — FORKED EVENTS MARKED REORGED (LEAVING CLEARING ON NEXT POLL). CONFIRM LAG CATCHES UP.",
     });
   }
 

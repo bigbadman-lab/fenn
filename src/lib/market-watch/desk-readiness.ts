@@ -1,16 +1,19 @@
-/**
- * Pure readiness / projection helpers for Market Watch Desk (testable, no I/O).
- */
-
 import type { MarketWatchMode } from "@/lib/market-watch/types";
 import type {
   MarketWatchDeskProjection,
   MarketWatchReadinessVerdict,
 } from "@/lib/market-watch/desk-types";
+import {
+  MARKET_WATCH_HEARTBEAT_STALE_SECONDS,
+  MARKET_WATCH_PROCESSING_LAG_SLACK,
+  MARKET_WATCH_STALLED_LAG_OVER_CONFIRM,
+} from "@/lib/market-watch/thresholds";
 
-export const MARKET_WATCH_HEARTBEAT_STALE_SECONDS = 90;
-/** Lag beyond confirmation depth + this many blocks ⇒ processing lag. */
-export const MARKET_WATCH_PROCESSING_LAG_SLACK = 20;
+export {
+  MARKET_WATCH_HEARTBEAT_STALE_SECONDS,
+  MARKET_WATCH_PROCESSING_LAG_SLACK,
+  MARKET_WATCH_STALLED_LAG_OVER_CONFIRM,
+} from "@/lib/market-watch/thresholds";
 
 export function mapMarketWatchErrorPlain(
   code: string | null | undefined,
@@ -30,8 +33,18 @@ export function mapMarketWatchErrorPlain(
     case "mw_rpc_unavailable":
     case "mw_rpc_failed":
       return "ROBINHOOD CHAIN COULD NOT BE READ.";
+    case "mw_rpc_rate_limited":
+      return "ROBINHOOD CHAIN RATE LIMIT — WORKER WILL RETRY AFTER BACKOFF.";
     case "mw_cursor_reorg":
-      return "THE CURSOR BLOCK HASH NO LONGER MATCHES. INGESTION HAS STOPPED SAFELY.";
+      return "THE CURSOR BLOCK HASH NO LONGER MATCHES. RECOVERY MAY BE IN PROGRESS.";
+    case "mw_reorg_stall":
+      return "REORG RECOVERY EXCEEDED REWIND LIMIT. INGESTION STALLED — OPERATOR REPLAY REQUIRED.";
+    case "mw_reorg_recovered":
+      return "REORG RECOVERED — CURSOR REWOUND AND FORKED EVENTS MARKED REORGED.";
+    case "mw_classification_fatal":
+      return "A CANONICAL SWAP LOG FAILED TO CLASSIFY. CURSOR WAS NOT ADVANCED.";
+    case "mw_chain_mismatch":
+      return "RPC CHAIN ID IS NOT ROBINHOOD CHAIN (4663).";
     case "mw_disabled":
       return "WORKER MODE IS DISABLED. NO CHAIN INSPECTION.";
     case "mw_lease_busy":
@@ -111,6 +124,13 @@ export function deriveReadinessVerdict(input: {
   const reorg = input.lastErrorCode === "mw_cursor_reorg";
   if (reorg) return "stalled";
 
+  if (
+    input.lastErrorCode === "mw_reorg_stall" ||
+    input.lastErrorCode === "mw_classification_fatal"
+  ) {
+    return "stalled";
+  }
+
   if (input.workerMode === "disabled") {
     return "disabled";
   }
@@ -122,6 +142,12 @@ export function deriveReadinessVerdict(input: {
 
   const conf = input.confirmationDepth ?? 5;
   const lag = input.cursorLagBlocks;
+  if (
+    lag != null &&
+    lag > conf + MARKET_WATCH_STALLED_LAG_OVER_CONFIRM
+  ) {
+    return "stalled";
+  }
   if (
     lag != null &&
     lag > conf + MARKET_WATCH_PROCESSING_LAG_SLACK
