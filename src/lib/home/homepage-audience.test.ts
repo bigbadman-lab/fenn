@@ -165,11 +165,11 @@ describe("homepage V2 structure and wiring", () => {
     const css = read("src/app/globals.css");
     assert.match(welcome, /href="\/deeds"/);
     assert.match(welcome, /href="\/camp"/);
-    assert.match(welcome, /href="\/greenwood"/);
+    assert.match(welcome, /href="\/greenwood\?crossing=1"/);
     assert.match(welcome, /home-welcome__inline-link/);
     assert.match(welcome, /href="\/deeds"[\s\S]*?deeds/);
     assert.match(welcome, /href="\/camp"[\s\S]*?Camp/);
-    assert.match(welcome, /href="\/greenwood"[\s\S]*?Greenwood/);
+    assert.match(welcome, /href="\/greenwood\?crossing=1"[\s\S]*?Greenwood/);
     assert.match(css, /a\.home-welcome__inline-link/);
     assert.match(
       css.slice(css.indexOf("a.home-welcome__inline-link")),

@@ -86,7 +86,7 @@ export function HomeWelcome() {
             </p>
             <p className="home-welcome__line">
               When FENN is satisfied, the{" "}
-              <Link href="/greenwood" className="home-welcome__inline-link">
+              <Link href="/greenwood?crossing=1" className="home-welcome__inline-link">
                 Greenwood
               </Link>{" "}
               opens.
