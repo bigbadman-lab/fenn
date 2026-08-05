@@ -62,3 +62,32 @@ services:
         sync: false
       - key: FENN_TREASURY_ADDRESS
         sync: false
+
+  # Market Watch 1.0A — always-on official pool observer (separate from X agent).
+  # Default mode disabled. Apply migration 50 + config before dry_run/live.
+  - type: worker
+    name: fenn-market-watch
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    startCommand: npm run market-watch:worker
+    envVars:
+      - key: FENN_MARKET_WATCH_MODE
+        value: disabled
+      - key: FENN_MARKET_WATCH_POLL_SECONDS
+        value: "10"
+      - key: FENN_MARKET_WATCH_LEASE_KEY
+        value: market_watch
+      - key: FENN_MARKET_WATCH_MAX_BLOCK_RANGE
+        value: "500"
+      - key: NODE_VERSION
+        value: "24.11.1"
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ROBINHOOD_CHAIN_RPC_URL
+        sync: false
