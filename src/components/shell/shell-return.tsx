@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { shouldShowShellReturn } from "@/lib/shell/return-path";
+
 /** Inner pages only — homepage navigation lives in the world map. */
 export function ShellReturn() {
   const pathname = usePathname();
 
-  if (!pathname || pathname === "/") {
+  if (!shouldShowShellReturn(pathname)) {
     return null;
   }
 

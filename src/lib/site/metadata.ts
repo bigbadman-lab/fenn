@@ -19,13 +19,15 @@ export const FENN_OG_IMAGE = {
   alt: "FENN",
 } as const;
 
-/** Browser tab / pin identity — public URL path only. */
-export const FENN_FAVICON_PATH = "/favicon.jpg";
+/**
+ * Browser tab / pin identity — App Router + public `/favicon.ico`
+ * (built from square branding in `public/favicon.jpg`).
+ */
+export const FENN_FAVICON_PATH = "/favicon.ico";
 
 export const FENN_FAVICON = {
   url: FENN_FAVICON_PATH,
-  type: "image/jpeg",
-  /** Source asset is square 50×50 JPEG in public/favicon.jpg. */
+  type: "image/x-icon",
   sizes: "50x50",
 } as const;
 
@@ -182,14 +184,8 @@ export function buildRootMetadata(runtime?: SiteRuntimeHints): Metadata {
     },
     description: FENN_DEFAULT_DESCRIPTION,
     icons: {
-      icon: [
-        {
-          url: FENN_FAVICON.url,
-          type: FENN_FAVICON.type,
-          sizes: FENN_FAVICON.sizes,
-        },
-      ],
-      shortcut: [{ url: FENN_FAVICON.url, type: FENN_FAVICON.type }],
+      // Primary tab icon: `src/app/favicon.ico` (App Router file convention → `/favicon.ico`).
+      // Metadata only fills apple-touch so we do not emit a second conflicting favicon set.
       apple: [
         {
           url: FENN_FAVICON.url,

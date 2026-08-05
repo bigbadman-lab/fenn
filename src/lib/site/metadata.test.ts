@@ -434,29 +434,34 @@ describe("assets and public route wiring", () => {
     assert.ok(size > 1000);
   });
 
-  it("wires /favicon.jpg as tab and apple identity icons", () => {
+  it("wires /favicon.ico via App Router file + apple metadata", () => {
     assert.equal(fileExists("public/favicon.jpg"), true);
-    assert.equal(FENN_FAVICON_PATH, "/favicon.jpg");
-    assert.equal(FENN_FAVICON.type, "image/jpeg");
+    assert.equal(fileExists("src/app/favicon.ico"), true);
+    assert.equal(FENN_FAVICON_PATH, "/favicon.ico");
+    assert.equal(FENN_FAVICON.type, "image/x-icon");
     assert.equal(FENN_FAVICON.sizes, "50x50");
 
     const root = buildRootMetadata(prodRuntime);
     const icons = root.icons;
     assert.ok(icons && typeof icons === "object" && !Array.isArray(icons));
 
-    const iconList = Array.isArray(icons.icon) ? icons.icon : [icons.icon];
-    const iconEntry = iconList[0] as { url?: string; type?: string; sizes?: string };
-    assert.equal(iconEntry?.url, "/favicon.jpg");
-    assert.equal(iconEntry?.type, "image/jpeg");
+    // Tab/shortcut icon comes from `src/app/favicon.ico` (file convention), not metadata.icons.icon
+    assert.equal(
+      (icons as { icon?: unknown }).icon,
+      undefined,
+      "avoid duplicate icon metadata on top of app/favicon.ico",
+    );
+    assert.equal((icons as { shortcut?: unknown }).shortcut, undefined);
 
     const appleList = Array.isArray(icons.apple) ? icons.apple : [icons.apple];
-    const appleEntry = appleList[0] as { url?: string };
-    assert.equal(appleEntry?.url, "/favicon.jpg");
+    const appleEntry = appleList[0] as { url?: string; type?: string };
+    assert.equal(appleEntry?.url, "/favicon.ico");
+    assert.equal(appleEntry?.type, "image/x-icon");
 
     assert.ok(root.metadataBase);
     assert.equal(
       new URL(FENN_FAVICON_PATH, root.metadataBase).href,
-      "https://imfenn.com/favicon.jpg",
+      "https://imfenn.com/favicon.ico",
     );
   });
 
