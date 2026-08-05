@@ -212,37 +212,52 @@ describe("living map does not couple to world systems", () => {
     assert.match(map, /href: "\/wall"/);
   });
 
-  it("welcome arrival transmission is locked and compact", () => {
+  it("homepage V2 welcome orients strangers and keeps map after journey", () => {
     const welcome = readFileSync(
       join(repo, "src/components/home/home-welcome.tsx"),
       "utf8",
     );
     const page = readFileSync(join(repo, "src/app/page.tsx"), "utf8");
-    const copy = readFileSync(join(repo, "src/content/welcome.ts"), "utf8");
+    const identity = readFileSync(
+      join(repo, "src/components/home/home-identity.tsx"),
+      "utf8",
+    );
     const map = readFileSync(
       join(repo, "src/components/home/fenn-world-map.tsx"),
       "utf8",
     );
+    const audience = readFileSync(
+      join(repo, "src/lib/home/homepage-audience.ts"),
+      "utf8",
+    );
 
-    assert.match(welcome, /HOMEPAGE_WELCOME/);
-    assert.match(welcome, /href="#the-map"/);
+    assert.match(welcome, /resolveHomepageAudience/);
+    assert.match(welcome, /HOMEPAGE_ACTIONS\.mapId/);
+    assert.match(welcome, /HOMEPAGE_ACTIONS\.outlawThresholdId/);
     assert.doesNotMatch(welcome, /FENN_ASCII_DETAILED/);
     assert.doesNotMatch(welcome, /CANONICAL_WELCOME_TEXT/);
-    assert.match(copy, /WELCOME, OUTLAW\./);
-    assert.match(copy, /\[ ENTER THE MAP \]/);
-    assert.match(copy, /This is not a game\. This is how a world remembers\./);
+    assert.match(audience, /WELCOME, STRANGER\./);
+    assert.match(audience, /WELCOME, OUTLAW\./);
+    assert.match(audience, /WELCOME HOME\./);
+    assert.match(audience, /\[ EXPLORE THE MAP \]/);
+    assert.match(audience, /\[ BECOME AN OUTLAW \]/);
+    assert.match(audience, /outlaw-register/);
+    assert.match(audience, /the-map/);
+    assert.match(identity, /THE WORLD|HOMEPAGE_MAP_ORIENTATION/);
     assert.match(map, /id="the-map"/);
 
     const welcomeOrder = page.indexOf("<HomeWelcome");
     const journeyOrder = page.indexOf("<HomeFirstThirty");
     const identityOrder = page.indexOf("<HomeIdentity");
+    const registerOrder = page.indexOf("<HomeOutlawRegister");
     const voiceOrder = page.indexOf("<HomeFennVoice");
     assert.ok(welcomeOrder >= 0 && identityOrder > welcomeOrder);
     assert.ok(
       journeyOrder < 0 ||
         (journeyOrder > welcomeOrder && journeyOrder < identityOrder),
     );
-    assert.ok(voiceOrder > identityOrder);
+    assert.ok(registerOrder > identityOrder);
+    assert.ok(voiceOrder > registerOrder);
 
     const voice = readFileSync(
       join(repo, "src/components/home/home-fenn-voice.tsx"),

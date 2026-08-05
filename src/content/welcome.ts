@@ -1,6 +1,6 @@
 /**
  * Canonical Welcome Text from FENN_MVP_SPEC.md §5 — VERBATIM.
- * Retained for lore continuity; homepage arrival uses HOMEPAGE_WELCOME instead.
+ * Retained for lore continuity; homepage arrival uses homepage-audience.ts.
  */
 export const CANONICAL_WELCOME_TEXT = `i'm fenn
 
@@ -162,19 +162,20 @@ the greenwood shares
 welcome to the wood`;
 
 /**
- * Homepage arrival transmission — locked pre-launch copy.
- * Do not rewrite or expand.
+ * @deprecated Prefer `src/lib/home/homepage-audience.ts` (Homepage V2).
+ * Kept for reference; home UI no longer imports this object.
  */
 export const HOMEPAGE_WELCOME = {
-  title: "WELCOME, OUTLAW.",
+  title: "WELCOME, STRANGER.",
   lines: [
     "You stand at the edge of something old.",
-    "FENN watches, remembers, and decides what matters.",
+    "FENN is a living AI-native world that watches,",
+    "remembers and changes through its people.",
   ],
   deeds: [
     "Do deeds. Speak in Camp. Earn LEAF.",
     "When FENN is satisfied, the Greenwood opens.",
   ],
   closing: "This is not a game. This is how a world remembers.",
-  enter: "[ ENTER THE MAP ]",
+  enter: "[ EXPLORE THE MAP ]",
 } as const;

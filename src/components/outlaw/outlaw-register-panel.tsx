@@ -182,7 +182,7 @@ export function OutlawRegisterPanel({
         <p>the path asks for a wallet before a name.</p>
         <p>
           <button type="button" className="btn-text" onClick={() => login()}>
-            [ enter ]
+            [ begin ]
           </button>
         </p>
       </>,
@@ -374,7 +374,7 @@ export function OutlawRegisterPanel({
           className="btn-text"
           disabled={submitting || !selectedWallet}
         >
-          {submitting ? "[ waiting ]" : "[ enter ]"}
+          {submitting ? "[ waiting ]" : "[ claim the name ]"}
         </button>
       </form>
     </>,

@@ -942,6 +942,7 @@ button.btn-text:disabled {
   display: none;
 }
 
+/* Landmark links: always mark affordance without cards or hover-only UX. */
 a.fenn-map__link {
   display: inline;
   margin: 0;
@@ -952,22 +953,27 @@ a.fenn-map__link {
   font-size: inherit;
   line-height: inherit;
   letter-spacing: inherit;
-  text-decoration: none;
-  text-underline-offset: 0.14em;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
   cursor: pointer;
   color: inherit;
+  font-weight: 600;
 }
 
 a.fenn-map__link:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: currentColor;
   color: inherit;
-  filter: brightness(1.2);
+  filter: brightness(1.15);
 }
 
 a.fenn-map__link:focus-visible {
   outline: 1px solid var(--color-leaf);
   outline-offset: 2px;
   text-decoration: underline;
+  text-decoration-thickness: 2px;
   color: inherit;
 }
 
@@ -1161,6 +1167,11 @@ a.fenn-map__link:focus-visible {
   color: var(--color-leaf);
 }
 
+.home-welcome__title--pending {
+  color: var(--muted);
+  min-height: 1.3em;
+}
+
 .home-welcome__body {
   margin: 0 0 0.85rem;
 }
@@ -1182,12 +1193,30 @@ a.fenn-map__link:focus-visible {
   letter-spacing: 0.02em;
 }
 
-.home-welcome__cta {
-  margin: 0;
-  text-align: right;
+.home-welcome__begin {
+  margin: 0.35rem 0 0.85rem;
+  padding-top: 0.75rem;
+  border-top: var(--line);
+  max-width: 40rem;
 }
 
-.home-welcome__enter {
+.home-welcome__begin-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--color-leaf);
+}
+
+.home-welcome__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.35rem;
+  margin: 0;
+  justify-content: flex-end;
+}
+
+.home-welcome__action {
   display: inline-block;
   margin: 0;
   padding: 0;
@@ -1202,14 +1231,51 @@ a.fenn-map__link:focus-visible {
   cursor: pointer;
 }
 
-.home-welcome__enter:hover {
+.home-welcome__action:hover {
   text-decoration: underline;
   color: var(--color-leaf);
 }
 
-.home-welcome__enter:focus-visible {
+.home-welcome__action:focus-visible {
   outline: 1px solid var(--color-leaf);
   outline-offset: 3px;
+}
+
+.home-world-orient {
+  margin: 0 0 0.85rem;
+  max-width: 40rem;
+}
+
+.home-world-orient__title {
+  margin: 0 0 0.55rem;
+  font-size: 0.88rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--color-leaf);
+}
+
+.home-world-orient__body {
+  margin: 0;
+}
+
+.home-world-orient__line {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--color-bone);
+  max-width: none;
+}
+
+.home-register__intro {
+  margin-bottom: 1rem;
+}
+
+.home-register__wallet {
+  margin-top: 0.75rem;
+}
+
+.home-register__wallet p {
+  margin: 0;
 }
 
 /* THE FIRST THIRTY — homepage / outlaw journey */
@@ -4857,7 +4923,7 @@ button.wall-mark__action:focus-visible {
   }
 
   .home-welcome__cta {
-    text-align: left;
+    justify-content: flex-start;
   }
 
   .home-identity {

@@ -20,16 +20,19 @@ export const metadata: Metadata = buildHomeMetadata();
  */
 export const revalidate = 60;
 
+/**
+ * Homepage V2 order: orient → (journey) → map → Outlaw threshold → deeper lore.
+ */
 export default function HomePage() {
   return (
     <div className="home">
       <HomeWelcome />
       <HomeFirstThirty />
       <HomeIdentity />
+      <HomeOutlawRegister />
       <HomeFennVoice />
       <LoreTransmission />
       <HomeLoreInterrupt />
-      <HomeOutlawRegister />
       <HomeGreenwoodTeaser />
       <HomeOfficialContract />
       <HomePaths />

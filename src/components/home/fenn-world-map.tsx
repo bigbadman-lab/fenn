@@ -90,7 +90,9 @@ export function FennWorldMap() {
             <FennMapWanderer variant="mobile" />
           </div>
         </div>
-        <p className="fenn-map__hint muted">&lt; the road continues &gt;</p>
+        <p className="fenn-map__hint muted">
+          &lt; slide to walk the road · named places open paths &gt;
+        </p>
       </div>
 
       {/* Beside the map, near the Greenwood call — single public signal. */}

@@ -141,7 +141,7 @@ export function ShellAuthControls() {
     return (
       <div className="shell-auth">
         <button type="button" className="btn-text" onClick={() => login()}>
-          [ enter ]
+          [ begin ]
         </button>
       </div>
     );
