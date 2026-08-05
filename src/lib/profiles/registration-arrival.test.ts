@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 import {
   OUTLAW_REGISTRATION_ARRIVAL_METHOD,
   OUTLAW_REGISTRATION_ARRIVAL_PATH,
+  REGISTRATION_WRITE_OPEN_FAILED_COPY,
+  REGISTRATION_WRITING_COPY,
 } from "./registration-arrival";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -20,6 +22,30 @@ describe("Outlaw registration arrival (Book of the Road)", () => {
   it("defines /outlaw as the post-registration destination with replace", () => {
     assert.equal(OUTLAW_REGISTRATION_ARRIVAL_PATH, "/outlaw");
     assert.equal(OUTLAW_REGISTRATION_ARRIVAL_METHOD, "replace");
+  });
+
+  it("defines intentional writing and recovery copy without technical jargon", () => {
+    assert.equal(
+      REGISTRATION_WRITING_COPY.title,
+      "YOUR NAME IS BEING WRITTEN.",
+    );
+    assert.equal(
+      REGISTRATION_WRITING_COPY.body,
+      "The Register is remembering you.",
+    );
+    assert.equal(REGISTRATION_WRITING_COPY.status, "[ writing the name… ]");
+    assert.equal(
+      REGISTRATION_WRITE_OPEN_FAILED_COPY.title,
+      "YOUR NAME WAS WRITTEN.",
+    );
+    assert.equal(
+      REGISTRATION_WRITE_OPEN_FAILED_COPY.body,
+      "The road did not open cleanly.",
+    );
+    assert.equal(
+      REGISTRATION_WRITE_OPEN_FAILED_COPY.action,
+      "[ CONTINUE TO YOUR OUTLAW ]",
+    );
   });
 
   it("shared panel is the one success handler for homepage and standalone register", () => {
@@ -37,8 +63,53 @@ describe("Outlaw registration arrival (Book of the Road)", () => {
     assert.doesNotMatch(panel, /router\.push\(/);
   });
 
-  it("refreshes bootstrap before navigation and only after successful response", () => {
+  it("uses explicit phases: idle, submitting, writing, write_open_failed", () => {
     const panel = read("src/components/outlaw/outlaw-register-panel.tsx");
+    const arrival = read("src/lib/profiles/registration-arrival.ts");
+    assert.match(arrival, /OutlawRegisterPhase/);
+    assert.match(arrival, /"idle"/);
+    assert.match(arrival, /"submitting"/);
+    assert.match(arrival, /"writing"/);
+    assert.match(arrival, /"write_open_failed"/);
+    assert.match(panel, /setPhase\("submitting"\)/);
+    assert.match(panel, /setPhase\("writing"\)/);
+    assert.match(panel, /setPhase\("write_open_failed"\)/);
+    assert.match(panel, /setPhase\("idle"\)/);
+  });
+
+  it("shows submitting wait label while the register request is pending", () => {
+    const panel = read("src/components/outlaw/outlaw-register-panel.tsx");
+    assert.match(panel, /phase === "submitting" \? "\[ waiting \]"/);
+    assert.match(panel, /\[ claim the name \]/);
+  });
+
+  it("holds intentional writing UI after success and before replace", () => {
+    const panel = read("src/components/outlaw/outlaw-register-panel.tsx");
+    assert.match(panel, /REGISTRATION_WRITING_COPY/);
+    assert.match(panel, /REGISTRATION_WRITING_COPY\.title/);
+    assert.match(panel, /REGISTRATION_WRITING_COPY\.body/);
+    assert.match(panel, /REGISTRATION_WRITING_COPY\.status/);
+    assert.match(panel, /role="status"/);
+    assert.match(panel, /aria-live="polite"/);
+    assert.match(panel, /aria-busy="true"/);
+    assert.doesNotMatch(panel, /setTimeout/);
+    assert.doesNotMatch(panel, /progress|spinner|toast/i);
+  });
+
+  it("locks form during submit and never after success path re-enables register", () => {
+    const panel = read("src/components/outlaw/outlaw-register-panel.tsx");
+    assert.match(panel, /const formLocked = phase !== "idle"/);
+    assert.match(panel, /if \(phase !== "idle"\)/);
+    assert.match(panel, /disabled=\{formLocked\}/);
+    assert.match(panel, /disabled=\{formLocked \|\| !selectedWallet\}/);
+  });
+
+  it("refreshes bootstrap after success then replace; not on failed response", () => {
+    const panel = read("src/components/outlaw/outlaw-register-panel.tsx");
+    const open = panel.slice(
+      panel.indexOf("const openRoadAfterWrite"),
+      panel.indexOf("async function onSubmit"),
+    );
     const onSubmit = panel.slice(
       panel.indexOf("async function onSubmit"),
       panel.indexOf("function wrap("),
@@ -49,33 +120,54 @@ describe("Outlaw registration arrival (Book of the Road)", () => {
     assert.match(onSubmit, /setFormError/);
     assert.doesNotMatch(
       onSubmit.slice(0, onSubmit.indexOf("if (!response.ok)")),
-      /router\.replace/,
+      /openRoadAfterWrite|router\.replace/,
     );
+    assert.match(onSubmit, /await openRoadAfterWrite\(\)/);
 
-    const successPath = onSubmit.slice(onSubmit.indexOf("if (!response.ok)"));
-    // Failure returns before replace.
-    assert.match(successPath, /return;[\s\S]*setArriving\(true\)/);
-    assert.match(successPath, /await refreshMe\(\)/);
-    const refreshIdx = successPath.indexOf("await refreshMe()");
-    const replaceIdx = successPath.indexOf("router.replace");
+    assert.match(open, /setPhase\("writing"\)/);
+    assert.match(open, /await refreshMe\(\)/);
+    const refreshIdx = open.indexOf("await refreshMe()");
+    const replaceIdx = open.indexOf("router.replace");
     assert.ok(refreshIdx >= 0 && replaceIdx > refreshIdx);
-
-    // Failures never start arrival navigation.
-    assert.match(onSubmit, /setArriving\(false\)/);
+    assert.match(open, /if \(!refreshed\)/);
+    assert.match(open, /navigatedRef/);
   });
 
-  it("guards against double submit while waiting or arriving", () => {
+  it("failed registration never enters writing phase", () => {
     const panel = read("src/components/outlaw/outlaw-register-panel.tsx");
-    assert.match(panel, /if \(submitting \|\| arriving\)/);
-    assert.match(panel, /disabled=\{submitting \|\| !selectedWallet\}/);
-    assert.match(panel, /the road opens\.\.\./);
+    const onSubmit = panel.slice(
+      panel.indexOf("async function onSubmit"),
+      panel.indexOf("function wrap("),
+    );
+    assert.match(onSubmit, /if \(!response\.ok\)[\s\S]*setPhase\("idle"\)/);
+    assert.doesNotMatch(
+      onSubmit.slice(
+        onSubmit.indexOf("if (!response.ok)"),
+        onSubmit.indexOf("profileWritten = true"),
+      ),
+      /openRoadAfterWrite|setPhase\("writing"\)/,
+    );
   });
 
-  it("does not leave a long-lived success state on the registration form", () => {
+  it("refresh failure does not claim registration failed and offers continuation", () => {
+    const panel = read("src/components/outlaw/outlaw-register-panel.tsx");
+    assert.match(panel, /REGISTRATION_WRITE_OPEN_FAILED_COPY/);
+    assert.match(panel, /REGISTRATION_WRITE_OPEN_FAILED_COPY\.title/);
+    assert.match(panel, /REGISTRATION_WRITE_OPEN_FAILED_COPY\.body/);
+    assert.match(panel, /REGISTRATION_WRITE_OPEN_FAILED_COPY\.action/);
+    assert.match(panel, /openRoadAfterWrite/);
+    const recovery = panel.slice(
+      panel.indexOf('phase === "write_open_failed"'),
+      panel.indexOf("if (!privyReady || loading)"),
+    );
+    assert.doesNotMatch(recovery, /\/api\/outlaw\/register/);
+    assert.match(recovery, /openRoadAfterWrite/);
+  });
+
+  it("does not leave a long-lived local successNumber success state", () => {
     const panel = read("src/components/outlaw/outlaw-register-panel.tsx");
     assert.doesNotMatch(panel, /successNumber/);
-    assert.doesNotMatch(panel, /\[ continue \]/);
-    assert.doesNotMatch(panel, />accepted\.</);
+    assert.doesNotMatch(panel, /the road opens\.\.\./);
   });
 
   it("invite consumption remains server-side before the success response", () => {
@@ -97,17 +189,22 @@ describe("Outlaw registration arrival (Book of the Road)", () => {
       panel.indexOf("async function onSubmit"),
       panel.indexOf("function wrap("),
     );
-    // Any response.ok — not only 201 — navigates.
     assert.match(onSubmit, /if \(!response\.ok\)/);
     assert.doesNotMatch(onSubmit, /response\.status\s*===\s*201/);
-    assert.match(onSubmit, /router\.replace\(OUTLAW_REGISTRATION_ARRIVAL_PATH\)/);
+    assert.match(onSubmit, /await openRoadAfterWrite\(\)/);
+  });
+
+  it("refreshMe reports bootstrap success for holding recovery", () => {
+    const auth = read("src/components/auth/fenn-auth-provider.tsx");
+    assert.match(auth, /Promise<boolean>/);
+    assert.match(auth, /return true/);
+    assert.match(auth, /return false/);
   });
 
   it("does not introduce register ↔ outlaw redirect loops on the outlaw page", () => {
     const outlawPage = read("src/app/outlaw/page.tsx");
     assert.doesNotMatch(outlawPage, /router\.(push|replace)/);
     assert.doesNotMatch(outlawPage, /redirect\(/);
-    // Unregistered still get a link, not an automatic bounce loop through replace.
     assert.match(outlawPage, /\/outlaw\/register/);
   });
 

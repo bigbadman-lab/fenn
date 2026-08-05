@@ -72,8 +72,9 @@ type FennAuthContextValue = {
   /**
    * Refresh authenticated world snapshot (bootstrap).
    * quiet: update without full loading flash.
+   * Resolves true when bootstrap applied successfully for this call.
    */
-  refreshMe: (opts?: { quiet?: boolean }) => Promise<void>;
+  refreshMe: (opts?: { quiet?: boolean }) => Promise<boolean>;
   login: () => void;
   logout: () => Promise<void>;
   getAuthHeaders: () => Promise<HeadersInit | null>;
@@ -150,12 +151,12 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
   }, [clearMemberSnapshots]);
 
   const refreshMe = useCallback(
-    async (opts?: { quiet?: boolean }) => {
-      if (!ready) return;
+    async (opts?: { quiet?: boolean }): Promise<boolean> => {
+      if (!ready) return false;
 
       if (!authenticated) {
         clearFennProfileState();
-        return;
+        return false;
       }
 
       const quiet = Boolean(opts?.quiet);
@@ -168,7 +169,7 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const headers = await getAuthHeaders();
-        if (generation !== fetchGeneration.current) return;
+        if (generation !== fetchGeneration.current) return false;
 
         if (!headers) {
           if (!quiet) {
@@ -183,7 +184,7 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
             setError("Could not obtain Privy access token");
             setBootstrapGeneration((g) => g + 1);
           }
-          return;
+          return false;
         }
 
         const response = await fetch("/api/auth/bootstrap", {
@@ -192,7 +193,7 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
           cache: "no-store",
         });
 
-        if (generation !== fetchGeneration.current) return;
+        if (generation !== fetchGeneration.current) return false;
 
         const data = (await response.json()) as BootstrapResponse;
 
@@ -209,7 +210,7 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
             setError(data.error ?? "Failed to load FENN identity");
             setBootstrapGeneration((g) => g + 1);
           }
-          return;
+          return false;
         }
 
         const nextRegistered = Boolean(data.registered && data.profile);
@@ -238,14 +239,16 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
         if (!quiet || identityChanged) {
           setBootstrapGeneration((g) => g + 1);
         }
+        return true;
       } catch {
-        if (generation !== fetchGeneration.current) return;
+        if (generation !== fetchGeneration.current) return false;
         if (!quiet) {
           setProfileResolved(true);
           setError("Failed to load FENN identity");
           clearMemberSnapshots();
           setBootstrapGeneration((g) => g + 1);
         }
+        return false;
       } finally {
         if (!quiet && generation === fetchGeneration.current) {
           setProfileLoading(false);

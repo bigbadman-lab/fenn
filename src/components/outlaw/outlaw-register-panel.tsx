@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState, type ReactNode } from "react";
+import { FormEvent, useCallback, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
@@ -10,7 +10,12 @@ import {
   CONTRIBUTION_TYPES,
   GREENWOOD_TERMS_VERSION,
 } from "@/lib/profiles/constants";
-import { OUTLAW_REGISTRATION_ARRIVAL_PATH } from "@/lib/profiles/registration-arrival";
+import {
+  OUTLAW_REGISTRATION_ARRIVAL_PATH,
+  REGISTRATION_WRITE_OPEN_FAILED_COPY,
+  REGISTRATION_WRITING_COPY,
+  type OutlawRegisterPhase,
+} from "@/lib/profiles/registration-arrival";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 import { abbreviateEvmAddress } from "@/lib/wallet/evm";
 
@@ -78,10 +83,10 @@ export function OutlawRegisterPanel({
     useState<(typeof CONTRIBUTION_TYPES)[number]>("finding things");
   const [vowAccepted, setVowAccepted] = useState(false);
   const [manualWallet, setManualWallet] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [phase, setPhase] = useState<OutlawRegisterPhase>("idle");
   const [formError, setFormError] = useState<string | null>(null);
-  /** Successful registration is navigating to /outlaw — hold form chrome. */
-  const [arriving, setArriving] = useState(false);
+  /** One authoritative navigation path after a successful write. */
+  const navigatedRef = useRef(false);
 
   const selectedWallet =
     wallets.length === 1
@@ -92,11 +97,34 @@ export function OutlawRegisterPanel({
         ? manualWallet
         : "";
 
+  const formLocked = phase !== "idle";
+
+  /**
+   * Profile exists; refresh bootstrap then replace to /outlaw.
+   * Does not re-call registration if refresh fails.
+   */
+  const openRoadAfterWrite = useCallback(async () => {
+    if (navigatedRef.current) return;
+    setPhase("writing");
+    try {
+      const refreshed = await refreshMe();
+      if (!refreshed) {
+        setPhase("write_open_failed");
+        return;
+      }
+      if (navigatedRef.current) return;
+      navigatedRef.current = true;
+      router.replace(OUTLAW_REGISTRATION_ARRIVAL_PATH);
+    } catch {
+      setPhase("write_open_failed");
+    }
+  }, [refreshMe, router]);
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
 
-    if (submitting || arriving) {
+    if (phase !== "idle") {
       return;
     }
 
@@ -110,12 +138,13 @@ export function OutlawRegisterPanel({
       return;
     }
 
-    setSubmitting(true);
-    let didSucceed = false;
+    setPhase("submitting");
+    let profileWritten = false;
     try {
       const headers = await getAuthHeaders();
       if (!headers) {
         setFormError("missing auth tokens. reconnect.");
+        setPhase("idle");
         return;
       }
 
@@ -143,23 +172,20 @@ export function OutlawRegisterPanel({
 
       if (!response.ok) {
         setFormError(data.error ?? "registration failed.");
+        setPhase("idle");
         return;
       }
 
       // Created (201) or idempotent re-register (200): profile exists.
       // Invite side effects complete server-side before this response.
-      didSucceed = true;
-      setArriving(true);
-      await refreshMe();
-      router.replace(OUTLAW_REGISTRATION_ARRIVAL_PATH);
+      profileWritten = true;
+      await openRoadAfterWrite();
     } catch {
-      setFormError("registration failed.");
-      setArriving(false);
-      didSucceed = false;
-    } finally {
-      // Keep submit locked while replace runs; unmount drops this UI.
-      if (!didSucceed) {
-        setSubmitting(false);
+      if (profileWritten) {
+        setPhase("write_open_failed");
+      } else {
+        setFormError("registration failed.");
+        setPhase("idle");
       }
     }
   }
@@ -182,11 +208,42 @@ export function OutlawRegisterPanel({
     );
   }
 
-  if (arriving) {
+  if (phase === "writing") {
     return wrap(
-      <p className="muted" aria-live="polite">
-        the road opens...
-      </p>,
+      <div
+        className="outlaw-register-holding"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p>{REGISTRATION_WRITING_COPY.title}</p>
+        <p>{REGISTRATION_WRITING_COPY.body}</p>
+        <p className="muted">{REGISTRATION_WRITING_COPY.status}</p>
+      </div>,
+    );
+  }
+
+  if (phase === "write_open_failed") {
+    return wrap(
+      <div
+        className="outlaw-register-holding"
+        role="status"
+        aria-live="polite"
+      >
+        <p>{REGISTRATION_WRITE_OPEN_FAILED_COPY.title}</p>
+        <p>{REGISTRATION_WRITE_OPEN_FAILED_COPY.body}</p>
+        <p>
+          <button
+            type="button"
+            className="btn-text"
+            onClick={() => {
+              void openRoadAfterWrite();
+            }}
+          >
+            {REGISTRATION_WRITE_OPEN_FAILED_COPY.action}
+          </button>
+        </p>
+      </div>,
     );
   }
 
@@ -287,7 +344,11 @@ export function OutlawRegisterPanel({
         the wallet you choose here becomes your permanent mark.
       </p>
 
-      <form className="fenn-form" onSubmit={(event) => void onSubmit(event)}>
+      <form
+        className="fenn-form"
+        onSubmit={(event) => void onSubmit(event)}
+        aria-busy={phase === "submitting" || undefined}
+      >
         <label htmlFor="chosenName">known as</label>
         <input
           id="chosenName"
@@ -297,6 +358,7 @@ export function OutlawRegisterPanel({
           required
           maxLength={48}
           autoComplete="off"
+          disabled={formLocked}
         />
 
         <label htmlFor="xHandle">x handle (optional)</label>
@@ -308,6 +370,7 @@ export function OutlawRegisterPanel({
           maxLength={32}
           autoComplete="off"
           placeholder="@..."
+          disabled={formLocked}
         />
 
         <label htmlFor="whyStatement">
@@ -321,6 +384,7 @@ export function OutlawRegisterPanel({
           required
           maxLength={2000}
           rows={5}
+          disabled={formLocked}
         />
 
         <label htmlFor="contributionType">preferred contribution</label>
@@ -333,6 +397,7 @@ export function OutlawRegisterPanel({
               event.target.value as (typeof CONTRIBUTION_TYPES)[number],
             )
           }
+          disabled={formLocked}
         >
           {CONTRIBUTION_TYPES.map((type) => (
             <option key={type} value={type}>
@@ -356,6 +421,7 @@ export function OutlawRegisterPanel({
               value={selectedWallet}
               onChange={(event) => setManualWallet(event.target.value)}
               required
+              disabled={formLocked}
             >
               <option value="">choose a verified wallet</option>
               {wallets.map((wallet) => (
@@ -374,6 +440,7 @@ export function OutlawRegisterPanel({
             type="checkbox"
             checked={vowAccepted}
             onChange={(event) => setVowAccepted(event.target.checked)}
+            disabled={formLocked}
           />
           <span>i will not hoard what ought to circulate.</span>
         </label>
@@ -385,9 +452,9 @@ export function OutlawRegisterPanel({
         <button
           type="submit"
           className="btn-text"
-          disabled={submitting || !selectedWallet}
+          disabled={formLocked || !selectedWallet}
         >
-          {submitting ? "[ waiting ]" : "[ claim the name ]"}
+          {phase === "submitting" ? "[ waiting ]" : "[ claim the name ]"}
         </button>
       </form>
     </>,
