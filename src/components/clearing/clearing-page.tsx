@@ -17,14 +17,17 @@ import {
 import { ClearingFeedItem } from "@/components/clearing/clearing-feed-item";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { CLEARING_PUBLIC_POLL_MS } from "@/lib/clearing/config";
-import type { SafeClearingMessage } from "@/lib/clearing/dto";
+import type {
+  SafeClearingFeedItem,
+  SafeClearingMessage,
+  SafeTravellerIdentity,
+} from "@/lib/clearing/dto";
 import {
-  filterMessageItems,
+  filterFeedItems,
   findNewMessages,
   mergeConversationMessages,
   newestFirstToConversation,
 } from "@/lib/clearing/feed-client";
-import type { SafeTravellerIdentity } from "@/lib/clearing/dto";
 
 const POLL_MS = CLEARING_PUBLIC_POLL_MS;
 const NEAR_BOTTOM_PX = 96;
@@ -47,7 +50,7 @@ export function ClearingPage() {
     profileResolved,
   } = useFennAuth();
 
-  const [messages, setMessages] = useState<SafeClearingMessage[]>([]);
+  const [feedItems, setFeedItems] = useState<SafeClearingFeedItem[]>([]);
   const [olderCursor, setOlderCursor] = useState<string | null>(null);
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
@@ -87,7 +90,7 @@ export function ClearingPage() {
       },
       mode: "replace" | "merge" | "prepend",
     ) => {
-      const page = filterMessageItems(data.items ?? []);
+      const page = filterFeedItems(data.items ?? []);
       const chronological = newestFirstToConversation(page);
 
       if (data.state) {
@@ -98,19 +101,19 @@ export function ClearingPage() {
       }
 
       if (mode === "replace") {
-        setMessages(chronological);
+        setFeedItems(chronological);
         setOlderCursor(data.nextCursor ?? null);
         return chronological;
       }
 
       if (mode === "prepend") {
-        setMessages((prev) => mergeConversationMessages(prev, chronological));
+        setFeedItems((prev) => mergeConversationMessages(prev, chronological));
         setOlderCursor(data.nextCursor ?? null);
         return chronological;
       }
 
-      // merge (poll)
-      setMessages((prev) => {
+      // merge (poll) — single request already includes world events
+      setFeedItems((prev) => {
         const fresh = findNewMessages(prev, chronological);
         if (fresh.length > 0 && !stickToBottomRef.current) {
           setUnseenCount((c) => c + fresh.length);
@@ -227,7 +230,7 @@ export function ClearingPage() {
   }, []);
 
   useEffect(() => {
-    if (feedLoading || messages.length === 0) return;
+    if (feedLoading || feedItems.length === 0) return;
     if (!initialScrollDone.current) {
       initialScrollDone.current = true;
       bottomRef.current?.scrollIntoView({ block: "end" });
@@ -240,7 +243,7 @@ export function ClearingPage() {
         behavior: "smooth",
       });
     }
-  }, [messages, feedLoading]);
+  }, [feedItems, feedLoading]);
 
   const mintTraveller = useCallback(async (): Promise<boolean> => {
     if (traveller) return true;
@@ -317,7 +320,7 @@ export function ClearingPage() {
 
   const onAccepted = useCallback(
     (message: SafeClearingMessage, messagesRemaining?: number) => {
-      setMessages((prev) => mergeConversationMessages(prev, [message]));
+      setFeedItems((prev) => mergeConversationMessages(prev, [message]));
       stickToBottomRef.current = true;
       setUnseenCount(0);
       if (typeof messagesRemaining === "number") {
@@ -457,13 +460,13 @@ export function ClearingPage() {
           aria-relevant="additions"
           aria-busy={feedLoading}
         >
-          {feedLoading && messages.length === 0 ? (
+          {feedLoading && feedItems.length === 0 ? (
             <p className="muted clearing__listening">
               LISTENING TO THE CLEARING...
             </p>
           ) : null}
 
-          {feedError && messages.length === 0 ? (
+          {feedError && feedItems.length === 0 ? (
             <div className="clearing__error" role="alert">
               <p>{feedError}</p>
               <button
@@ -487,7 +490,7 @@ export function ClearingPage() {
             </div>
           ) : null}
 
-          {!feedLoading && !feedError && messages.length === 0 ? (
+          {!feedLoading && !feedError && feedItems.length === 0 ? (
             <div className="clearing__empty">
               <p>THE CLEARING IS QUIET.</p>
               <p className="muted">Speak if you will.</p>
@@ -495,7 +498,7 @@ export function ClearingPage() {
           ) : null}
 
           <div className="clearing__messages">
-            {messages.map((m) => (
+            {feedItems.map((m) => (
               <ClearingFeedItem key={m.id} item={m} />
             ))}
           </div>

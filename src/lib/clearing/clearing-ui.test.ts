@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import type { SafeClearingMessage } from "@/lib/clearing/dto";
 import {
+  filterFeedItems,
   filterMessageItems,
   findNewMessages,
   isClearingMessageItem,
@@ -95,14 +96,21 @@ describe("Clearing feed merge and order", () => {
     );
   });
 
-  it("ignores unknown future feed kinds", () => {
-    const items = filterMessageItems([
+  it("accepts market_watch and ignores unknown future feed kinds", () => {
+    const items = filterFeedItems([
       msg("a", "2026-08-05T10:00:00.000Z"),
-      { kind: "market_watch", id: "mw-1" },
+      {
+        kind: "market_watch",
+        id: "mw-1",
+        occurredAt: "2026-08-05T11:00:00.000Z",
+        amountLabel: "1 $FENN",
+        transactionUrl: null,
+      },
       { kind: "notice", id: "n-1" },
       { foo: 1 },
     ]);
-    assert.equal(items.length, 1);
+    assert.equal(items.length, 2);
+    assert.equal(items[1]?.kind, "market_watch");
     assert.equal(isClearingMessageItem({ kind: "market_watch" }), false);
   });
 });
@@ -169,10 +177,11 @@ describe("Clearing composer and feed UI sources", () => {
     );
   });
 
-  it("keeps feed/composer item boundary for future kinds", () => {
+  it("keeps feed/composer item boundary for known kinds", () => {
     const item = read("src/components/clearing/clearing-feed-item.tsx");
     assert.match(item, /isClearingMessageItem/);
     assert.match(item, /ClearingMessageItem/);
+    assert.match(item, /isMarketWatchFeedItem|MarketWatchFeedItem/);
   });
 
   it("exposes muted/banned/read-only composer states", () => {
@@ -206,6 +215,7 @@ describe("Clearing composer and feed UI sources", () => {
       "src/components/clearing/clearing-page.tsx",
       "src/components/clearing/clearing-composer.tsx",
       "src/components/clearing/clearing-message-item.tsx",
+      "src/components/clearing/market-watch-feed-item.tsx",
     ]) {
       const src = read(rel);
       assert.doesNotMatch(src, /createClient|supabase|from\("clearing/i);

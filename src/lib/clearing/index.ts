@@ -7,6 +7,8 @@ export {
 export { ClearingError } from "@/lib/clearing/errors";
 export type {
   SafeClearingMessage,
+  SafeClearingFeedItem,
+  SafeMarketWatchFeedItem,
   SafeClearingFeedPage,
   SafeTravellerIdentity,
 } from "@/lib/clearing/dto";
@@ -15,6 +17,11 @@ export {
   requireClientRequestId,
   toSafeClearingMessage,
 } from "@/lib/clearing/dto";
+export {
+  CLEARING_WOOD_NOTICES_HEADING,
+  formatClearingMarketFennAmount,
+  formatTokenAmountWithSeparators,
+} from "@/lib/clearing/market-display";
 export {
   sealTravellerCookie,
   openTravellerCookie,

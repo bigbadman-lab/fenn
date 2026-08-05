@@ -20,8 +20,27 @@ export type SafeClearingMessage = {
   body: string;
 };
 
+/**
+ * Safe public world event from published Market Watch acquisitions only.
+ * No worker state, buyer identity, raw logs, or suppressed rows.
+ */
+export type SafeMarketWatchFeedItem = {
+  kind: "market_watch";
+  id: string;
+  occurredAt: string;
+  /** e.g. `18,420 $FENN` — preformatted server-side. */
+  amountLabel: string;
+  /** Explorer transaction URL, or null if chain/hash unsupported. */
+  transactionUrl: string | null;
+};
+
+/**
+ * Public feed union. Browser only renders kinds it understands.
+ */
+export type SafeClearingFeedItem = SafeClearingMessage | SafeMarketWatchFeedItem;
+
 export type SafeClearingFeedPage = {
-  items: SafeClearingMessage[];
+  items: SafeClearingFeedItem[];
   nextCursor: string | null;
   /** Public global mode — safe for UI lock/composer. */
   state?: {

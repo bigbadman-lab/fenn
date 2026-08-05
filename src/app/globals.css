@@ -6746,6 +6746,67 @@ input[type="file"].deed-proof-field__control {
   max-width: 34rem;
 }
 
+/* World events (Market Watch acquisitions → THE WOOD NOTICES) */
+.clearing-wood {
+  min-width: 0;
+  max-width: 34rem;
+  padding: 0.15rem 0;
+}
+
+.clearing-wood__rule {
+  height: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 0.35rem 0;
+}
+
+.clearing-wood__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  margin: 0.45rem 0 0.35rem;
+}
+
+.clearing-wood__title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted, #8a9480);
+}
+
+.clearing-wood__time {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+}
+
+.clearing-wood__lead,
+.clearing-wood__amount {
+  margin: 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.clearing-wood__amount {
+  margin-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.clearing-wood__action {
+  margin: 0.45rem 0 0.25rem;
+}
+
+.clearing-wood__tx {
+  display: inline-block;
+  letter-spacing: 0.04em;
+  font-size: 0.86rem;
+  max-width: 100%;
+}
+
 .clearing-composer {
   padding: 0.65rem 0 calc(0.85rem + env(safe-area-inset-bottom, 0px));
   min-width: 0;

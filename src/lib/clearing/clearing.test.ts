@@ -252,10 +252,11 @@ describe("Clearing post domain rules (source)", () => {
     assert.match(route, /postClearingMessage/);
   });
 
-  it("feed is public published-only", () => {
+  it("feed is public published-only for messages and world events", () => {
     const feed = read("src/lib/clearing/feed.ts");
     assert.match(feed, /status.*published|eq\("status", "published"\)/);
     assert.match(feed, /kind.*message|toSafeClearingMessage/);
+    assert.match(feed, /market_watch|toSafeMarketWatchItem/);
   });
 
   it("moderation route is Desk-gated", () => {
