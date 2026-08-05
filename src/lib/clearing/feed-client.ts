@@ -128,22 +128,63 @@ export function newestFeedItem(
 }
 
 /**
- * Encode client cursor for incremental poll (`since`) — same form as load-older cursor.
- * Uses base64url of `occurredAt|id` without importing server-only Buffer on all targets.
+ * Encode client cursor for incremental poll (`since`) — same form as load-older.
+ *
+ * Pure base64url over UTF-8. Avoid Buffer "base64url" encoding in the
+ * browser path: some client Buffer polyfills throw Unknown encoding, which
+ * can crash React if called inside a setState updater (error boundary page).
  */
 export function encodeClientFeedCursor(
   occurredAt: string,
   id: string,
 ): string {
   const raw = `${occurredAt}|${id}`;
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(raw, "utf8").toString("base64url");
-  }
-  // Browser: btoa with utf-8 care
   const bytes = new TextEncoder().encode(raw);
-  let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+  // Node Buffer path using standard base64 (always supported) → base64url.
+  if (typeof Buffer !== "undefined" && typeof Buffer.from === "function") {
+    try {
+      return Buffer.from(bytes)
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+    } catch {
+      // fall through to btoa
+    }
+  }
+
+  if (typeof btoa === "function") {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]!);
+    }
+    return btoa(binary)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  }
+
+  // Last resort: manual base64 (tests / unusual runtimes).
+  return manualBase64Url(bytes);
+}
+
+const BASE64_ALPHABET =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+function manualBase64Url(bytes: Uint8Array): string {
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 3) {
+    const a = bytes[i]!;
+    const b = i + 1 < bytes.length ? bytes[i + 1]! : 0;
+    const c = i + 2 < bytes.length ? bytes[i + 2]! : 0;
+    const triple = (a << 16) | (b << 8) | c;
+    out += BASE64_ALPHABET[(triple >> 18) & 63];
+    out += BASE64_ALPHABET[(triple >> 12) & 63];
+    out += i + 1 < bytes.length ? BASE64_ALPHABET[(triple >> 6) & 63] : "";
+    out += i + 2 < bytes.length ? BASE64_ALPHABET[triple & 63] : "";
+  }
+  return out.replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 /**

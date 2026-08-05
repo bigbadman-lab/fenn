@@ -112,6 +112,28 @@ describe("Clearing 1.1 incremental and no-change polling", () => {
     assert.equal(decoded!.id, id);
   });
 
+  it("encodeClientFeedCursor never relies on Buffer base64url encoding", () => {
+    const src = read("src/lib/clearing/feed-client.ts");
+    // Executable path uses base64 then converts to base64url — never .toString("base64url")
+    assert.doesNotMatch(
+      src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, ""),
+      /\.toString\(\s*["']base64url["']\s*\)/,
+    );
+    assert.match(src, /\.toString\(\s*["']base64["']\s*\)|btoa/);
+    const enc = encodeClientFeedCursor(
+      "2026-08-05T12:00:00.000Z",
+      "a0000000-0000-4000-8000-000000000001",
+    );
+    assert.ok(enc.length > 8);
+    assert.doesNotMatch(enc, /[+/=]/);
+  });
+
+  it("page does not encode watermark inside setState updaters on accept", () => {
+    const page = read("src/components/clearing/clearing-page.tsx");
+    assert.match(page, /queueMicrotask/);
+    assert.match(page, /Defensive: never throw/);
+  });
+
   it("mergePollFeed preserves array identity on no-change", () => {
     const a = msg("a0000000-0000-4000-8000-00000000000a", "2026-08-05T10:00:00.000Z");
     const b = msg("b0000000-0000-4000-8000-00000000000b", "2026-08-05T11:00:00.000Z");

@@ -105,11 +105,15 @@ export function ClearingPage() {
 
   const rememberNewest = useCallback((items: SafeClearingFeedItem[]) => {
     const newest = newestFeedItem(items);
-    if (newest) {
+    if (!newest) return;
+    try {
       newestWatermarkRef.current = encodeClientFeedCursor(
         newest.occurredAt,
         newest.id,
       );
+      lastFeedTailIdRef.current = newest.id;
+    } catch {
+      // Never let watermark encoding bring down the room.
       lastFeedTailIdRef.current = newest.id;
     }
   }, []);
@@ -132,6 +136,7 @@ export function ClearingPage() {
       if (mode === "replace") {
         setFeedItems(chronological);
         setOlderCursor(data.nextCursor ?? null);
+        // Outside setState — keep load path away from reactor error boundaries.
         rememberNewest(chronological);
         return { items: chronological, changed: true };
       }
@@ -139,8 +144,9 @@ export function ClearingPage() {
       if (mode === "prepend") {
         setFeedItems((prev) => {
           const next = mergeConversationMessages(prev, chronological);
-          // Keep newest watermark on tail for polls
-          rememberNewest(next);
+          queueMicrotask(() => {
+            rememberNewest(next);
+          });
           return next;
         });
         setOlderCursor(data.nextCursor ?? null);
@@ -156,7 +162,11 @@ export function ClearingPage() {
           if (!stickToBottomRef.current) {
             setUnseenCount((c) => c + added.length);
           }
-          rememberNewest(next);
+          // Side-effect outside pure updater semantics (sync is fine after return
+          // is scheduled; microtask keeps setState pure for error isolation).
+          queueMicrotask(() => {
+            rememberNewest(next);
+          });
         }
         return next;
       });
@@ -380,14 +390,30 @@ export function ClearingPage() {
 
   const onAccepted = useCallback(
     (message: SafeClearingMessage, messagesRemaining?: number) => {
+      // Defensive: never throw into the React tree after a successful post.
+      if (
+        !message ||
+        typeof message.id !== "string" ||
+        !message.author ||
+        typeof message.author.label !== "string"
+      ) {
+        return;
+      }
+
       forceScrollRef.current = true;
       stickToBottomRef.current = true;
       setUnseenCount(0);
+
+      // Merge outside the updater first so watermark work cannot throw mid-setState.
       setFeedItems((prev) => {
         const next = mergeConversationMessages(prev, [message]);
-        rememberNewest(next);
+        // Defer side effects out of the pure updater contract.
+        queueMicrotask(() => {
+          rememberNewest(next);
+        });
         return next;
       });
+
       if (typeof messagesRemaining === "number") {
         setTraveller((t) =>
           t
