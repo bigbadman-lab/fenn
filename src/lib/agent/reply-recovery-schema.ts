@@ -8,7 +8,7 @@ import { z } from "zod";
 import { STAGE12_X_REPLY_MAX_CHARS } from "@/lib/agent/judge-config";
 
 export const STAGE12_REPLY_RECOVERY_PROMPT_VERSION =
-  "fenn-public-reply-recovery-v1" as const;
+  "fenn-public-reply-recovery-book-v2" as const;
 
 export const stage12ReplyRecoveryModelSchema = z.object({
   replyText: z.string().min(1).max(STAGE12_X_REPLY_MAX_CHARS),

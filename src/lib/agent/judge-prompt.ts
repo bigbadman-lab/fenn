@@ -18,6 +18,7 @@ import { FENN_PUBLIC_KNOWLEDGE_MARKERS } from "@/lib/agent/context";
 import {
   buildBookOfSpeechCanonBlock,
   buildBookOfSpeechPrecedenceNote,
+  buildResponseModeWritingRulesBlock,
 } from "@/lib/fenn-voice/book-of-speech";
 import { wallAndReplyLanguageInstruction } from "@/lib/agent/reply-guarantee-policy";
 import { STAGE12_RESPONSE_MODES } from "@/lib/agent/response-mode";
@@ -40,6 +41,13 @@ ${buildBookOfSpeechPrecedenceNote()}
 ${buildBookOfSpeechCanonBlock()}
 
 Apply THE BOOK OF SPEECH to every replyText and wallBody you draft.
+
+${buildResponseModeWritingRulesBlock()}
+
+X REPLY vs WALL
+- replyText answers the person (may use “you”); lead with the answer.
+- wallBody stands alone as durable inscription — no handles, no “you asked”, no support docs.
+- Never pad. Never invent scale. Prefer concrete verbs.
 
 VISIBLE REPLY GUARANTEE (deterministic policy also enforces this)
 Every eligible perception must produce a visible X reply. Ordinary outcomes are only:

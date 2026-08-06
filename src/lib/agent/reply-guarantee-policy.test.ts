@@ -417,7 +417,7 @@ describe("reply guarantee — prompts", () => {
     );
     assert.equal(
       STAGE12_JUDGE_PROMPT_VERSION,
-      "fenn-public-judge-always-reply-recovery-v1",
+      "fenn-public-judge-book-v2",
     );
   });
 });

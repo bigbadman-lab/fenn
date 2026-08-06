@@ -28,7 +28,7 @@ describe("Speaks transform prompts and normalization", () => {
     const system = buildSpeaksTransformSystemPrompt();
     assert.match(system, /Change the voice, rhythm, and imagery/i);
     assert.match(system, /BEGIN_BOOK_OF_SPEECH/);
-    assert.match(system, /book-of-speech-v1/);
+    assert.match(system, /book-of-speech-v2/);
     assert.match(system, /invent events/i);
     assert.match(system, /emoji/i);
     assert.match(system, /hashtag/i);

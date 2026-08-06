@@ -63,6 +63,12 @@ export type ReplyRecoveryInput = {
   knowledgeBoundaryNote?: string | null;
   /** Structured trusted facts (same set final judge received). */
   publicFactEvidenceBlock?: string | null;
+  /** Stage 4: inferred or known responseMode for writing rules. */
+  responseMode?: string | null;
+  /** Stage 4: quality / missing labels for the repair writer. */
+  violationLabels?: readonly string[] | null;
+  /** Stage 4: prior draft to avoid when repairing quality. */
+  priorDraft?: string | null;
   callModel?: ReplyRecoveryModelCaller;
 };
 
@@ -208,6 +214,9 @@ export async function runFennReplyRecovery(
     wallBody: input.wallBody,
     knowledgeBoundaryNote: input.knowledgeBoundaryNote ?? null,
     publicFactEvidenceBlock: input.publicFactEvidenceBlock ?? null,
+    responseMode: input.responseMode ?? null,
+    violationLabels: input.violationLabels ?? null,
+    priorDraft: input.priorDraft ?? null,
   });
 
   try {

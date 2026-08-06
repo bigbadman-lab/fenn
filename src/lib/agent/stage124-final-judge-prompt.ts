@@ -16,13 +16,14 @@ import { FENN_PUBLIC_AGENT_AUTHORITY_ORDER } from "@/lib/agent/authority";
 import {
   buildBookOfSpeechCanonBlock,
   buildBookOfSpeechPrecedenceNote,
+  buildResponseModeWritingRulesBlock,
 } from "@/lib/fenn-voice/book-of-speech";
 import { wallAndReplyLanguageInstruction } from "@/lib/agent/reply-guarantee-policy";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
 
-/** Production prompt version after always-reply + Book of Speech. */
+/** Production final-judge prompt version (Book of Speech v2). */
 export const STAGE124_FINAL_PROMPT_VERSION =
-  "fenn-public-final-judge-always-reply-recovery-v1" as const;
+  "fenn-public-final-judge-book-v2" as const;
 
 /**
  * Stage 12.4 final judgement system prompt.
@@ -38,6 +39,13 @@ export function buildFennPublicFinalJudgeSystemPrompt(): string {
     "",
     "Apply THE BOOK OF SPEECH to every replyText and wallBody you draft.",
     "Live context does not authorise generic assistant, product, or therapist language.",
+    buildResponseModeWritingRulesBlock(),
+    "",
+    "X REPLY vs WALL:",
+    "- replyText answers the person (may use you); lead with the answer.",
+    "- wallBody stands alone as inscription; never documentation or handle scaffolding.",
+    "- Fact: exact trusted number/address first. Never enlarge scale.",
+    "- Creation: commit immediately. Judgement: take a position.",
     "",
     "VISIBLE REPLY GUARANTEE (deterministic policy also enforces this):",
     "Every eligible perception must produce a visible X reply. Ordinary outcomes are only:",

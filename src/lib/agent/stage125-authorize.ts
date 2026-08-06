@@ -15,11 +15,7 @@ import {
   applyReplyGuaranteePolicy,
   isHardBlockReasonCode,
 } from "@/lib/agent/reply-guarantee-policy";
-import {
-  ensureReplyTextWithRecovery,
-  intentionNeedsReplyRecovery,
-  type ReplyRecoveryModelCaller,
-} from "@/lib/agent/reply-recovery";
+import type { ReplyRecoveryModelCaller } from "@/lib/agent/reply-recovery";
 import { evaluateChroniclerWallAdmission } from "@/lib/agent/chronicler-evaluate";
 import { loadTrustedFactsForChronicler } from "@/lib/agent/chronicler-load-facts";
 import {
@@ -29,6 +25,7 @@ import {
 } from "@/lib/agent/chronicler-memory";
 import { inferResponseModeFromBody } from "@/lib/agent/response-mode";
 import type { WallCandidate } from "@/lib/agent/chronicler-types";
+import { ensureReplyWithQualityGate } from "@/lib/agent/speech-quality";
 
 type AdminLike = {
   from: (table: string) => unknown;
@@ -55,8 +52,19 @@ export type AuthorizeOneResult = {
   policyOutcome?: string;
   effectsCreated?: number;
   /** Observability: whether focused recovery ran. */
-  replyRecovery?: "not_needed" | "succeeded" | "failed" | "skipped";
+  replyRecovery?:
+    | "not_needed"
+    | "succeeded"
+    | "failed"
+    | "skipped"
+    | "quality_repaired";
   recoveryCalls?: number;
+  /** Stage 4 quality / Wall suppress diagnostics */
+  speechQuality?: {
+    violations: string[];
+    wallSuppressed: boolean;
+    wallSuppressReasons: string[];
+  };
   /** Stage 3 Chronicler observability */
   chronicler?: {
     decision: string;
@@ -166,20 +174,27 @@ export async function authorizeOneXPerception(
     let finalReasonCode = guaranteed.reasonCode;
     let replyRecovery: AuthorizeOneResult["replyRecovery"] = "not_needed";
     let recoveryCalls = 0;
+    let speechQuality: AuthorizeOneResult["speechQuality"];
+
+    // Stage 4: load facts first so recovery + quality gate share Stage 2 evidence.
+    const responseMode = inferResponseModeFromBody(claimed.body);
+    const loadFacts = deps.loadTrustedFacts ?? loadTrustedFactsForChronicler;
+    const trustedFacts = await loadFacts({
+      body: claimed.body,
+      needsLiveState: claimed.needsLiveState,
+      wallCandidate: claimed.finalWallCandidate,
+    });
 
     if (
-      intentionNeedsReplyRecovery({
-        action: finalAction,
-        reasonCode: finalReasonCode,
-        replyText: finalReplyText,
-      })
+      finalAction === "reply_on_x" ||
+      finalAction === "reply_and_write_to_wall"
     ) {
       const knowledgeBoundary =
         !claimed.liveStateAvailable && claimed.needsLiveState.length > 0
           ? "Trusted live state was unavailable. Answer honestly that you cannot establish the current figure; do not invent numbers."
           : "Answer only from public knowledge implied by the mention. Do not invent private Outlaw facts or live balances.";
 
-      const recovered = await ensureReplyTextWithRecovery({
+      const quality = await ensureReplyWithQualityGate({
         action: finalAction,
         reasonCode: finalReasonCode,
         replyText: finalReplyText,
@@ -190,12 +205,19 @@ export async function authorizeOneXPerception(
         authorUsername: null,
         body: claimed.body,
         knowledgeBoundaryNote: knowledgeBoundary,
+        trustedFacts,
+        responseMode,
         callModel: deps.callReplyRecovery,
       });
 
-      recoveryCalls = recovered.recoveryCalls;
+      recoveryCalls = quality.recoveryCalls;
+      speechQuality = {
+        violations: quality.qualityViolations,
+        wallSuppressed: quality.wallSuppressed,
+        wallSuppressReasons: quality.wallSuppressReasons,
+      };
 
-      if (recovered.status === "failed") {
+      if (quality.replyRecovery === "failed" || !quality.replyText) {
         return {
           status: "reply_generation_failed",
           xPostId: claimed.xPostId,
@@ -207,41 +229,24 @@ export async function authorizeOneXPerception(
           effectsCreated: 0,
           replyRecovery: "failed",
           recoveryCalls,
-          error: recovered.error,
+          speechQuality,
+          error: quality.error ?? "reply quality path failed",
         };
       }
 
-      if (recovered.status === "succeeded") {
-        finalReplyText = recovered.replyText;
-        replyRecovery = "succeeded";
-      } else if (recovered.status === "not_needed") {
-        finalReplyText = recovered.replyText;
-        replyRecovery = "not_needed";
+      finalReplyText = quality.replyText;
+      replyRecovery = quality.replyRecovery;
+      if (quality.wallSuppressed) {
+        finalWallBody = null;
+        if (finalAction === "reply_and_write_to_wall") {
+          finalAction = "reply_on_x";
+        }
       } else {
-        return {
-          status: "reply_generation_failed",
-          xPostId: claimed.xPostId,
-          perceptionEventId: claimed.perceptionEventId,
-          judgementId: claimed.judgementId,
-          finalAction,
-          policyOutcome: "reply_generation_failed",
-          effectsCreated: 0,
-          replyRecovery: "failed",
-          recoveryCalls,
-          error: recovered.error ?? "recovery skipped unexpectedly",
-        };
+        finalWallBody = quality.wallBody;
       }
     }
 
     // --- Stage 3 Chronicler (I/O outside pure authority) ---
-    const responseMode = inferResponseModeFromBody(claimed.body);
-    const loadFacts = deps.loadTrustedFacts ?? loadTrustedFactsForChronicler;
-    const trustedFacts = await loadFacts({
-      body: claimed.body,
-      needsLiveState: claimed.needsLiveState,
-      wallCandidate: claimed.finalWallCandidate,
-    });
-
     let alreadyRemembered = false;
     const rawCandidate = claimed.finalWallCandidate;
     if (
@@ -450,6 +455,7 @@ export async function authorizeOneXPerception(
       alreadyRemembered: chronicler.observability.alreadyRemembered,
       finalAction: decision.finalAction,
       policyCode: persisted.policyCode,
+      speechQuality,
     });
 
     return {
@@ -464,6 +470,7 @@ export async function authorizeOneXPerception(
       effectsCreated: persisted.effectsCreated,
       replyRecovery,
       recoveryCalls,
+      speechQuality,
       chronicler: {
         decision: chronicler.decision,
         code: chronicler.code,
