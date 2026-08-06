@@ -19,6 +19,7 @@ import {
 import { createXReplyAsFenn } from "@/lib/x/write-client";
 import { writeFennWallEntry } from "@/lib/wall/write";
 import { WallError } from "@/lib/wall/errors";
+import { linkWallFactMemoryToEntry } from "@/lib/agent/chronicler-memory";
 
 type AdminLike = {
   from: (table: string) => unknown;
@@ -138,6 +139,14 @@ async function executeClaimedEffect(
         },
         { admin: deps.admin },
       );
+
+      if (payload.chroniclerFactMemoryId) {
+        await linkWallFactMemoryToEntry({
+          memoryId: payload.chroniclerFactMemoryId,
+          wallEntryId: wallResult.entry.id,
+        });
+      }
+
       return {
         ...base,
         status: "completed",

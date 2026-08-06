@@ -11,6 +11,8 @@ export type ValidatedWallPayload = {
   body: string;
   sourceType: "x_agent";
   sourceExternalId: string;
+  /** Optional Stage 3 Chronicler memory link (application-owned). */
+  chroniclerFactMemoryId: string | null;
 };
 
 function isDigitSnowflake(value: string): boolean {
@@ -100,5 +102,10 @@ export function validateWallEffectPayload(
     body,
     sourceType: "x_agent",
     sourceExternalId: expectedExternalId,
+    chroniclerFactMemoryId:
+      typeof p.chroniclerFactMemoryId === "string" &&
+      p.chroniclerFactMemoryId.trim().length > 0
+        ? p.chroniclerFactMemoryId.trim()
+        : null,
   };
 }

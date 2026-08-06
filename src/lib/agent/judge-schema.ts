@@ -7,11 +7,21 @@ import {
 } from "@/lib/agent/judge-config";
 import { FENN_LIVE_CAPABILITIES } from "@/lib/agent/live-state";
 import { applyReplyGuaranteePolicy } from "@/lib/agent/reply-guarantee-policy";
+import {
+  normalizeResponseMode,
+  STAGE12_RESPONSE_MODES,
+  type Stage12ResponseMode,
+} from "@/lib/agent/response-mode";
+import type { WallCandidate } from "@/lib/agent/chronicler-types";
+import { normalizeWallCandidate } from "@/lib/agent/wall-candidate-schema";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
 
 /**
  * Structured judgement the model may emit (live action set only).
  * Application owns provenance, execution, and authority fields.
+ *
+ * responseMode is required from the model and kept in-process only —
+ * Stage 12 finalize RPC has no column (no migration this stage).
  */
 export const stage12JudgementModelSchema = z.object({
   /** Attention: does this event warrant any engagement? */
@@ -21,15 +31,29 @@ export const stage12JudgementModelSchema = z.object({
   replyText: z.string().max(STAGE12_X_REPLY_MAX_CHARS).nullable(),
   /** Wall candidate — do not trim internal whitespace. */
   wallBody: z.string().max(WALL_BODY_MAX_CHARS).nullable(),
-  needsLiveState: z.array(z.enum(FENN_LIVE_CAPABILITIES)).max(7),
+  needsLiveState: z.array(z.enum(FENN_LIVE_CAPABILITIES)).max(9),
   identityUnverified: z.boolean(),
+  /**
+   * Broad response kind — guides live-state selection and later prompting.
+   * Not executed and not persistence-backed without migration (Stage 2).
+   */
+  responseMode: z.enum(STAGE12_RESPONSE_MODES),
+  /**
+   * Optional structured Wall proposal (Stage 3). Prefer setting at final judge
+   * once trusted facts exist. Invalid candidates degrade safely.
+   */
+  wallCandidate: z.unknown().nullable().optional(),
 });
 
 export type Stage12JudgementModelOutput = z.infer<
   typeof stage12JudgementModelSchema
 >;
 
-export type Stage12JudgementIntention = Stage12JudgementModelOutput & {
+export type Stage12JudgementIntention = Omit<
+  Stage12JudgementModelOutput,
+  "wallCandidate"
+> & {
+  wallCandidate: WallCandidate | null;
   knowledgeAvailable: boolean;
   model: string;
   promptVersion: string;
@@ -69,10 +93,23 @@ export function assertJudgementHasNoAuthorityFields(value: unknown): void {
   }
 }
 
+/**
+ * Parse model output. Accepts missing responseMode for transitional fixtures
+ * by normalising to "canon" only after zod base fields validate.
+ */
 export function parseJudgementModelOutput(
   value: unknown,
 ): Stage12JudgementModelOutput {
   assertJudgementHasNoAuthorityFields(value);
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    if (!("responseMode" in obj) || obj.responseMode == null) {
+      return stage12JudgementModelSchema.parse({
+        ...obj,
+        responseMode: "canon",
+      });
+    }
+  }
   return stage12JudgementModelSchema.parse(value);
 }
 
@@ -88,8 +125,17 @@ export function normalizeJudgementIntention(input: {
   promptVersion: string;
 }): Stage12JudgementIntention {
   const { identityUnverified } = input.raw;
+  const responseMode: Stage12ResponseMode = normalizeResponseMode(
+    input.raw.responseMode,
+  );
   // Deduplicate live-state requests; only allow known capabilities (schema already).
-  const live = [...new Set(input.raw.needsLiveState)];
+  let live = [...new Set(input.raw.needsLiveState)];
+
+  // Creation / judgement should not request live tools for mere style.
+  if (responseMode === "creation" || responseMode === "judgement") {
+    live = [];
+  }
+
   const allowDeferredLiveSilence = live.length > 0;
 
   // Empty strings → null (wall keeps intentional internal whitespace).
@@ -120,6 +166,18 @@ export function normalizeJudgementIntention(input: {
     allowDeferredLiveSilence,
   });
 
+  // Initial judge rarely has trusted live facts; public_fact candidates usually drop.
+  // Declarations/historic may survive when action is dual.
+  let wallCandidate = normalizeWallCandidate({
+    raw: input.raw.wallCandidate ?? null,
+    action: guaranteed.action,
+    responseMode,
+    trustedFacts: [],
+  });
+  if (guaranteed.action !== "reply_and_write_to_wall") {
+    wallCandidate = null;
+  }
+
   return {
     engage: guaranteed.engage,
     action: guaranteed.action,
@@ -134,6 +192,8 @@ export function normalizeJudgementIntention(input: {
         : guaranteed.wallBody.slice(0, WALL_BODY_MAX_CHARS),
     needsLiveState: live,
     identityUnverified,
+    responseMode,
+    wallCandidate,
     knowledgeAvailable: input.knowledgeAvailable,
     model: input.model,
     promptVersion: input.promptVersion,

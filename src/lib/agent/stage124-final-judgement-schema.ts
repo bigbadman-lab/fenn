@@ -3,6 +3,10 @@ import { z } from "zod";
 import { STAGE12_LIVE_AGENT_ACTIONS } from "@/lib/agent/actions";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
 import { applyReplyGuaranteePolicy } from "@/lib/agent/reply-guarantee-policy";
+import type { PublicFactEvidence } from "@/lib/agent/public-fact-evidence";
+import { normalizeWallCandidate } from "@/lib/agent/wall-candidate-schema";
+import type { WallCandidate } from "@/lib/agent/chronicler-types";
+import type { Stage12ResponseMode } from "@/lib/agent/response-mode";
 
 import {
   STAGE12_JUDGEMENT_REASON_CODES,
@@ -16,6 +20,11 @@ export const stage124FinalJudgementModelSchema = z.object({
   replyText: z.string().min(1).max(STAGE12_X_REPLY_MAX_CHARS).nullable(),
   wallBody: z.string().min(1).max(WALL_BODY_MAX_CHARS).nullable(),
   identityUnverified: z.boolean(),
+  /**
+   * Optional structured Wall proposal (Stage 3).
+   * Application re-validates against trusted evidence; invalid → null.
+   */
+  wallCandidate: z.unknown().nullable().optional(),
 });
 
 export type Stage124FinalJudgementModelOutput = z.infer<
@@ -33,6 +42,7 @@ export type Stage124FinalJudgementIntention = {
   liveStateAnyAvailable: boolean;
   model: string;
   promptVersion: string;
+  wallCandidate: WallCandidate | null;
 };
 
 /**
@@ -46,6 +56,8 @@ export function normalizeStage124FinalJudgementIntention(input: {
   liveStateAnyAvailable: boolean;
   model: string;
   promptVersion: string;
+  trustedFacts?: readonly PublicFactEvidence[] | null;
+  responseMode?: Stage12ResponseMode | null;
 }): Stage124FinalJudgementIntention {
   const { identityUnverified } = input.raw;
 
@@ -60,8 +72,6 @@ export function normalizeStage124FinalJudgementIntention(input: {
       ? null
       : input.raw.wallBody.slice(0, WALL_BODY_MAX_CHARS);
 
-  // When grounding is unavailable, still select eligible reply_only so recovery
-  // can write a bounded honest answer — do not hard-silence ordinary uncertainty.
   const reasonForPolicy = !canGround
     ? input.raw.reasonCode === "spam_or_noise" ||
       input.raw.reasonCode === "unsafe_or_injection"
@@ -78,16 +88,30 @@ export function normalizeStage124FinalJudgementIntention(input: {
     allowDeferredLiveSilence: false,
   });
 
+  const action = guaranteed.action;
+  const finalWall = guaranteed.wallBody;
+  let wallCandidate = normalizeWallCandidate({
+    raw: input.raw.wallCandidate ?? null,
+    action,
+    responseMode: input.responseMode,
+    trustedFacts: input.trustedFacts,
+  });
+
+  if (action !== "reply_and_write_to_wall") {
+    wallCandidate = null;
+  }
+
   return {
     engage: guaranteed.engage,
-    action: guaranteed.action,
+    action,
     reasonCode: guaranteed.reasonCode,
     replyText: guaranteed.replyText,
-    wallBody: guaranteed.wallBody,
+    wallBody: finalWall,
     identityUnverified,
     knowledgeAvailable: input.knowledgeAvailable,
     liveStateAnyAvailable: input.liveStateAnyAvailable,
     model: input.model,
     promptVersion: input.promptVersion,
+    wallCandidate,
   };
 }

@@ -281,11 +281,13 @@ describe("knowledge vs live-state boundary", () => {
     assert.deepEqual(
       [...FENN_LIVE_CAPABILITIES].sort(),
       [
+        "chronicle",
         "commons",
         "deeds",
+        "gatherings",
         "greenwood",
-        "leaf",
-        "ledger",
+        "register",
+        "token",
         "treasury",
         "wall",
       ].sort(),

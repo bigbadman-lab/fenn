@@ -486,10 +486,23 @@ describe("Stage 12.5 authorize pipeline", () => {
         needs_live_state: [],
         live_state_available: true,
         already_authorised: false,
+        // Stage 3: dual Wall requires admitted structured candidate
+        final_wall_candidate: {
+          kind: "declaration",
+          declarationKey: "test.carve_law",
+          reason: "constitutional_declaration",
+        },
       },
     });
 
-    const result = await authorizeOneXPerception({ admin });
+    const result = await authorizeOneXPerception({
+      admin,
+      loadTrustedFacts: async () => [],
+      isRemembered: async () => false,
+      tryReserve: async () => {
+        throw new Error("declarations do not reserve fact memory");
+      },
+    });
     assert.equal(result.status, "authorised");
     assert.equal(result.effectsCreated, 2);
     assert.ok(admin.effects.has("200:reply"));

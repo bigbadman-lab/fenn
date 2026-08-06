@@ -20,6 +20,15 @@ import {
   intentionNeedsReplyRecovery,
   type ReplyRecoveryModelCaller,
 } from "@/lib/agent/reply-recovery";
+import { evaluateChroniclerWallAdmission } from "@/lib/agent/chronicler-evaluate";
+import { loadTrustedFactsForChronicler } from "@/lib/agent/chronicler-load-facts";
+import {
+  attachAuthorizationToWallFactMemory,
+  isWallFactFingerprintRemembered,
+  tryReserveWallFactMemory,
+} from "@/lib/agent/chronicler-memory";
+import { inferResponseModeFromBody } from "@/lib/agent/response-mode";
+import type { WallCandidate } from "@/lib/agent/chronicler-types";
 
 type AdminLike = {
   from: (table: string) => unknown;
@@ -48,6 +57,16 @@ export type AuthorizeOneResult = {
   /** Observability: whether focused recovery ran. */
   replyRecovery?: "not_needed" | "succeeded" | "failed" | "skipped";
   recoveryCalls?: number;
+  /** Stage 3 Chronicler observability */
+  chronicler?: {
+    decision: string;
+    code: string;
+    kind: string | null;
+    factKey: string | null;
+    factFingerprint: string | null;
+    admitted: boolean;
+    alreadyRemembered: boolean;
+  };
   error?: string;
 };
 
@@ -63,6 +82,10 @@ export type AuthorizeBatchAggregate = {
 type Stage125Deps = {
   admin?: AdminLike;
   callReplyRecovery?: ReplyRecoveryModelCaller;
+  /** Test override: trust facts without DB. */
+  loadTrustedFacts?: typeof loadTrustedFactsForChronicler;
+  isRemembered?: typeof isWallFactFingerprintRemembered;
+  tryReserve?: typeof tryReserveWallFactMemory;
 };
 
 function clampBatchLimit(limit: number | undefined): number {
@@ -72,11 +95,17 @@ function clampBatchLimit(limit: number | undefined): number {
 }
 
 /**
- * Claim one finalized judgement, recover reply if needed, evaluate policy,
- * persist authority + pending effects. Does not execute consequences.
+ * Claim one finalized judgement, recover reply if needed, Chronicler admit,
+ * evaluate policy, persist authority + pending effects. Does not execute.
  *
- * Recovery failure is operational: no authorization is written so a later run
- * can re-claim and retry generation. Wall effects are not planned without a reply.
+ * Ordering for public_fact Walls:
+ * 1) pure Chronicler evaluate (with remembered lookup)
+ * 2) tryReserve fingerprint (unique constraint = final race gate)
+ * 3) pure evaluateAuthorityDecision plans effects
+ * 4) persist auth+effects
+ * 5) optional attach authorization_id to memory
+ *
+ * Rejection of Wall never blocks reply; never wall-only.
  */
 export async function authorizeOneXPerception(
   deps: Stage125Deps = {},
@@ -189,7 +218,6 @@ export async function authorizeOneXPerception(
         finalReplyText = recovered.replyText;
         replyRecovery = "not_needed";
       } else {
-        // skipped should not happen for needs-recovery path
         return {
           status: "reply_generation_failed",
           xPostId: claimed.xPostId,
@@ -205,6 +233,88 @@ export async function authorizeOneXPerception(
       }
     }
 
+    // --- Stage 3 Chronicler (I/O outside pure authority) ---
+    const responseMode = inferResponseModeFromBody(claimed.body);
+    const loadFacts = deps.loadTrustedFacts ?? loadTrustedFactsForChronicler;
+    const trustedFacts = await loadFacts({
+      body: claimed.body,
+      needsLiveState: claimed.needsLiveState,
+      wallCandidate: claimed.finalWallCandidate,
+    });
+
+    let alreadyRemembered = false;
+    const rawCandidate = claimed.finalWallCandidate;
+    if (
+      rawCandidate &&
+      typeof rawCandidate === "object" &&
+      (rawCandidate as WallCandidate).kind === "public_fact"
+    ) {
+      const pf = rawCandidate as Extract<WallCandidate, { kind: "public_fact" }>;
+      const checkRemembered = deps.isRemembered ?? isWallFactFingerprintRemembered;
+      alreadyRemembered = await checkRemembered({
+        factKey: pf.factKey,
+        factFingerprint: pf.factFingerprint,
+      });
+    }
+
+    let chronicler = evaluateChroniclerWallAdmission({
+      finalAction,
+      finalReplyText,
+      finalWallBody,
+      wallCandidate: claimed.finalWallCandidate,
+      trustedFacts,
+      alreadyRemembered,
+      responseMode,
+    });
+
+    let reservedMemoryId: string | null = null;
+
+    if (chronicler.decision === "allow_wall" && chronicler.candidate) {
+      if (chronicler.candidate.kind === "public_fact") {
+        const reserve = deps.tryReserve ?? tryReserveWallFactMemory;
+        const reserved = await reserve({
+          factKey: chronicler.candidate.factKey,
+          factFingerprint: chronicler.candidate.factFingerprint,
+          reason: chronicler.candidate.reason,
+          perceptionEventId: claimed.perceptionEventId,
+        });
+        if (reserved.status === "already_exists") {
+          finalAction = "reply_on_x";
+          finalWallBody = null;
+          chronicler = {
+            ...chronicler,
+            decision: "suppress_wall",
+            code: "already_remembered",
+            observability: {
+              ...chronicler.observability,
+              admitted: false,
+              alreadyRemembered: true,
+            },
+          };
+        } else if (reserved.status === "failed") {
+          finalAction = "reply_on_x";
+          finalWallBody = null;
+          chronicler = {
+            ...chronicler,
+            decision: "suppress_wall",
+            code: "significance_rejected",
+            observability: {
+              ...chronicler.observability,
+              admitted: false,
+            },
+          };
+        } else {
+          reservedMemoryId = reserved.memoryId;
+          finalAction = "reply_and_write_to_wall";
+        }
+      } else {
+        finalAction = "reply_and_write_to_wall";
+      }
+    } else if (finalAction === "reply_and_write_to_wall") {
+      finalAction = "reply_on_x";
+      finalWallBody = null;
+    }
+
     const decision = evaluateAuthorityDecision({
       perceptionEventId: claimed.perceptionEventId,
       judgementId: claimed.judgementId,
@@ -217,7 +327,18 @@ export async function authorizeOneXPerception(
       finalReasonCode,
     });
 
-    // Desk wall-only is the only permitted plan without reply_on_x.
+    // Attach Chronicler memory id into wall effect payload when planned.
+    if (reservedMemoryId && decision.outcome === "permitted") {
+      for (const effect of decision.effects) {
+        if (effect.type === "write_to_wall") {
+          effect.payload = {
+            ...effect.payload,
+            chroniclerFactMemoryId: reservedMemoryId,
+          };
+        }
+      }
+    }
+
     const isDeskWallOnly =
       decision.policyCode === "permitted_wall" &&
       decision.effects.every((e) => e.type === "write_to_wall");
@@ -237,6 +358,15 @@ export async function authorizeOneXPerception(
         effectsCreated: 0,
         replyRecovery,
         recoveryCalls,
+        chronicler: {
+          decision: chronicler.decision,
+          code: chronicler.code,
+          kind: chronicler.observability.kind,
+          factKey: chronicler.observability.factKey,
+          factFingerprint: chronicler.observability.factFingerprint,
+          admitted: chronicler.observability.admitted,
+          alreadyRemembered: chronicler.observability.alreadyRemembered,
+        },
         error: "eligible permitted plan has no reply effect",
       };
     }
@@ -271,6 +401,19 @@ export async function authorizeOneXPerception(
       { admin: deps.admin },
     );
 
+    if (reservedMemoryId && persisted.created && persisted.authorizationId) {
+      try {
+        await attachAuthorizationToWallFactMemory({
+          memoryId: reservedMemoryId,
+          authorizationId: persisted.authorizationId,
+          // Prefer injected admin when present; optional link must never fail the tick.
+          admin: deps.admin as never,
+        });
+      } catch {
+        // non-fatal link
+      }
+    }
+
     if (!persisted.created) {
       return {
         status: "already_authorised",
@@ -284,8 +427,30 @@ export async function authorizeOneXPerception(
         effectsCreated: persisted.effectsCreated,
         replyRecovery,
         recoveryCalls,
+        chronicler: {
+          decision: chronicler.decision,
+          code: chronicler.code,
+          kind: chronicler.observability.kind,
+          factKey: chronicler.observability.factKey,
+          factFingerprint: chronicler.observability.factFingerprint,
+          admitted: chronicler.observability.admitted,
+          alreadyRemembered: chronicler.observability.alreadyRemembered,
+        },
       };
     }
+
+    console.info("[chronicler] authority", {
+      xPostId: claimed.xPostId,
+      decision: chronicler.decision,
+      code: chronicler.code,
+      kind: chronicler.observability.kind,
+      factKey: chronicler.observability.factKey,
+      factFingerprint: chronicler.observability.factFingerprint,
+      admitted: chronicler.observability.admitted,
+      alreadyRemembered: chronicler.observability.alreadyRemembered,
+      finalAction: decision.finalAction,
+      policyCode: persisted.policyCode,
+    });
 
     return {
       status: "authorised",
@@ -299,6 +464,15 @@ export async function authorizeOneXPerception(
       effectsCreated: persisted.effectsCreated,
       replyRecovery,
       recoveryCalls,
+      chronicler: {
+        decision: chronicler.decision,
+        code: chronicler.code,
+        kind: chronicler.observability.kind,
+        factKey: chronicler.observability.factKey,
+        factFingerprint: chronicler.observability.factFingerprint,
+        admitted: chronicler.observability.admitted,
+        alreadyRemembered: chronicler.observability.alreadyRemembered,
+      },
     };
   } catch (error) {
     return {
@@ -374,6 +548,9 @@ export function formatAuthorizeBatchReport(
         `policy_code=${r.policyCode ?? "?"}`,
         `effects=${r.effectsCreated ?? 0}`,
         r.replyRecovery ? `recovery=${r.replyRecovery}` : null,
+        r.chronicler
+          ? `chronicler=${r.chronicler.decision}:${r.chronicler.code}`
+          : null,
       ]
         .filter(Boolean)
         .join(" "),

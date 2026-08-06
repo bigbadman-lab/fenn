@@ -1,15 +1,19 @@
 /**
- * Live-state capabilities Stage 12 must obtain from trusted tools — not RAG.
+ * Live-state capabilities Stage 12 may request from trusted tools — not RAG.
+ * Stage 2: public fact capabilities (register, token, gatherings, chronicle)
+ * are executable; personal leaf balances and identity Greenwood status are not.
  */
 
 export const FENN_LIVE_CAPABILITIES = [
   "treasury",
   "commons",
-  "ledger",
   "deeds",
-  "greenwood",
-  "leaf",
   "wall",
+  "register",
+  "greenwood",
+  "token",
+  "gatherings",
+  "chronicle",
 ] as const;
 
 export type FennLiveCapability = (typeof FENN_LIVE_CAPABILITIES)[number];
@@ -39,24 +43,6 @@ export const FENN_LIVE_CAPABILITY_POLICIES: readonly FennLiveCapabilityPolicy[] 
       liveToolMustProvide: "current Commons commitments / allocations",
     },
     {
-      capability: "ledger",
-      knowledgeMayExplain:
-        "what Ledger and Circulation are and how they differ conceptually",
-      liveToolMustProvide:
-        "current or recent actual movement records when Stage 12 needs them",
-    },
-    {
-      capability: "leaf",
-      knowledgeMayExplain: "what LEAF is (contribution / standing unit — not a live balance)",
-      liveToolMustProvide: "current LEAF balance / standing when the agent is allowed access",
-    },
-    {
-      capability: "greenwood",
-      knowledgeMayExplain:
-        "what Greenwood is and how membership works conceptually",
-      liveToolMustProvide: "current specific membership / eligibility",
-    },
-    {
       capability: "deeds",
       knowledgeMayExplain: "what Deeds are and how they work conceptually",
       liveToolMustProvide: "current live Deed status / window / reward",
@@ -67,8 +53,36 @@ export const FENN_LIVE_CAPABILITY_POLICIES: readonly FennLiveCapabilityPolicy[] 
       liveToolMustProvide:
         "current inscriptions, mark counts, and writes via trusted Wall services",
     },
+    {
+      capability: "register",
+      knowledgeMayExplain: "what the Outlaw Register and Greenwood membership mean",
+      liveToolMustProvide:
+        "confirmed Outlaw count and Greenwood member count (public aggregates)",
+    },
+    {
+      capability: "greenwood",
+      knowledgeMayExplain: "what Greenwood is and how admission works conceptually",
+      liveToolMustProvide:
+        "configured public lifetime LEAF threshold (not personal balances or membership of a named person)",
+    },
+    {
+      capability: "token",
+      knowledgeMayExplain: "what $FENN is conceptually",
+      liveToolMustProvide:
+        "official public FENN token contract definition when configured",
+    },
+    {
+      capability: "gatherings",
+      knowledgeMayExplain: "what Gatherings are",
+      liveToolMustProvide: "current public Gathering call signal (no private attendance)",
+    },
+    {
+      capability: "chronicle",
+      knowledgeMayExplain: "what the Chronicle / Living Book is",
+      liveToolMustProvide: "latest public Chronicle entry summary",
+    },
   ] as const;
 
 /** Short policy line for public-agent prompts / contracts. */
 export const FENN_PUBLIC_AGENT_LIVE_STATE_RULE =
-  "Current mutable state (Treasury, Commons, LEAF, Greenwood membership, Deed windows, Wall counts, Ledger/Circulation totals) must come from trusted live tools — never from knowledge retrieval alone.";
+  "Current mutable state (Treasury, Commons, Register counts, LEAF threshold config, Deed windows, Wall counts, Gatherings, official token, Chronicle) must come from trusted live tools — never from knowledge retrieval alone. Never answer personal LEAF balance or personal Greenwood membership from X alone.";

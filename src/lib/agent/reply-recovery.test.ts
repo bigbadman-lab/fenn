@@ -306,6 +306,7 @@ describe("reply recovery — generator", () => {
         replyText: null,
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       },
       knowledgeAvailable: true,
@@ -342,6 +343,7 @@ describe("reply recovery — authorize integration", () => {
     finalReasonCode: string;
     finalReplyText: string | null;
     finalWallBody: string | null;
+    finalWallCandidate?: unknown | null;
   }) {
     let authCreated = false;
     const effects: Array<{ type: string; payload: unknown }> = [];
@@ -372,6 +374,7 @@ describe("reply recovery — authorize integration", () => {
                 needs_live_state: [],
                 live_state_available: true,
                 already_authorised: false,
+                final_wall_candidate: seed.finalWallCandidate ?? null,
               },
             ],
             error: null,
@@ -451,6 +454,11 @@ describe("reply recovery — authorize integration", () => {
       finalReasonCode: "creative_world_action",
       finalReplyText: "I left a line on the Wall.",
       finalWallBody: TREE,
+      finalWallCandidate: {
+        kind: "declaration",
+        declarationKey: "test.wall_line",
+        reason: "constitutional_declaration",
+      },
     });
     const result = await authorizeOneXPerception({
       admin,
@@ -458,6 +466,7 @@ describe("reply recovery — authorize integration", () => {
         calls += 1;
         return { replyText: "bad" };
       },
+      loadTrustedFacts: async () => [],
     });
     assert.equal(result.status, "authorised");
     assert.equal(calls, 0);
@@ -509,10 +518,16 @@ describe("reply recovery — authorize integration", () => {
       finalReasonCode: "creative_world_action",
       finalReplyText: "  ",
       finalWallBody: TREE,
+      finalWallCandidate: {
+        kind: "declaration",
+        declarationKey: "test.keep_forever",
+        reason: "constitutional_declaration",
+      },
     });
     const result = await authorizeOneXPerception({
       admin,
       callReplyRecovery: fixedRecovery("I marked this on the Wall."),
+      loadTrustedFacts: async () => [],
     });
     assert.equal(result.status, "authorised");
     assert.equal(result.effectsCreated, 2);

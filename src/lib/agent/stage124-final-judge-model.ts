@@ -112,6 +112,8 @@ export async function runFennPublicFinalJudgement(input: {
   knowledgeContext: string | null;
   trustedLiveStateBlock: string;
   liveStateAnyAvailable: boolean;
+  publicFactEvidenceBlock?: string | null;
+  trustedFacts?: import("@/lib/agent/public-fact-evidence").PublicFactEvidence[] | null;
   callModel?: Stage124FinalJudgeModelCaller;
 }): Promise<Stage124FinalJudgementIntention> {
   const callModel = input.callModel ?? defaultStage124FinalJudgeModelCaller;
@@ -125,6 +127,7 @@ export async function runFennPublicFinalJudgement(input: {
     knowledgeAvailable: input.knowledgeAvailable,
     knowledgeContext: input.knowledgeContext,
     trustedLiveStateBlock: input.trustedLiveStateBlock,
+    publicFactEvidenceBlock: input.publicFactEvidenceBlock ?? null,
   });
 
   let raw: Stage124FinalJudgementModelOutput;
@@ -155,6 +158,7 @@ export async function runFennPublicFinalJudgement(input: {
     liveStateAnyAvailable: input.liveStateAnyAvailable,
     model: STAGE12_JUDGE_OPENAI_MODEL,
     promptVersion: STAGE124_FINAL_PROMPT_VERSION,
+    trustedFacts: input.trustedFacts ?? [],
   });
 }
 

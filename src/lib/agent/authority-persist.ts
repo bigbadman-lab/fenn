@@ -20,6 +20,8 @@ export type ClaimedAuthorityJudgement = {
   needsLiveState: string[];
   liveStateAvailable: boolean;
   alreadyAuthorised: boolean;
+  /** Stage 3 structured Wall candidate from final judge (nullable). */
+  finalWallCandidate: unknown | null;
 };
 
 export type PersistAuthorizationResult = {
@@ -96,6 +98,8 @@ export async function claimXPerceptionForAuthority(
       : [],
     liveStateAvailable: Boolean(row.live_state_available),
     alreadyAuthorised: Boolean(row.already_authorised),
+    finalWallCandidate:
+      row.final_wall_candidate != null ? row.final_wall_candidate : null,
   };
 }
 

@@ -6,12 +6,22 @@ import {
   finalizeXPerceptionJudgementWithLiveState,
 } from "@/lib/agent/judge-persist";
 
-import { executeStage124LiveReads, buildStage124LiveStatePromptBlock } from "@/lib/agent/stage124-live-adapters";
+import {
+  executeStage124LiveReads,
+  buildStage124LiveStatePromptBlock,
+  collectFactsFromLiveResults,
+  type Stage124LiveReadResult,
+} from "@/lib/agent/stage124-live-adapters";
 import type { Stage124LiveCapability } from "@/lib/agent/stage124-live-capabilities";
 import {
-  STAGE124_LIVE_CAPABILITIES,
-  STAGE124_LIVE_CAPABILITY_MAX,
-} from "@/lib/agent/stage124-live-capabilities";
+  draftAssertsUnsupportedPublicQuantity,
+  resolveExecutableLiveCapabilities,
+} from "@/lib/agent/live-capability-routing";
+import {
+  buildPublicFactEvidencePromptBlock,
+  type PublicFactEvidence,
+} from "@/lib/agent/public-fact-evidence";
+import { inferResponseModeFromBody } from "@/lib/agent/response-mode";
 
 import { runFennPublicFinalJudgement } from "@/lib/agent/stage124-final-judge-model";
 
@@ -58,18 +68,268 @@ type Stage124Deps = {
   callReplyRecovery?: ReplyRecoveryModelCaller;
 };
 
-function validateRequestedCapabilities(
+/** Filter requested caps to executable Stage 124 set (no silent personal leaf). */
+export function validateRequestedCapabilities(
   requested: string[],
+  body?: string,
 ): Stage124LiveCapability[] {
-  const allowed = new Set(STAGE124_LIVE_CAPABILITIES);
-  const unique: Stage124LiveCapability[] = [];
-  for (const cap of requested) {
-    if (typeof cap === "string" && allowed.has(cap as Stage124LiveCapability)) {
-      unique.push(cap as Stage124LiveCapability);
-    }
+  return resolveExecutableLiveCapabilities({
+    requested,
+    body,
+    responseMode: body ? inferResponseModeFromBody(body) : null,
+    inferFromBodyIfEmpty: false,
+  });
+}
+
+async function finalizeWithHonestRecovery(input: {
+  claimed: {
+    perceptionEventId: string;
+    xPostId: string;
+    perceptionType: string;
+    authorXUserId: string;
+    authorUsername: string | null;
+    body: string;
+    identityUnverified: boolean;
+  };
+  liveStateAvailable: boolean;
+  liveStateSucceeded: Stage124LiveCapability[];
+  liveStateFailed: Stage124LiveCapability[];
+  factBlock: string | null;
+  knowledgeBoundaryNote: string;
+  promptVersion: string;
+  deps: Stage124Deps;
+}): Promise<SightOneResult> {
+  const guaranteed = applyReplyGuaranteePolicy({
+    engage: true,
+    action: "reply_on_x",
+    reasonCode: "insufficient_knowledge",
+    replyText: null,
+    wallBody: null,
+    allowDeferredLiveSilence: false,
+  });
+  const recovered = await ensureReplyTextWithRecovery({
+    action: guaranteed.action,
+    reasonCode: guaranteed.reasonCode,
+    replyText: guaranteed.replyText,
+    wallBody: null,
+    xPostId: input.claimed.xPostId,
+    perceptionType: input.claimed.perceptionType,
+    authorXUserId: input.claimed.authorXUserId,
+    authorUsername: input.claimed.authorUsername,
+    body: input.claimed.body,
+    knowledgeBoundaryNote: input.knowledgeBoundaryNote,
+    publicFactEvidenceBlock: input.factBlock,
+    callModel: input.deps.callReplyRecovery,
+  });
+
+  if (recovered.status === "failed") {
+    return {
+      status: "failed",
+      xPostId: input.claimed.xPostId,
+      perceptionEventId: input.claimed.perceptionEventId,
+      finalAction: "reply_on_x",
+      finalReasonCode: "reply_generation_failed",
+      liveStateAvailable: input.liveStateAvailable,
+      error: recovered.error,
+    };
   }
-  // Deterministic cap for prompt+latency safety.
-  return [...new Set(unique)].slice(0, STAGE124_LIVE_CAPABILITY_MAX);
+
+  const replyText =
+    recovered.status === "succeeded" || recovered.status === "not_needed"
+      ? recovered.replyText
+      : null;
+
+  await finalizeXPerceptionJudgementWithLiveState(
+    {
+      perceptionEventId: input.claimed.perceptionEventId,
+      finalStatus: "finalized",
+      liveStateAvailable: input.liveStateAvailable,
+      liveStateSucceeded: [...input.liveStateSucceeded],
+      liveStateFailed: [...input.liveStateFailed],
+      finalAction: "reply_on_x",
+      finalReasonCode: "insufficient_knowledge",
+      finalEngage: true,
+      finalReplyText: replyText,
+      finalWallBody: null,
+      finalIdentityUnverified: input.claimed.identityUnverified,
+      finalModel: STAGE12_JUDGE_OPENAI_MODEL,
+      finalPromptVersion: input.promptVersion,
+    },
+    { admin: input.deps.admin },
+  );
+
+  return {
+    status: "finalized",
+    xPostId: input.claimed.xPostId,
+    perceptionEventId: input.claimed.perceptionEventId,
+    finalAction: "reply_on_x",
+    finalReasonCode: "insufficient_knowledge",
+    liveStateAvailable: input.liveStateAvailable,
+  };
+}
+
+async function runLiveThenJudgePath(input: {
+  claimed: {
+    perceptionEventId: string;
+    xPostId: string;
+    perceptionType: string;
+    authorXUserId: string;
+    authorUsername: string | null;
+    body: string;
+    identityUnverified: boolean;
+  };
+  requestedCaps: Stage124LiveCapability[];
+  deps: Stage124Deps;
+}): Promise<SightOneResult> {
+  const execLive = input.deps.executeLiveReads ?? executeStage124LiveReads;
+  const liveResults = await execLive(input.requestedCaps);
+  const trustedLiveStateBlock = buildStage124LiveStatePromptBlock(
+    liveResults.results,
+  );
+  const facts = liveResults.facts?.length
+    ? liveResults.facts
+    : collectFactsFromLiveResults(liveResults.results);
+  const factBlock =
+    facts.length > 0 ? buildPublicFactEvidencePromptBlock(facts) : null;
+  const anyLiveAvailable = liveResults.succeeded.length > 0;
+
+  if (!anyLiveAvailable) {
+    return finalizeWithHonestRecovery({
+      claimed: input.claimed,
+      liveStateAvailable: false,
+      liveStateSucceeded: [],
+      liveStateFailed: [...liveResults.failed],
+      factBlock,
+      knowledgeBoundaryNote:
+        "Trusted live tools were unavailable. Answer honestly that you cannot establish the current figure. Do not invent numbers. Do not use technical infrastructure language.",
+      promptVersion: "fenn-public-final-judge-live-unavailable-recovery-v1",
+      deps: input.deps,
+    });
+  }
+
+  try {
+    const knowledgeLookup = input.deps.retrieveKnowledge
+      ? await input.deps.retrieveKnowledge(input.claimed.body)
+      : await safeRetrievePublicAgentKnowledge({ query: input.claimed.body });
+    const assembled = assemblePublicAgentContext({
+      knowledge: knowledgeLookup,
+    });
+
+    const finalIntention = await (input.deps.runFinalJudgement ??
+      runFennPublicFinalJudgement)({
+      xPostId: input.claimed.xPostId,
+      perceptionType: input.claimed.perceptionType,
+      authorXUserId: input.claimed.authorXUserId,
+      authorUsername: input.claimed.authorUsername,
+      body: input.claimed.body,
+      knowledgeAvailable: assembled.knowledgeAvailable,
+      knowledgeContext: assembled.knowledgeContext,
+      trustedLiveStateBlock,
+      publicFactEvidenceBlock: factBlock,
+      trustedFacts: facts,
+      liveStateAnyAvailable: anyLiveAvailable,
+    });
+
+    let finalAction = finalIntention.action;
+    let finalReplyText = finalIntention.replyText;
+    let finalWallBody = finalIntention.wallBody;
+    let finalReasonCode = finalIntention.reasonCode;
+    let finalEngage = finalIntention.engage;
+    const finalWallCandidate = finalIntention.wallCandidate ?? null;
+
+    if (
+      intentionNeedsReplyRecovery({
+        action: finalAction,
+        reasonCode: finalReasonCode,
+        replyText: finalReplyText,
+      })
+    ) {
+      const recovered = await ensureReplyTextWithRecovery({
+        action: finalAction,
+        reasonCode: finalReasonCode,
+        replyText: finalReplyText,
+        wallBody: finalWallBody,
+        xPostId: input.claimed.xPostId,
+        perceptionType: input.claimed.perceptionType,
+        authorXUserId: input.claimed.authorXUserId,
+        authorUsername: input.claimed.authorUsername,
+        body: input.claimed.body,
+        publicFactEvidenceBlock: factBlock,
+        callModel: input.deps.callReplyRecovery,
+      });
+      if (recovered.status === "failed") {
+        return {
+          status: "failed",
+          xPostId: input.claimed.xPostId,
+          perceptionEventId: input.claimed.perceptionEventId,
+          error: recovered.error,
+        };
+      }
+      if (
+        recovered.status === "succeeded" ||
+        recovered.status === "not_needed"
+      ) {
+        finalReplyText = recovered.replyText;
+        finalEngage = true;
+      }
+    }
+
+    await finalizeXPerceptionJudgementWithLiveState(
+      {
+        perceptionEventId: input.claimed.perceptionEventId,
+        finalStatus: "finalized",
+        liveStateAvailable: anyLiveAvailable,
+        liveStateSucceeded: [...liveResults.succeeded],
+        liveStateFailed: [...liveResults.failed],
+        finalAction,
+        finalReasonCode,
+        finalEngage,
+        finalReplyText,
+        finalWallBody,
+        finalIdentityUnverified: finalIntention.identityUnverified,
+        finalModel: finalIntention.model,
+        finalPromptVersion: finalIntention.promptVersion,
+        finalWallCandidate,
+      },
+      { admin: input.deps.admin },
+    );
+
+    return {
+      status: "finalized",
+      xPostId: input.claimed.xPostId,
+      perceptionEventId: input.claimed.perceptionEventId,
+      finalAction,
+      finalReasonCode,
+      liveStateAvailable: anyLiveAvailable,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "final judgement failed";
+    await finalizeXPerceptionJudgementWithLiveState(
+      {
+        perceptionEventId: input.claimed.perceptionEventId,
+        finalStatus: "failed",
+        liveStateAvailable: anyLiveAvailable,
+        liveStateSucceeded: [...liveResults.succeeded],
+        liveStateFailed: [...liveResults.failed],
+        finalAction: "do_nothing",
+        finalReasonCode: "insufficient_knowledge",
+        finalEngage: false,
+        finalReplyText: null,
+        finalWallBody: null,
+        finalIdentityUnverified: input.claimed.identityUnverified,
+        finalModel: "n/a",
+        finalPromptVersion: "n/a",
+      },
+      { admin: input.deps.admin },
+    );
+    return {
+      status: "failed",
+      xPostId: input.claimed.xPostId,
+      perceptionEventId: input.claimed.perceptionEventId,
+      error: message,
+    };
+  }
 }
 
 export async function finalizeOneXPerceptionJudgementWithLiveState(
@@ -94,280 +354,155 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
     };
   }
 
-  const requestedCaps = validateRequestedCapabilities(claimed.needsLiveState);
+  const responseMode = inferResponseModeFromBody(claimed.body);
+  let requestedCaps = resolveExecutableLiveCapabilities({
+    requested: claimed.needsLiveState,
+    body: claimed.body,
+    responseMode,
+    inferFromBodyIfEmpty: false,
+  });
+
   const finalModelNoop = STAGE12_JUDGE_OPENAI_MODEL;
   const finalPromptCopy = "fenn-public-final-judge-copy-v1";
 
+  // Stage 2 copy-forward / empty needs: infer approved fact capabilities for
+  // fact-like questions so we do not keep unsupported quantitative drafts.
   if (requestedCaps.length === 0) {
-    // Copy-forward initial intention, then apply guarantee + recovery if needed.
-    const guaranteed = applyReplyGuaranteePolicy({
-      engage: claimed.initialEngage,
-      action: claimed.initialAction,
-      reasonCode: claimed.initialReasonCode,
-      replyText: claimed.initialReplyText,
-      wallBody: claimed.initialWallBody,
-      allowDeferredLiveSilence: false,
+    const inferred = resolveExecutableLiveCapabilities({
+      requested: [],
+      body: claimed.body,
+      responseMode,
+      inferFromBodyIfEmpty: true,
     });
+    if (inferred.length > 0) {
+      requestedCaps = inferred;
+    }
+  }
 
-    let finalAction = guaranteed.action;
-    let finalReplyText = guaranteed.replyText;
-    let finalWallBody = guaranteed.wallBody;
-    let finalReasonCode = guaranteed.reasonCode;
-    let finalEngage = guaranteed.engage;
-
-    if (
-      intentionNeedsReplyRecovery({
-        action: finalAction,
-        reasonCode: finalReasonCode,
-        replyText: finalReplyText,
-      })
-    ) {
-      const recovered = await ensureReplyTextWithRecovery({
-        action: finalAction,
-        reasonCode: finalReasonCode,
-        replyText: finalReplyText,
-        wallBody: finalWallBody,
+  if (requestedCaps.length > 0) {
+    return runLiveThenJudgePath({
+      claimed: {
+        perceptionEventId: claimed.perceptionEventId,
         xPostId: claimed.xPostId,
         perceptionType: claimed.perceptionType,
         authorXUserId: claimed.authorXUserId,
         authorUsername: claimed.authorUsername,
         body: claimed.body,
-        callModel: deps.callReplyRecovery,
-      });
-      if (recovered.status === "failed") {
-        // Leave final_status pending so a later run can re-attempt recovery.
-        // Do not finalize as do_nothing / hard block.
-        return {
-          status: "failed",
-          xPostId: claimed.xPostId,
-          perceptionEventId: claimed.perceptionEventId,
-          finalAction,
-          finalReasonCode: "reply_generation_failed",
-          error: recovered.error,
-        };
-      }
-      if (recovered.status === "succeeded" || recovered.status === "not_needed") {
-        finalReplyText = recovered.replyText;
-        finalEngage = true;
-      }
-    }
-
-    await finalizeXPerceptionJudgementWithLiveState(
-      {
-        perceptionEventId: claimed.perceptionEventId,
-        finalStatus: "finalized",
-        liveStateAvailable: true,
-        liveStateSucceeded: [],
-        liveStateFailed: [],
-        finalAction,
-        finalReasonCode,
-        finalEngage,
-        finalReplyText,
-        finalWallBody,
-        finalIdentityUnverified: claimed.identityUnverified,
-        finalModel: finalModelNoop,
-        finalPromptVersion: finalPromptCopy,
+        identityUnverified: claimed.identityUnverified,
       },
-      { admin: deps.admin },
-    );
-    return {
-      status: "finalized",
-      xPostId: claimed.xPostId,
-      perceptionEventId: claimed.perceptionEventId,
-      finalAction,
-      finalReasonCode,
-      liveStateAvailable: true,
-    };
+      requestedCaps,
+      deps,
+    });
   }
 
-  const execLive = deps.executeLiveReads ?? executeStage124LiveReads;
-  const liveResults = await execLive(requestedCaps);
-  const trustedLiveStateBlock = buildStage124LiveStatePromptBlock(liveResults.results);
-  const anyLiveAvailable = liveResults.succeeded.length > 0;
+  // Pure copy-forward path — no executable live caps after inference.
+  const guaranteed = applyReplyGuaranteePolicy({
+    engage: claimed.initialEngage,
+    action: claimed.initialAction,
+    reasonCode: claimed.initialReasonCode,
+    replyText: claimed.initialReplyText,
+    wallBody: claimed.initialWallBody,
+    allowDeferredLiveSilence: false,
+  });
 
-  if (!anyLiveAvailable) {
-    // Eligible honest reply path: recovery writes a bounded non-fabricating answer.
-    const guaranteed = applyReplyGuaranteePolicy({
-      engage: true,
-      action: "reply_on_x",
-      reasonCode: "insufficient_knowledge",
-      replyText: null,
-      wallBody: null,
-      allowDeferredLiveSilence: false,
+  let finalAction = guaranteed.action;
+  let finalReplyText = guaranteed.replyText;
+  let finalWallBody = guaranteed.wallBody;
+  let finalReasonCode = guaranteed.reasonCode;
+  let finalEngage = guaranteed.engage;
+
+  // Still refuse unsupported quantitative drafts (empty inferred caps case).
+  if (
+    draftAssertsUnsupportedPublicQuantity({
+      body: claimed.body,
+      replyText: finalReplyText,
+      loadedCapabilities: [],
+      availableFactKeys: [],
+    })
+  ) {
+    return finalizeWithHonestRecovery({
+      claimed: {
+        perceptionEventId: claimed.perceptionEventId,
+        xPostId: claimed.xPostId,
+        perceptionType: claimed.perceptionType,
+        authorXUserId: claimed.authorXUserId,
+        authorUsername: claimed.authorUsername,
+        body: claimed.body,
+        identityUnverified: claimed.identityUnverified,
+      },
+      liveStateAvailable: false,
+      liveStateSucceeded: [],
+      liveStateFailed: [],
+      factBlock: null,
+      knowledgeBoundaryNote:
+        "A prior draft asserted a public quantity without trusted evidence. Answer honestly that you cannot establish the current figure. Do not invent numbers or claim 'many' without a count.",
+      promptVersion:
+        "fenn-public-final-judge-copy-unsupported-quantity-recovery-v1",
+      deps,
     });
+  }
+
+  if (
+    intentionNeedsReplyRecovery({
+      action: finalAction,
+      reasonCode: finalReasonCode,
+      replyText: finalReplyText,
+    })
+  ) {
     const recovered = await ensureReplyTextWithRecovery({
-      action: guaranteed.action,
-      reasonCode: guaranteed.reasonCode,
-      replyText: guaranteed.replyText,
-      wallBody: null,
+      action: finalAction,
+      reasonCode: finalReasonCode,
+      replyText: finalReplyText,
+      wallBody: finalWallBody,
       xPostId: claimed.xPostId,
       perceptionType: claimed.perceptionType,
       authorXUserId: claimed.authorXUserId,
       authorUsername: claimed.authorUsername,
       body: claimed.body,
-      knowledgeBoundaryNote:
-        "Trusted live tools were unavailable. Answer honestly that you cannot establish the current figure. Do not invent numbers. Do not use technical infrastructure language.",
       callModel: deps.callReplyRecovery,
     });
-
     if (recovered.status === "failed") {
       return {
         status: "failed",
         xPostId: claimed.xPostId,
         perceptionEventId: claimed.perceptionEventId,
-        finalAction: "reply_on_x",
+        finalAction,
         finalReasonCode: "reply_generation_failed",
-        liveStateAvailable: false,
         error: recovered.error,
       };
     }
-
-    const replyText =
-      recovered.status === "succeeded" || recovered.status === "not_needed"
-        ? recovered.replyText
-        : null;
-
-    await finalizeXPerceptionJudgementWithLiveState(
-      {
-        perceptionEventId: claimed.perceptionEventId,
-        finalStatus: "finalized",
-        liveStateAvailable: false,
-        liveStateSucceeded: [],
-        liveStateFailed: [...liveResults.failed],
-        finalAction: "reply_on_x",
-        finalReasonCode: "insufficient_knowledge",
-        finalEngage: true,
-        finalReplyText: replyText,
-        finalWallBody: null,
-        finalIdentityUnverified: claimed.identityUnverified,
-        finalModel: finalModelNoop,
-        finalPromptVersion: "fenn-public-final-judge-live-unavailable-recovery-v1",
-      },
-      { admin: deps.admin },
-    );
-
-    return {
-      status: "finalized",
-      xPostId: claimed.xPostId,
-      perceptionEventId: claimed.perceptionEventId,
-      finalAction: "reply_on_x",
-      finalReasonCode: "insufficient_knowledge",
-      liveStateAvailable: false,
-    };
+    if (recovered.status === "succeeded" || recovered.status === "not_needed") {
+      finalReplyText = recovered.replyText;
+      finalEngage = true;
+    }
   }
 
-  try {
-    const knowledgeLookup = deps.retrieveKnowledge
-      ? await deps.retrieveKnowledge(claimed.body)
-      : await safeRetrievePublicAgentKnowledge({ query: claimed.body });
-    const assembled = assemblePublicAgentContext({ knowledge: knowledgeLookup });
-
-    const finalIntention = await (deps.runFinalJudgement ?? runFennPublicFinalJudgement)({
-      xPostId: claimed.xPostId,
-      perceptionType: claimed.perceptionType,
-      authorXUserId: claimed.authorXUserId,
-      authorUsername: claimed.authorUsername,
-      body: claimed.body,
-      knowledgeAvailable: assembled.knowledgeAvailable,
-      knowledgeContext: assembled.knowledgeContext,
-      trustedLiveStateBlock,
-      liveStateAnyAvailable: anyLiveAvailable,
-    });
-
-    let finalAction = finalIntention.action;
-    let finalReplyText = finalIntention.replyText;
-    let finalWallBody = finalIntention.wallBody;
-    let finalReasonCode = finalIntention.reasonCode;
-    let finalEngage = finalIntention.engage;
-
-    if (
-      intentionNeedsReplyRecovery({
-        action: finalAction,
-        reasonCode: finalReasonCode,
-        replyText: finalReplyText,
-      })
-    ) {
-      const recovered = await ensureReplyTextWithRecovery({
-        action: finalAction,
-        reasonCode: finalReasonCode,
-        replyText: finalReplyText,
-        wallBody: finalWallBody,
-        xPostId: claimed.xPostId,
-        perceptionType: claimed.perceptionType,
-        authorXUserId: claimed.authorXUserId,
-        authorUsername: claimed.authorUsername,
-        body: claimed.body,
-        callModel: deps.callReplyRecovery,
-      });
-      if (recovered.status === "failed") {
-        return {
-          status: "failed",
-          xPostId: claimed.xPostId,
-          perceptionEventId: claimed.perceptionEventId,
-          error: recovered.error,
-        };
-      }
-      if (recovered.status === "succeeded" || recovered.status === "not_needed") {
-        finalReplyText = recovered.replyText;
-        finalEngage = true;
-      }
-    }
-
-    await finalizeXPerceptionJudgementWithLiveState(
-      {
-        perceptionEventId: claimed.perceptionEventId,
-        finalStatus: "finalized",
-        liveStateAvailable: anyLiveAvailable,
-        liveStateSucceeded: [...liveResults.succeeded],
-        liveStateFailed: [...liveResults.failed],
-        finalAction,
-        finalReasonCode,
-        finalEngage,
-        finalReplyText,
-        finalWallBody,
-        finalIdentityUnverified: finalIntention.identityUnverified,
-        finalModel: finalIntention.model,
-        finalPromptVersion: finalIntention.promptVersion,
-      },
-      { admin: deps.admin },
-    );
-
-    return {
-      status: "finalized",
-      xPostId: claimed.xPostId,
+  await finalizeXPerceptionJudgementWithLiveState(
+    {
       perceptionEventId: claimed.perceptionEventId,
+      finalStatus: "finalized",
+      liveStateAvailable: true,
+      liveStateSucceeded: [],
+      liveStateFailed: [],
       finalAction,
       finalReasonCode,
-      liveStateAvailable: anyLiveAvailable,
-    };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "final judgement failed";
-    await finalizeXPerceptionJudgementWithLiveState(
-      {
-        perceptionEventId: claimed.perceptionEventId,
-        finalStatus: "failed",
-        liveStateAvailable: anyLiveAvailable,
-        liveStateSucceeded: [...liveResults.succeeded],
-        liveStateFailed: [...liveResults.failed],
-        finalAction: "do_nothing",
-        finalReasonCode: "insufficient_knowledge",
-        finalEngage: false,
-        finalReplyText: null,
-        finalWallBody: null,
-        finalIdentityUnverified: claimed.identityUnverified,
-        finalModel: "n/a",
-        finalPromptVersion: "n/a",
-      },
-      { admin: deps.admin },
-    );
-    return {
-      status: "failed",
-      xPostId: claimed.xPostId,
-      perceptionEventId: claimed.perceptionEventId,
-      error: message,
-    };
-  }
+      finalEngage,
+      finalReplyText,
+      finalWallBody,
+      finalIdentityUnverified: claimed.identityUnverified,
+      finalModel: finalModelNoop,
+      finalPromptVersion: finalPromptCopy,
+    },
+    { admin: deps.admin },
+  );
+  return {
+    status: "finalized",
+    xPostId: claimed.xPostId,
+    perceptionEventId: claimed.perceptionEventId,
+    finalAction,
+    finalReasonCode,
+    liveStateAvailable: true,
+  };
 }
 
 export async function finalizePendingXPerceptionsWithLiveState(
@@ -398,9 +533,7 @@ export async function finalizePendingXPerceptionsWithLiveState(
   };
 }
 
-export function formatSightBatchReport(
-  agg: SightBatchAggregate,
-): string {
+export function formatSightBatchReport(agg: SightBatchAggregate): string {
   return [
     "X live sight",
     `scanned: ${agg.scanned}`,
@@ -410,3 +543,5 @@ export function formatSightBatchReport(
   ].join("\n");
 }
 
+/** Test helper — re-export live types when needed. */
+export type { Stage124LiveReadResult, PublicFactEvidence };

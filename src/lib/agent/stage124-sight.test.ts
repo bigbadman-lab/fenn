@@ -177,10 +177,11 @@ describe("Stage 12.4 sight — two-phase finalization", () => {
       admin,
       executeLiveReads: async () => ({
         results: [
-          { capability: "treasury" as Stage124LiveCapability, available: false, context: null },
+          { capability: "treasury" as Stage124LiveCapability, available: false, context: null, facts: [] },
         ],
         succeeded: [],
         failed: ["treasury" as Stage124LiveCapability],
+        facts: [],
       }),
       runFinalJudgement: async () => {
         modelCalls += 1;
@@ -218,7 +219,7 @@ describe("Stage 12.4 sight — two-phase finalization", () => {
         initial_engage: true,
         initial_reply_text: "initial",
         initial_wall_body: null,
-        needs_live_state: ["treasury", "leaf"], // leaf must be ignored
+        needs_live_state: ["treasury", "register"], // extra cap beyond need is ok; leaf removed
         identity_unverified: false,
         knowledge_available: false,
         initial_model: STAGE12_JUDGE_OPENAI_MODEL,
@@ -236,11 +237,13 @@ describe("Stage 12.4 sight — two-phase finalization", () => {
             capability: "treasury" as Stage124LiveCapability,
             available: true,
             context: "treasury_context",
+            facts: [],
           },
-          // leaf is not executed; it would have been filtered.
+          // leaf is not a Stage 2 capability; only treasury is requested/executable.
         ],
         succeeded: ["treasury" as Stage124LiveCapability],
         failed: [],
+        facts: [],
       }),
       retrieveKnowledge: async () =>
         ({ available: true, results: [] } as PublicAgentKnowledgeLookup),
@@ -255,6 +258,7 @@ describe("Stage 12.4 sight — two-phase finalization", () => {
           identityUnverified: false,
           knowledgeAvailable: true,
           liveStateAnyAvailable: true,
+          wallCandidate: null,
           model: STAGE12_JUDGE_OPENAI_MODEL,
           promptVersion: "fenn-public-final-judge-wall-requires-reply-v1",
         };

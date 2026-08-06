@@ -81,6 +81,7 @@ describe("Stage 12.3 judgement schema", () => {
       replyText: null,
       wallBody: "line",
       needsLiveState: [],
+      responseMode: "canon",
       identityUnverified: false,
     });
     assert.equal(parsed.success, false);
@@ -95,6 +96,7 @@ describe("Stage 12.3 judgement schema", () => {
         replyText: "hi",
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
         sourceType: "x_agent",
       }),
@@ -109,6 +111,7 @@ describe("Stage 12.3 judgement schema", () => {
       replyText: null,
       wallBody: null,
       needsLiveState: ["root_shell"],
+      responseMode: "canon",
       identityUnverified: false,
     });
     assert.equal(parsed.success, false);
@@ -123,6 +126,7 @@ describe("Stage 12.3 judgement schema", () => {
         replyText: "should still post under always-reply",
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       },
       knowledgeAvailable: true,
@@ -140,6 +144,7 @@ describe("Stage 12.3 judgement schema", () => {
         replyText: "LEAF is contribution",
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       },
       knowledgeAvailable: false,
@@ -161,6 +166,7 @@ describe("Stage 12.3 judgement schema", () => {
         replyText: "I left a line on the Wall.",
         wallBody: art,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       },
       knowledgeAvailable: true,
@@ -181,6 +187,7 @@ describe("Stage 12.3 judgement schema", () => {
         replyText: "An answer only.",
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       },
       knowledgeAvailable: true,
@@ -198,6 +205,7 @@ describe("Stage 12.3 judgement schema", () => {
         replyText: null,
         wallBody: "orphan wall line",
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       },
       knowledgeAvailable: true,
@@ -249,6 +257,7 @@ describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
         replyText: "The road greets you.",
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       }),
     });
@@ -271,6 +280,7 @@ describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
         replyText: "LEAF is contribution standing in FENN — not a market token.",
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       }),
     });
@@ -294,6 +304,7 @@ describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
         replyText: null,
         wallBody: null,
         needsLiveState: ["treasury"],
+        responseMode: "canon",
         identityUnverified: false,
       }),
     });
@@ -315,7 +326,8 @@ describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
         reasonCode: "identity_unverified",
         replyText: "I cannot verify who you are from X alone.",
         wallBody: null,
-        needsLiveState: ["leaf"],
+        needsLiveState: [],
+        responseMode: "fact",
         identityUnverified: true,
       }),
     });
@@ -340,6 +352,7 @@ describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
         replyText: "I left a tree where the road can find it.",
         wallBody: art,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       }),
     });
@@ -363,6 +376,7 @@ describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
         replyText: null,
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       }),
     });
@@ -523,6 +537,7 @@ describe("Stage 12.3 claim / persist pipeline", () => {
         replyText: "Greenwood is membership among Outlaws.",
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       }),
     });
@@ -560,6 +575,7 @@ describe("Stage 12.3 claim / persist pipeline", () => {
         replyText: "should not replace",
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       }),
     });
@@ -603,6 +619,7 @@ describe("Stage 12.3 claim / persist pipeline", () => {
         replyText: "Deeds bind the road to work.",
         wallBody: null,
         needsLiveState: [],
+        responseMode: "canon",
         identityUnverified: false,
       }),
     });
@@ -628,6 +645,7 @@ describe("Stage 12.3 claim / persist pipeline", () => {
           replyText: null,
           wallBody: null,
           needsLiveState: [],
+          responseMode: "canon",
           identityUnverified: false,
         }),
       },
@@ -684,15 +702,19 @@ describe("Stage 12.3 architecture boundaries", () => {
     );
   });
 
-  it("live capabilities remain the closed allow-list", () => {
+  it("live capabilities remain the closed allow-list (Stage 2 public facts)", () => {
     assert.deepEqual([...FENN_LIVE_CAPABILITIES], [
       "treasury",
       "commons",
-      "ledger",
       "deeds",
-      "greenwood",
-      "leaf",
       "wall",
+      "register",
+      "greenwood",
+      "token",
+      "gatherings",
+      "chronicle",
     ]);
+    assert.ok(!FENN_LIVE_CAPABILITIES.includes("leaf" as never));
+    assert.ok(!FENN_LIVE_CAPABILITIES.includes("ledger" as never));
   });
 });

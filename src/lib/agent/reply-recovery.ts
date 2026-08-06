@@ -61,6 +61,8 @@ export type ReplyRecoveryInput = {
   policyOutcome: ReplyRecoveryPolicyOutcome;
   wallBody: string | null;
   knowledgeBoundaryNote?: string | null;
+  /** Structured trusted facts (same set final judge received). */
+  publicFactEvidenceBlock?: string | null;
   callModel?: ReplyRecoveryModelCaller;
 };
 
@@ -205,6 +207,7 @@ export async function runFennReplyRecovery(
     policyOutcome: input.policyOutcome,
     wallBody: input.wallBody,
     knowledgeBoundaryNote: input.knowledgeBoundaryNote ?? null,
+    publicFactEvidenceBlock: input.publicFactEvidenceBlock ?? null,
   });
 
   try {
@@ -289,6 +292,7 @@ export async function ensureReplyTextWithRecovery(input: {
   authorUsername: string | null;
   body: string;
   knowledgeBoundaryNote?: string | null;
+  publicFactEvidenceBlock?: string | null;
   callModel?: ReplyRecoveryModelCaller;
 }): Promise<EnsureReplyTextResult> {
   if (
@@ -331,6 +335,7 @@ export async function ensureReplyTextWithRecovery(input: {
     policyOutcome,
     wallBody: input.wallBody,
     knowledgeBoundaryNote: input.knowledgeBoundaryNote,
+    publicFactEvidenceBlock: input.publicFactEvidenceBlock,
     callModel: input.callModel,
   });
 

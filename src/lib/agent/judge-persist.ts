@@ -248,6 +248,8 @@ export async function finalizeXPerceptionJudgementWithLiveState(
     finalIdentityUnverified: boolean;
     finalModel: string;
     finalPromptVersion: string;
+    /** Stage 3 optional structured Wall candidate (normalize before pass). */
+    finalWallCandidate?: unknown | null;
   },
   deps: { admin?: AdminLike } = {},
 ): Promise<FinalizeStage124LiveJudgementResult> {
@@ -269,6 +271,7 @@ export async function finalizeXPerceptionJudgementWithLiveState(
       p_final_identity_unverified: input.finalIdentityUnverified,
       p_final_model: input.finalModel,
       p_final_prompt_version: input.finalPromptVersion,
+      p_final_wall_candidate: input.finalWallCandidate ?? null,
     },
   );
 
