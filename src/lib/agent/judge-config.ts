@@ -11,7 +11,7 @@ export const STAGE12_X_REPLY_MAX_CHARS = 280;
 
 /** Bumps when public X-agent judgement system prompt / action contract changes. */
 export const STAGE12_JUDGE_PROMPT_VERSION =
-  "fenn-public-judge-wall-requires-reply-v1" as const;
+  "fenn-public-judge-always-reply-recovery-v1" as const;
 
 /** Default dry-run batch size. */
 export const STAGE12_JUDGE_BATCH_DEFAULT = 5;

@@ -114,13 +114,13 @@ describe("Stage 12.3 judgement schema", () => {
     assert.equal(parsed.success, false);
   });
 
-  it("normalizes attention gate and knowledge-unavailable fail-closed", () => {
-    const silenced = normalizeJudgementIntention({
+  it("soft disengage elevates when draft exists; knowledge down still elevates to recovery", () => {
+    const elevated = normalizeJudgementIntention({
       raw: {
         engage: false,
         action: "reply_on_x",
         reasonCode: "answered_from_public_knowledge",
-        replyText: "should not post",
+        replyText: "should still post under always-reply",
         wallBody: null,
         needsLiveState: [],
         identityUnverified: false,
@@ -129,9 +129,8 @@ describe("Stage 12.3 judgement schema", () => {
       model: STAGE12_JUDGE_OPENAI_MODEL,
       promptVersion: STAGE12_JUDGE_PROMPT_VERSION,
     });
-    assert.equal(silenced.action, "do_nothing");
-    assert.equal(silenced.replyText, null);
-    assert.equal(silenced.reasonCode, "no_response_warranted");
+    assert.equal(elevated.action, "reply_on_x");
+    assert.ok(elevated.replyText);
 
     const down = normalizeJudgementIntention({
       raw: {
@@ -147,8 +146,9 @@ describe("Stage 12.3 judgement schema", () => {
       model: STAGE12_JUDGE_OPENAI_MODEL,
       promptVersion: STAGE12_JUDGE_PROMPT_VERSION,
     });
-    assert.equal(down.action, "do_nothing");
-    assert.equal(down.reasonCode, "knowledge_unavailable");
+    // Knowledge infra down is not spam/unsafe hard block; soft path keeps eligible reply.
+    assert.equal(down.action, "reply_on_x");
+    assert.ok(down.replyText);
   });
 
   it("preserves Wall ASCII whitespace for dual action", () => {
@@ -204,8 +204,9 @@ describe("Stage 12.3 judgement schema", () => {
       model: STAGE12_JUDGE_OPENAI_MODEL,
       promptVersion: STAGE12_JUDGE_PROMPT_VERSION,
     });
-    assert.equal(noReply.action, "do_nothing");
-    assert.equal(noReply.wallBody, null);
+    // Never wall-only; dual kept pending recovery when reply draft missing.
+    assert.equal(noReply.action, "reply_and_write_to_wall");
+    assert.equal(noReply.wallBody, "orphan wall line");
     assert.equal(noReply.replyText, null);
   });
 });
@@ -213,7 +214,7 @@ describe("Stage 12.3 judgement schema", () => {
 describe("Stage 12.3 prompt security", () => {
   it("delimits untrusted X content and excludes Camp scoring", () => {
     const system = buildFennPublicJudgeSystemPrompt();
-    assert.match(system, /Silence is a first-class decision/);
+    assert.match(system, /VISIBLE REPLY GUARANTEE/);
     assert.match(system, /BEGIN_BOOK_OF_SPEECH/);
     assert.doesNotMatch(system, /rewardRecommendation|memoryCandidate|spamProbability/);
     assert.doesNotMatch(system, /You inhabit The Camp/);
@@ -235,7 +236,7 @@ describe("Stage 12.3 prompt security", () => {
 });
 
 describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
-  it("supports do_nothing for low-value chatter", async () => {
+  it("elevates ordinary low-value chatter to reply when draft exists", async () => {
     const intention = await judgePerceptionContent({
       xPostId: "10",
       authorXUserId: "1",
@@ -245,13 +246,14 @@ describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
         engage: false,
         action: "do_nothing",
         reasonCode: "no_response_warranted",
-        replyText: null,
+        replyText: "The road greets you.",
         wallBody: null,
         needsLiveState: [],
         identityUnverified: false,
       }),
     });
-    assert.equal(intention.action, "do_nothing");
+    assert.equal(intention.action, "reply_on_x");
+    assert.ok(intention.replyText);
   });
 
   it("can answer public factual questions from knowledge", async () => {
@@ -588,7 +590,7 @@ describe("Stage 12.3 claim / persist pipeline", () => {
     assert.equal(admin.events.get("e3")?.status, "failed");
   });
 
-  it("retrieval unavailable forces conservative silence when model cooperates via normalize", async () => {
+  it("retrieval unavailable still elevates with draft under always-reply recovery", async () => {
     const intention = await judgePerceptionContent({
       xPostId: "16",
       authorXUserId: "1",
@@ -598,14 +600,14 @@ describe("Stage 12.3 claim / persist pipeline", () => {
         engage: true,
         action: "reply_on_x",
         reasonCode: "answered_from_public_knowledge",
-        replyText: "fabricated",
+        replyText: "Deeds bind the road to work.",
         wallBody: null,
         needsLiveState: [],
         identityUnverified: false,
       }),
     });
-    assert.equal(intention.action, "do_nothing");
-    assert.equal(intention.reasonCode, "knowledge_unavailable");
+    assert.equal(intention.action, "reply_on_x");
+    assert.ok(intention.replyText);
   });
 
   it("batch report is aggregate-safe", async () => {

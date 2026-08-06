@@ -17,6 +17,12 @@ import { runFennPublicFinalJudgement } from "@/lib/agent/stage124-final-judge-mo
 
 import { STAGE12_JUDGE_OPENAI_MODEL } from "@/lib/agent/judge-config";
 import type { PublicAgentKnowledgeLookup } from "@/lib/agent/knowledge";
+import { applyReplyGuaranteePolicy } from "@/lib/agent/reply-guarantee-policy";
+import {
+  ensureReplyTextWithRecovery,
+  intentionNeedsReplyRecovery,
+  type ReplyRecoveryModelCaller,
+} from "@/lib/agent/reply-recovery";
 
 type AdminLike = {
   from: (table: string) => unknown;
@@ -49,6 +55,7 @@ type Stage124Deps = {
   executeLiveReads?: typeof executeStage124LiveReads;
   retrieveKnowledge?: (query: string) => Promise<PublicAgentKnowledgeLookup>;
   runFinalJudgement?: typeof runFennPublicFinalJudgement;
+  callReplyRecovery?: ReplyRecoveryModelCaller;
 };
 
 function validateRequestedCapabilities(
@@ -92,6 +99,59 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
   const finalPromptCopy = "fenn-public-final-judge-copy-v1";
 
   if (requestedCaps.length === 0) {
+    // Copy-forward initial intention, then apply guarantee + recovery if needed.
+    const guaranteed = applyReplyGuaranteePolicy({
+      engage: claimed.initialEngage,
+      action: claimed.initialAction,
+      reasonCode: claimed.initialReasonCode,
+      replyText: claimed.initialReplyText,
+      wallBody: claimed.initialWallBody,
+      allowDeferredLiveSilence: false,
+    });
+
+    let finalAction = guaranteed.action;
+    let finalReplyText = guaranteed.replyText;
+    let finalWallBody = guaranteed.wallBody;
+    let finalReasonCode = guaranteed.reasonCode;
+    let finalEngage = guaranteed.engage;
+
+    if (
+      intentionNeedsReplyRecovery({
+        action: finalAction,
+        reasonCode: finalReasonCode,
+        replyText: finalReplyText,
+      })
+    ) {
+      const recovered = await ensureReplyTextWithRecovery({
+        action: finalAction,
+        reasonCode: finalReasonCode,
+        replyText: finalReplyText,
+        wallBody: finalWallBody,
+        xPostId: claimed.xPostId,
+        perceptionType: claimed.perceptionType,
+        authorXUserId: claimed.authorXUserId,
+        authorUsername: claimed.authorUsername,
+        body: claimed.body,
+        callModel: deps.callReplyRecovery,
+      });
+      if (recovered.status === "failed") {
+        // Leave final_status pending so a later run can re-attempt recovery.
+        // Do not finalize as do_nothing / hard block.
+        return {
+          status: "failed",
+          xPostId: claimed.xPostId,
+          perceptionEventId: claimed.perceptionEventId,
+          finalAction,
+          finalReasonCode: "reply_generation_failed",
+          error: recovered.error,
+        };
+      }
+      if (recovered.status === "succeeded" || recovered.status === "not_needed") {
+        finalReplyText = recovered.replyText;
+        finalEngage = true;
+      }
+    }
+
     await finalizeXPerceptionJudgementWithLiveState(
       {
         perceptionEventId: claimed.perceptionEventId,
@@ -99,11 +159,11 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
         liveStateAvailable: true,
         liveStateSucceeded: [],
         liveStateFailed: [],
-        finalAction: claimed.initialAction,
-        finalReasonCode: claimed.initialReasonCode,
-        finalEngage: claimed.initialEngage,
-        finalReplyText: claimed.initialReplyText,
-        finalWallBody: claimed.initialWallBody,
+        finalAction,
+        finalReasonCode,
+        finalEngage,
+        finalReplyText,
+        finalWallBody,
         finalIdentityUnverified: claimed.identityUnverified,
         finalModel: finalModelNoop,
         finalPromptVersion: finalPromptCopy,
@@ -114,8 +174,8 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
       status: "finalized",
       xPostId: claimed.xPostId,
       perceptionEventId: claimed.perceptionEventId,
-      finalAction: claimed.initialAction,
-      finalReasonCode: claimed.initialReasonCode,
+      finalAction,
+      finalReasonCode,
       liveStateAvailable: true,
     };
   }
@@ -126,6 +186,47 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
   const anyLiveAvailable = liveResults.succeeded.length > 0;
 
   if (!anyLiveAvailable) {
+    // Eligible honest reply path: recovery writes a bounded non-fabricating answer.
+    const guaranteed = applyReplyGuaranteePolicy({
+      engage: true,
+      action: "reply_on_x",
+      reasonCode: "insufficient_knowledge",
+      replyText: null,
+      wallBody: null,
+      allowDeferredLiveSilence: false,
+    });
+    const recovered = await ensureReplyTextWithRecovery({
+      action: guaranteed.action,
+      reasonCode: guaranteed.reasonCode,
+      replyText: guaranteed.replyText,
+      wallBody: null,
+      xPostId: claimed.xPostId,
+      perceptionType: claimed.perceptionType,
+      authorXUserId: claimed.authorXUserId,
+      authorUsername: claimed.authorUsername,
+      body: claimed.body,
+      knowledgeBoundaryNote:
+        "Trusted live tools were unavailable. Answer honestly that you cannot establish the current figure. Do not invent numbers. Do not use technical infrastructure language.",
+      callModel: deps.callReplyRecovery,
+    });
+
+    if (recovered.status === "failed") {
+      return {
+        status: "failed",
+        xPostId: claimed.xPostId,
+        perceptionEventId: claimed.perceptionEventId,
+        finalAction: "reply_on_x",
+        finalReasonCode: "reply_generation_failed",
+        liveStateAvailable: false,
+        error: recovered.error,
+      };
+    }
+
+    const replyText =
+      recovered.status === "succeeded" || recovered.status === "not_needed"
+        ? recovered.replyText
+        : null;
+
     await finalizeXPerceptionJudgementWithLiveState(
       {
         perceptionEventId: claimed.perceptionEventId,
@@ -133,14 +234,14 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
         liveStateAvailable: false,
         liveStateSucceeded: [],
         liveStateFailed: [...liveResults.failed],
-        finalAction: "do_nothing",
-        finalReasonCode: "knowledge_unavailable",
-        finalEngage: false,
-        finalReplyText: null,
+        finalAction: "reply_on_x",
+        finalReasonCode: "insufficient_knowledge",
+        finalEngage: true,
+        finalReplyText: replyText,
         finalWallBody: null,
         finalIdentityUnverified: claimed.identityUnverified,
         finalModel: finalModelNoop,
-        finalPromptVersion: "fenn-public-final-judge-live-unavailable-v1",
+        finalPromptVersion: "fenn-public-final-judge-live-unavailable-recovery-v1",
       },
       { admin: deps.admin },
     );
@@ -149,8 +250,8 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
       status: "finalized",
       xPostId: claimed.xPostId,
       perceptionEventId: claimed.perceptionEventId,
-      finalAction: "do_nothing",
-      finalReasonCode: "knowledge_unavailable",
+      finalAction: "reply_on_x",
+      finalReasonCode: "insufficient_knowledge",
       liveStateAvailable: false,
     };
   }
@@ -173,6 +274,45 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
       liveStateAnyAvailable: anyLiveAvailable,
     });
 
+    let finalAction = finalIntention.action;
+    let finalReplyText = finalIntention.replyText;
+    let finalWallBody = finalIntention.wallBody;
+    let finalReasonCode = finalIntention.reasonCode;
+    let finalEngage = finalIntention.engage;
+
+    if (
+      intentionNeedsReplyRecovery({
+        action: finalAction,
+        reasonCode: finalReasonCode,
+        replyText: finalReplyText,
+      })
+    ) {
+      const recovered = await ensureReplyTextWithRecovery({
+        action: finalAction,
+        reasonCode: finalReasonCode,
+        replyText: finalReplyText,
+        wallBody: finalWallBody,
+        xPostId: claimed.xPostId,
+        perceptionType: claimed.perceptionType,
+        authorXUserId: claimed.authorXUserId,
+        authorUsername: claimed.authorUsername,
+        body: claimed.body,
+        callModel: deps.callReplyRecovery,
+      });
+      if (recovered.status === "failed") {
+        return {
+          status: "failed",
+          xPostId: claimed.xPostId,
+          perceptionEventId: claimed.perceptionEventId,
+          error: recovered.error,
+        };
+      }
+      if (recovered.status === "succeeded" || recovered.status === "not_needed") {
+        finalReplyText = recovered.replyText;
+        finalEngage = true;
+      }
+    }
+
     await finalizeXPerceptionJudgementWithLiveState(
       {
         perceptionEventId: claimed.perceptionEventId,
@@ -180,11 +320,11 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
         liveStateAvailable: anyLiveAvailable,
         liveStateSucceeded: [...liveResults.succeeded],
         liveStateFailed: [...liveResults.failed],
-        finalAction: finalIntention.action,
-        finalReasonCode: finalIntention.reasonCode,
-        finalEngage: finalIntention.engage,
-        finalReplyText: finalIntention.replyText,
-        finalWallBody: finalIntention.wallBody,
+        finalAction,
+        finalReasonCode,
+        finalEngage,
+        finalReplyText,
+        finalWallBody,
         finalIdentityUnverified: finalIntention.identityUnverified,
         finalModel: finalIntention.model,
         finalPromptVersion: finalIntention.promptVersion,
@@ -196,8 +336,8 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
       status: "finalized",
       xPostId: claimed.xPostId,
       perceptionEventId: claimed.perceptionEventId,
-      finalAction: finalIntention.action,
-      finalReasonCode: finalIntention.reasonCode,
+      finalAction,
+      finalReasonCode,
       liveStateAvailable: anyLiveAvailable,
     };
   } catch (error) {
@@ -211,7 +351,7 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
         liveStateSucceeded: [...liveResults.succeeded],
         liveStateFailed: [...liveResults.failed],
         finalAction: "do_nothing",
-        finalReasonCode: "knowledge_unavailable",
+        finalReasonCode: "insufficient_knowledge",
         finalEngage: false,
         finalReplyText: null,
         finalWallBody: null,

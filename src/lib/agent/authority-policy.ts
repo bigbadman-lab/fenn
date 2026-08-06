@@ -11,6 +11,13 @@ import {
 } from "@/lib/agent/authority-config";
 import { STAGE12_X_REPLY_MAX_CHARS } from "@/lib/agent/judge-config";
 import {
+  applyReplyGuaranteePolicy,
+  assertEligibleEffectsInvariant,
+  isHardBlockReasonCode,
+  policyOutcomeFromAction,
+  type Stage12PolicyOutcome,
+} from "@/lib/agent/reply-guarantee-policy";
+import {
   stage12WallSourceExternalId,
   stage12WallWriteInput,
 } from "@/lib/wall/stage12-tool-contract";
@@ -26,6 +33,8 @@ export type AuthorityJudgementInput = {
   finalAction: string | null;
   finalReplyText: string | null;
   finalWallBody: string | null;
+  /** Final reason — used for hard-block vs soft soft-silence elevation. */
+  finalReasonCode?: string | null;
   /**
    * Desk Wall test / explicit ops only.
    * When true, permits wall-only effects for the reserved synthetic path.
@@ -47,6 +56,8 @@ export type AuthorityDecision = {
   finalAction: string;
   sourceXPostId: string;
   effects: AuthorityEffectPlan[];
+  /** Observability label (not persisted unless callers log it). */
+  policyOutcome: Stage12PolicyOutcome;
 };
 
 function isDigitSnowflake(value: string): boolean {
@@ -125,6 +136,21 @@ function deny(
     finalAction,
     sourceXPostId: input.xPostId.trim(),
     effects: [],
+    policyOutcome: "blocked",
+  };
+}
+
+function planReplyEffect(
+  sourceXPostId: string,
+  text: string,
+): AuthorityEffectPlan {
+  return {
+    type: "reply_on_x",
+    idempotencyKey: stage12ReplyIdempotencyKey(sourceXPostId),
+    payload: {
+      replyToXPostId: sourceXPostId,
+      text,
+    },
   };
 }
 
@@ -148,14 +174,42 @@ function planWallEffect(
   };
 }
 
+function permitted(
+  input: AuthorityJudgementInput,
+  policyCode: Stage125PolicyCode,
+  finalAction: string,
+  effects: AuthorityEffectPlan[],
+): AuthorityDecision {
+  const invariant = assertEligibleEffectsInvariant(effects);
+  if (!invariant.ok) {
+    // Never persist a permitted decision that violates the visible-reply guarantee.
+    return deny(input, "invalid_final_judgement", finalAction);
+  }
+  return {
+    outcome: "permitted",
+    policyCode,
+    policyVersion: STAGE125_POLICY_VERSION,
+    finalAction,
+    sourceXPostId: input.xPostId.trim(),
+    effects,
+    policyOutcome: policyOutcomeFromAction(finalAction),
+  };
+}
+
 /**
  * Pure deterministic authority. No I/O. No model. No side effects.
+ *
+ * Second-layer reply guarantee: soft silence with drafts elevates; wall never
+ * without reply; eligible permitted outcomes always plan exactly one X reply.
  */
 export function evaluateAuthorityDecision(
   input: AuthorityJudgementInput,
 ): AuthorityDecision {
   const sourceXPostId = input.xPostId.trim();
-  const finalAction = (input.finalAction ?? "unknown").trim() || "unknown";
+  let finalAction = (input.finalAction ?? "unknown").trim() || "unknown";
+  let replyText = input.finalReplyText;
+  let wallBody = input.finalWallBody;
+  const reasonCode = (input.finalReasonCode ?? "").trim();
 
   if (!sourceXPostId || !isDigitSnowflake(sourceXPostId)) {
     return deny(input, "event_not_eligible", finalAction);
@@ -175,11 +229,61 @@ export function evaluateAuthorityDecision(
       finalAction,
       sourceXPostId,
       effects: [],
+      policyOutcome: "blocked",
     };
   }
 
   if (input.finalStatus !== "finalized") {
     return deny(input, "invalid_final_judgement", finalAction);
+  }
+
+  // Legacy wall-only with Desk ops flag — isolated infrastructure test.
+  if (finalAction === STAGE12_LEGACY_WALL_ONLY_ACTION) {
+    if (input.allowOperationalWallOnly) {
+      const wall = validateWallBody(wallBody);
+      if (!wall.ok) {
+        return deny(input, wall.code, finalAction);
+      }
+      return {
+        outcome: "permitted",
+        policyCode: "permitted_wall",
+        policyVersion: STAGE125_POLICY_VERSION,
+        finalAction,
+        sourceXPostId,
+        // Reply intentionally absent — isolated infrastructure test only.
+        effects: [planWallEffect(sourceXPostId, wall.body)],
+        policyOutcome: "blocked",
+      };
+    }
+    // Live: wall-only with a reply draft → elevate to dual; wall-only alone denied.
+    if (replyText && wallBody) {
+      finalAction = "reply_and_write_to_wall";
+    } else {
+      return deny(input, "wall_requires_reply", finalAction);
+    }
+  }
+
+  // Second-layer normalisation (eligible → reply_only / wall_and_reply).
+  // Keep hard-block do_nothing; elevate soft silence; missing draft stays eligible for recovery.
+  if (
+    isStage12KnownAgentAction(finalAction) ||
+    finalAction === "do_nothing" ||
+    finalAction === "unknown"
+  ) {
+    const guaranteed = applyReplyGuaranteePolicy({
+      engage:
+        finalAction !== "do_nothing" &&
+        finalAction !== "unknown" &&
+        !isHardBlockReasonCode(reasonCode),
+      action: finalAction === "unknown" ? "do_nothing" : finalAction,
+      reasonCode: reasonCode || "insufficient_knowledge",
+      replyText,
+      wallBody,
+      allowDeferredLiveSilence: false,
+    });
+    finalAction = guaranteed.action;
+    replyText = guaranteed.replyText;
+    wallBody = guaranteed.wallBody;
   }
 
   if (!isStage12KnownAgentAction(finalAction)) {
@@ -194,86 +298,55 @@ export function evaluateAuthorityDecision(
       finalAction,
       sourceXPostId,
       effects: [],
+      policyOutcome: "blocked",
     };
   }
 
   if (finalAction === "reply_on_x") {
-    const reply = validateReplyText(input.finalReplyText);
+    const reply = validateReplyText(replyText);
     if (!reply.ok) {
-      return deny(input, reply.code, finalAction);
+      return {
+        outcome: "denied",
+        policyCode: reply.code,
+        policyVersion: STAGE125_POLICY_VERSION,
+        finalAction,
+        sourceXPostId,
+        effects: [],
+        policyOutcome: "reply_generation_failed",
+      };
     }
-    return {
-      outcome: "permitted",
-      policyCode: "permitted_reply",
-      policyVersion: STAGE125_POLICY_VERSION,
-      finalAction,
-      sourceXPostId,
-      effects: [
-        {
-          type: "reply_on_x",
-          idempotencyKey: stage12ReplyIdempotencyKey(sourceXPostId),
-          payload: {
-            replyToXPostId: sourceXPostId,
-            text: reply.text,
-          },
-        },
-      ],
-    };
+    return permitted(input, "permitted_reply", finalAction, [
+      planReplyEffect(sourceXPostId, reply.text),
+    ]);
   }
 
-  // Live X: wall-only is forbidden. Desk ops may opt into wall-only via flag.
-  if (finalAction === STAGE12_LEGACY_WALL_ONLY_ACTION) {
-    if (!input.allowOperationalWallOnly) {
-      return deny(input, "wall_requires_reply", finalAction);
-    }
-    const wall = validateWallBody(input.finalWallBody);
-    if (!wall.ok) {
-      return deny(input, wall.code, finalAction);
-    }
-    return {
-      outcome: "permitted",
-      policyCode: "permitted_wall",
-      policyVersion: STAGE125_POLICY_VERSION,
-      finalAction,
-      sourceXPostId,
-      // Reply is intentionally absent — isolated infrastructure test only.
-      effects: [planWallEffect(sourceXPostId, wall.body)],
-    };
-  }
-
-  // reply_and_write_to_wall — both must pass; no partial authorisation.
-  // Effect order: reply first (conversation acknowledged), then Wall (memory).
+  // reply_and_write_to_wall — both must pass; always plan reply + wall.
   if (finalAction === "reply_and_write_to_wall") {
-    const reply = validateReplyText(input.finalReplyText);
-    const wall = validateWallBody(input.finalWallBody);
-    if (!reply.ok && !wall.ok) {
-      return deny(input, "invalid_candidate", finalAction);
-    }
+    const reply = validateReplyText(replyText);
+    const wall = validateWallBody(wallBody);
     if (!reply.ok) {
-      return deny(input, reply.code, finalAction);
+      return {
+        outcome: "denied",
+        policyCode: reply.code,
+        policyVersion: STAGE125_POLICY_VERSION,
+        finalAction,
+        sourceXPostId,
+        effects: [],
+        // Never plan wall without reply. Operational — recovery / retry upstream.
+        policyOutcome: "reply_generation_failed",
+      };
     }
     if (!wall.ok) {
-      return deny(input, wall.code, finalAction);
+      // Dual missing wall → reply-only elevation (wall never without reply).
+      return permitted(input, "permitted_reply", "reply_on_x", [
+        planReplyEffect(sourceXPostId, reply.text),
+      ]);
     }
 
-    return {
-      outcome: "permitted",
-      policyCode: "permitted_reply_and_wall",
-      policyVersion: STAGE125_POLICY_VERSION,
-      finalAction,
-      sourceXPostId,
-      effects: [
-        {
-          type: "reply_on_x",
-          idempotencyKey: stage12ReplyIdempotencyKey(sourceXPostId),
-          payload: {
-            replyToXPostId: sourceXPostId,
-            text: reply.text,
-          },
-        },
-        planWallEffect(sourceXPostId, wall.body),
-      ],
-    };
+    return permitted(input, "permitted_reply_and_wall", finalAction, [
+      planReplyEffect(sourceXPostId, reply.text),
+      planWallEffect(sourceXPostId, wall.body),
+    ]);
   }
 
   return deny(input, "invalid_final_judgement", finalAction);

@@ -41,6 +41,7 @@ function baseInput(
     perceptionType: "mention",
     finalStatus: "finalized",
     finalAction: "do_nothing",
+    finalReasonCode: null,
     finalReplyText: null,
     finalWallBody: null,
     ...overrides,
@@ -49,7 +50,9 @@ function baseInput(
 
 describe("Stage 12.5 authority policy — silence / reply / wall", () => {
   it("do_nothing → no_action with zero effects", () => {
-    const d = evaluateAuthorityDecision(baseInput());
+    const d = evaluateAuthorityDecision(
+      baseInput({ finalReasonCode: "spam_or_noise" }),
+    );
     assert.equal(d.outcome, "no_action");
     assert.equal(d.policyCode, "no_action");
     assert.equal(d.effects.length, 0);
@@ -144,7 +147,7 @@ describe("Stage 12.5 authority policy — silence / reply / wall", () => {
     );
   });
 
-  it("combined action denies when either candidate missing", () => {
+  it("combined action missing wall elevates to reply-only; missing reply is generation failed", () => {
     const missingWall = evaluateAuthorityDecision(
       baseInput({
         finalAction: "reply_and_write_to_wall",
@@ -152,9 +155,68 @@ describe("Stage 12.5 authority policy — silence / reply / wall", () => {
         finalWallBody: null,
       }),
     );
-    assert.equal(missingWall.outcome, "denied");
-    assert.equal(missingWall.effects.length, 0);
-    assert.equal(missingWall.policyCode, "missing_wall_candidate");
+    assert.equal(missingWall.outcome, "permitted");
+    assert.equal(missingWall.policyCode, "permitted_reply");
+    assert.equal(missingWall.effects.length, 1);
+    assert.equal(missingWall.effects[0]?.type, "reply_on_x");
+    assert.equal(missingWall.policyOutcome, "reply_only");
+
+    const missingReply = evaluateAuthorityDecision(
+      baseInput({
+        finalAction: "reply_and_write_to_wall",
+        finalReplyText: null,
+        finalWallBody: TREE_ASCII,
+      }),
+    );
+    // After guarantee, dual+wall without reply needs recovery — pure evaluate has no recovery.
+    assert.equal(missingReply.policyOutcome, "reply_generation_failed");
+    assert.equal(missingReply.effects.length, 0);
+  });
+
+  it("soft silence with reply draft elevates to reply effect", () => {
+    const d = evaluateAuthorityDecision(
+      baseInput({
+        finalAction: "do_nothing",
+        finalReasonCode: "no_response_warranted",
+        finalReplyText: "I hear you.",
+        finalWallBody: null,
+      }),
+    );
+    assert.equal(d.outcome, "permitted");
+    assert.equal(d.effects.length, 1);
+    assert.equal(d.effects[0]?.type, "reply_on_x");
+    assert.equal(d.policyOutcome, "reply_only");
+  });
+
+  it("unsafe hard block plans no effects", () => {
+    const d = evaluateAuthorityDecision(
+      baseInput({
+        finalAction: "do_nothing",
+        finalReasonCode: "unsafe_or_injection",
+        finalReplyText: "should not post",
+        finalWallBody: null,
+      }),
+    );
+    assert.equal(d.outcome, "no_action");
+    assert.equal(d.effects.length, 0);
+    assert.equal(d.policyOutcome, "blocked");
+  });
+
+  it("wall-only with reply draft elevates to dual effects", () => {
+    const d = evaluateAuthorityDecision(
+      baseInput({
+        finalAction: "write_to_wall",
+        finalReplyText: "Left on the Wall.",
+        finalWallBody: TREE_ASCII,
+      }),
+    );
+    assert.equal(d.outcome, "permitted");
+    assert.equal(d.policyCode, "permitted_reply_and_wall");
+    assert.deepEqual(
+      d.effects.map((e) => e.type),
+      ["reply_on_x", "write_to_wall"],
+    );
+    assert.equal(d.policyOutcome, "wall_and_reply");
   });
 });
 
@@ -174,9 +236,10 @@ describe("Stage 12.5 authority policy — invalid / attack", () => {
     assert.equal(
       evaluateAuthorityDecision(
         baseInput({ finalAction: "reply_on_x", finalReplyText: null }),
-      ).policyCode,
-      "missing_reply_candidate",
+      ).policyOutcome,
+      "reply_generation_failed",
     );
+    // Oversized reply is invalid after guarantee keeps the text → denied.
     assert.equal(
       evaluateAuthorityDecision(
         baseInput({
@@ -261,6 +324,8 @@ describe("Stage 12.5 authorize pipeline", () => {
         judgement_id: "j1",
         x_post_id: "1848332198301234567",
         perception_type: "mention",
+        author_x_user_id: "1",
+        body: "hello fenn",
         final_status: "finalized",
         final_action: "reply_on_x",
         final_reason_code: "answered_from_public_knowledge",
@@ -409,6 +474,8 @@ describe("Stage 12.5 authorize pipeline", () => {
         judgement_id: "j2",
         x_post_id: "200",
         perception_type: "mention",
+        author_x_user_id: "1",
+        body: "carve this",
         final_status: "finalized",
         final_action: "reply_and_write_to_wall",
         final_reason_code: "creative_world_action",

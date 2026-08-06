@@ -622,6 +622,106 @@ describe("Stage 12.6 executor", () => {
     assert.equal(admin.wallCalls(), 2);
   });
 
+  it("keeps wall completed when reply fails; retries only reply", async () => {
+    // Wall listed first so claim order can complete Wall while reply is still pending/failed.
+    const { admin, bumpX, bumpWall } = makeAdmin([
+      {
+        id: "e-wall",
+        authorization_id: "a1",
+        perception_event_id: "p1",
+        effect_type: "write_to_wall",
+        idempotency_key: stage12WallSourceExternalId(POST_ID),
+        payload: {
+          body: "carve",
+          sourceType: "x_agent",
+          sourceExternalId: stage12WallSourceExternalId(POST_ID),
+        },
+        status: "pending",
+        attempt_count: 0,
+        x_post_id: POST_ID,
+        created_at: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "e-reply",
+        authorization_id: "a1",
+        perception_event_id: "p1",
+        effect_type: "reply_on_x",
+        idempotency_key: `${POST_ID}:reply`,
+        payload: { replyToXPostId: POST_ID, text: "ok" },
+        status: "pending",
+        attempt_count: 0,
+        x_post_id: POST_ID,
+        created_at: "2026-01-01T00:00:01Z",
+      },
+    ]);
+
+    const wallOk = await executeOneXPerceptionEffect(
+      {},
+      {
+        admin,
+        writeWall: async () => {
+          bumpWall("carve");
+          return {
+            created: true,
+            entry: {
+              id: "wall-1",
+              body: "carve",
+              createdAt: "2026-01-01T00:00:00Z",
+              markCount: 0,
+            },
+          };
+        },
+      },
+    );
+    assert.equal(wallOk.status, "completed");
+    assert.equal(admin.wallCalls(), 1);
+
+    const replyFail = await executeOneXPerceptionEffect(
+      {},
+      {
+        admin,
+        createReply: async () => {
+          bumpX();
+          return {
+            ok: false as const,
+            class: "retryable" as const,
+            code: "x_rate_limited",
+            message: "rate limited",
+          };
+        },
+      },
+    );
+    assert.equal(replyFail.status, "failed");
+    assert.equal(replyFail.failureClass, "retryable");
+
+    const replyRetry = await executeOneXPerceptionEffect(
+      {},
+      {
+        admin,
+        createReply: async () => {
+          bumpX();
+          return { ok: true, tweetId: "tw-retry" };
+        },
+        writeWall: async () => {
+          bumpWall("should-not");
+          return {
+            created: true,
+            entry: {
+              id: "wall-x",
+              body: "no",
+              createdAt: "2026-01-01T00:00:00Z",
+              markCount: 0,
+            },
+          };
+        },
+      },
+    );
+    assert.equal(replyRetry.status, "completed");
+    assert.equal(replyRetry.externalResultId, "tw-retry");
+    assert.equal(admin.xCalls(), 2);
+    assert.equal(admin.wallCalls(), 1);
+  });
+
   it("dry-run does not claim or execute", async () => {
     const { admin, bumpX } = makeAdmin([
       {

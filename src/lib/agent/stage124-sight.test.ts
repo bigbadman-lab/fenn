@@ -99,7 +99,7 @@ describe("Stage 12.4 sight — boundaries", () => {
 });
 
 describe("Stage 12.4 sight — two-phase finalization", () => {
-  it("does not call final judgement when needsLiveState empty", async () => {
+  it("does not call final judgement when needsLiveState empty; recovers reply if needed", async () => {
     const admin = makeAdmin({
       claim: {
         perception_event_id: "e1",
@@ -124,23 +124,30 @@ describe("Stage 12.4 sight — two-phase finalization", () => {
     });
 
     let modelCalls = 0;
+    let recoveryCalls = 0;
     const result = await finalizeOneXPerceptionJudgementWithLiveState({
       admin,
       runFinalJudgement: async () => {
         modelCalls += 1;
         throw new Error("should not be called");
       },
+      callReplyRecovery: async () => {
+        recoveryCalls += 1;
+        return { replyText: "The road greets you." };
+      },
     });
 
     assert.equal(result.status, "finalized");
     assert.equal(modelCalls, 0);
+    assert.equal(recoveryCalls, 1);
     assert.equal(admin.finalizeCalls.length, 1);
     const args = admin.finalizeCalls[0] as Record<string, unknown>;
     assert.equal(args.p_final_status, "finalized");
-    assert.equal(args.p_final_action, "do_nothing");
+    assert.equal(args.p_final_action, "reply_on_x");
+    assert.equal(args.p_final_reply_text, "The road greets you.");
   });
 
-  it("if live reads all unavailable, finalizes do_nothing without model call", async () => {
+  it("if live reads all unavailable, recovers honest reply without final judge model", async () => {
     const admin = makeAdmin({
       claim: {
         perception_event_id: "e1",
@@ -165,6 +172,7 @@ describe("Stage 12.4 sight — two-phase finalization", () => {
     });
 
     let modelCalls = 0;
+    let recoveryCalls = 0;
     const result = await finalizeOneXPerceptionJudgementWithLiveState({
       admin,
       executeLiveReads: async () => ({
@@ -179,14 +187,20 @@ describe("Stage 12.4 sight — two-phase finalization", () => {
         return null as never;
       },
       retrieveKnowledge: async () => ({ available: false, results: [] } as PublicAgentKnowledgeLookup),
+      callReplyRecovery: async () => {
+        recoveryCalls += 1;
+        return { replyText: "I cannot establish that figure on this road." };
+      },
     });
 
     assert.equal(result.status, "finalized");
     assert.equal(modelCalls, 0);
+    assert.equal(recoveryCalls, 1);
     const args = admin.finalizeCalls[0] as Record<string, unknown>;
-    assert.equal(args.p_final_action, "do_nothing");
-    assert.equal(args.p_final_reason_code, "knowledge_unavailable");
+    assert.equal(args.p_final_action, "reply_on_x");
+    assert.equal(args.p_final_reason_code, "insufficient_knowledge");
     assert.equal(args.p_live_state_available, false);
+    assert.equal(args.p_final_reply_text, "I cannot establish that figure on this road.");
   });
 
   it("when one live capability is available, runs final judgement exactly once", async () => {

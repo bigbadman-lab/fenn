@@ -77,10 +77,10 @@ describe("THE BOOK OF SPEECH v1", () => {
     assert.match(system, new RegExp(STAGE12_JUDGE_PROMPT_VERSION));
     assert.equal(
       STAGE12_JUDGE_PROMPT_VERSION,
-      "fenn-public-judge-wall-requires-reply-v1",
+      "fenn-public-judge-always-reply-recovery-v1",
     );
     // Operational boundaries preserved
-    assert.match(system, /Silence is a first-class decision/);
+    assert.match(system, /VISIBLE REPLY GUARANTEE/i);
     assert.match(system, /Wall always requires a reply|no wall-only action/i);
     assert.match(system, /will this still matter in a year/i);
     assert.match(system, /user demand does not force/i);
@@ -105,7 +105,7 @@ describe("THE BOOK OF SPEECH v1", () => {
     assert.match(system, /Trusted live state is authoritative for current truth/);
     assert.equal(
       STAGE124_FINAL_PROMPT_VERSION,
-      "fenn-public-final-judge-wall-requires-reply-v1",
+      "fenn-public-final-judge-always-reply-recovery-v1",
     );
     assert.match(system, new RegExp(STAGE124_FINAL_PROMPT_VERSION));
     assert.doesNotMatch(system, /needsLiveState/);

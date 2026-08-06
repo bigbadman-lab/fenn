@@ -8,6 +8,8 @@ export type ClaimedAuthorityJudgement = {
   judgementId: string;
   xPostId: string;
   perceptionType: string;
+  authorXUserId: string;
+  body: string;
   finalStatus: string;
   finalAction: string | null;
   finalReasonCode: string | null;
@@ -76,6 +78,8 @@ export async function claimXPerceptionForAuthority(
     judgementId: row.judgement_id,
     xPostId: row.x_post_id,
     perceptionType: String(row.perception_type ?? "mention"),
+    authorXUserId: String(row.author_x_user_id ?? ""),
+    body: String(row.body ?? ""),
     finalStatus: String(row.final_status ?? ""),
     finalAction:
       typeof row.final_action === "string" ? row.final_action : null,

@@ -8,6 +8,23 @@ export * from "@/lib/agent/config";
 export * from "@/lib/agent/judge-config";
 export * from "@/lib/agent/judge-schema";
 export {
+  STAGE12_POLICY_OUTCOMES,
+  STAGE12_HARD_BLOCK_REASON_CODES,
+  applyReplyGuaranteePolicy,
+  assertEligibleEffectsInvariant,
+  policyOutcomeFromAction,
+  isHardBlockReasonCode,
+} from "@/lib/agent/reply-guarantee-policy";
+export {
+  STAGE12_REPLY_RECOVERY_PROMPT_VERSION,
+  sanitizeReplyCandidate,
+} from "@/lib/agent/reply-recovery-schema";
+export {
+  intentionNeedsReplyRecovery,
+  ensureReplyTextWithRecovery,
+  runFennReplyRecovery,
+} from "@/lib/agent/reply-recovery";
+export {
   buildFennPublicJudgeSystemPrompt,
   buildFennPublicJudgeUserPayload,
   FENN_UNTRUSTED_X_MARKERS,

@@ -14,7 +14,7 @@ describe("x-agent-summary", () => {
     assert.doesNotMatch(line, /token|secret|Bearer/i);
   });
 
-  it("formats no_work and live counters", () => {
+  it("formats no_work and live counters with policy outcomes", () => {
     assert.match(
       formatXAgentRunSummary({
         mode: "live",
@@ -33,8 +33,9 @@ describe("x-agent-summary", () => {
         effects: 1,
         posted: 1,
         wall: 0,
+        policyOutcomes: { reply_only: 1, blocked: 1 },
       }),
-      /mode=live result=ok duration=842ms perceptions=2 judgements=2 effects=1 posted=1 wall=0/,
+      /mode=live result=ok duration=842ms perceptions=2 judgements=2 effects=1 posted=1 wall=0 outcomes=reply_only=1,blocked=1/,
     );
   });
 });
