@@ -1,13 +1,21 @@
 import "server-only";
 
-import { buildEditorialBrief } from "@/lib/editorial/brief";
+import { buildEditorialBriefFromPack } from "@/lib/editorial/brief";
+import {
+  buildEditorialContextPack,
+  newsroomHeadlinesForOverview,
+} from "@/lib/editorial/context-pack";
+import {
+  categoryForMode,
+  isEditorialMode,
+  type EditorialMode,
+} from "@/lib/editorial/categories";
 import { EditorialError } from "@/lib/editorial/errors";
 import {
   generateEditorialPackage,
   generateEditorialSingle,
   type EditorialModelCaller,
 } from "@/lib/editorial/generate";
-import { buildEditorialRobinhoodContext } from "@/lib/editorial/robinhood-context";
 import {
   findLatestEditorialRunForDate,
   getEditorialTransmissionById,
@@ -15,15 +23,58 @@ import {
   replaceTransmissionDraft,
 } from "@/lib/editorial/store";
 import type {
+  EditorialDailyOverview,
   EditorialRoomSnapshot,
   SafeEditorialRun,
   SafeEditorialTransmission,
 } from "@/lib/editorial/types";
 import {
   buildEditorialDailyOverview,
-  buildEditorialWorldContext,
   editorialCoveredDateToday,
 } from "@/lib/editorial/world-context";
+
+function overviewFromPack(
+  pack: Awaited<ReturnType<typeof buildEditorialContextPack>>,
+): EditorialDailyOverview {
+  const snapshot = pack.world;
+  const treasuryState = snapshot.treasuryState;
+  const treasuryLabel =
+    snapshot.commonsAllocationEvents === 0 &&
+    snapshot.leafRecognitionEvents === 0
+      ? treasuryState === "ready"
+        ? "No change"
+        : treasuryState === "unconfigured"
+          ? "Unconfigured"
+          : treasuryState === "unavailable"
+            ? "Unavailable"
+            : "No change"
+      : treasuryState === "ready"
+        ? "Readable"
+        : treasuryState === "unconfigured"
+          ? "Unconfigured"
+          : treasuryState === "unavailable"
+            ? "Unavailable"
+            : "No change";
+
+  return {
+    coveredDate: pack.coveredDate,
+    bookWritten: snapshot.book.written,
+    fireWaitingCount: snapshot.fireWaitingCount,
+    gatheringLabel: snapshot.gathering.activeTitle ?? "None open",
+    newOutlaws: snapshot.newOutlaws,
+    newDeedsApproved: snapshot.deedSubmissionsApproved,
+    greenwoodArrivals: snapshot.greenwoodAdmissions,
+    wallMarks: snapshot.wallInscriptions,
+    treasuryLabel,
+    robinhoodLabel: treasuryState === "ready" ? "Signals available" : "Quiet",
+    campMessages: snapshot.campMessages,
+    leafRecognitionEvents: snapshot.leafRecognitionEvents,
+    quiet: snapshot.quiet,
+    newsroomHeadlines: newsroomHeadlinesForOverview(pack),
+    liveSurfaces: pack.worldState.liveSurfaces,
+    generatedAt: pack.generatedAt,
+  };
+}
 
 /**
  * Editorial Room bootstrap: overview + latest run for today.
@@ -32,31 +83,37 @@ export async function getEditorialRoomSnapshot(
   now: Date = new Date(),
 ): Promise<EditorialRoomSnapshot> {
   const coveredDate = editorialCoveredDateToday(now);
-  const overview = await buildEditorialDailyOverview(coveredDate);
+  const overview = await buildEditorialDailyOverview(coveredDate, {
+    nowMs: now.getTime(),
+  });
   const latestRun = await findLatestEditorialRunForDate(coveredDate);
   return { overview, latestRun };
 }
 
 /**
- * Prepare today's full package: one model call, persist run + 24 drafts.
+ * Prepare today's full package: one model call (+ optional one recovery), persist.
  */
 export async function prepareTodaysEditorialPackage(input: {
   createdBy: string;
   coveredDate?: string;
+  whatMattersToday?: string | null;
   caller?: EditorialModelCaller;
   now?: Date;
 }): Promise<SafeEditorialRun> {
+  const now = input.now ?? new Date();
   const coveredDate =
-    input.coveredDate ?? editorialCoveredDateToday(input.now ?? new Date());
+    input.coveredDate ?? editorialCoveredDateToday(now);
 
-  const world = await buildEditorialWorldContext(coveredDate);
-  const robinhood = buildEditorialRobinhoodContext(world);
-  const brief = buildEditorialBrief(world, robinhood);
-  const overview = await buildEditorialDailyOverview(coveredDate);
+  const pack = await buildEditorialContextPack({
+    coveredDate,
+    whatMattersToday: input.whatMattersToday,
+    nowMs: now.getTime(),
+  });
+  const brief = buildEditorialBriefFromPack(pack);
+  const overview = overviewFromPack(pack);
 
   const generated = await generateEditorialPackage({
-    world,
-    robinhood,
+    pack,
     brief,
     caller: input.caller,
   });
@@ -65,10 +122,21 @@ export async function prepareTodaysEditorialPackage(input: {
     coveredDate,
     createdBy: input.createdBy,
     worldSummary: overview,
-    robinhoodSummary: robinhood,
+    robinhoodSummary: pack.robinhood,
     editorialBrief: generated.brief,
     transmissions: generated.transmissions,
   });
+}
+
+function legacyModeFromCategory(
+  category: SafeEditorialTransmission["category"],
+): EditorialMode {
+  if (category === "lore") return "world_lore";
+  if (category === "ascii") return "wild";
+  if (category === "invitation") return "outlaw";
+  if (category === "founder_note") return "direct";
+  if (category === "robinhood_echo") return "agent";
+  return "explanation";
 }
 
 /**
@@ -82,26 +150,40 @@ export async function regenerateEditorialTransmission(input: {
     input.transmissionId,
   );
 
-  const world = await buildEditorialWorldContext(run.coveredDate);
-  const robinhood = buildEditorialRobinhoodContext(world);
-  const brief = run.editorialBrief ?? buildEditorialBrief(world, robinhood);
+  const whatMattersToday = run.editorialBrief?.whatMattersToday ?? null;
+
+  const pack = await buildEditorialContextPack({
+    coveredDate: run.coveredDate,
+    whatMattersToday,
+  });
+  const brief = run.editorialBrief ?? buildEditorialBriefFromPack(pack);
+
+  const mode =
+    transmission.mode && isEditorialMode(transmission.mode)
+      ? transmission.mode
+      : legacyModeFromCategory(transmission.category);
 
   const avoidBodies = run.transmissions
-    .filter((t) => t.category === transmission.category)
+    .filter((t) => t.id !== transmission.id)
     .flatMap((t) => [t.originalBody, t.body]);
 
   const draft = await generateEditorialSingle({
-    category: transmission.category,
-    world,
-    robinhood,
+    mode,
+    pack,
     brief,
     avoidBodies,
     caller: input.caller,
   });
 
+  const finalDraft = {
+    ...draft,
+    mode,
+    category: categoryForMode(mode),
+  };
+
   return replaceTransmissionDraft({
     transmissionId: input.transmissionId,
-    draft,
+    draft: finalDraft,
   });
 }
 

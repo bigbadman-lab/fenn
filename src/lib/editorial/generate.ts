@@ -2,44 +2,50 @@ import "server-only";
 
 import { zodResponseFormat } from "openai/helpers/zod";
 
+import { orderedModeSlots, type EditorialMode } from "@/lib/editorial/categories";
 import { EditorialError } from "@/lib/editorial/errors";
 import {
   buildEditorialPackageSystemPrompt,
   buildEditorialPackageUserPayload,
+  buildEditorialRecoverySystemPrompt,
+  buildEditorialRecoveryUserPayload,
   buildEditorialRegenerateSystemPrompt,
   buildEditorialRegenerateUserPayload,
 } from "@/lib/editorial/generate-prompt";
 import {
   assertNoAuthorityFields,
   editorialPackageModelSchema,
+  editorialRecoveryModelSchema,
   editorialSingleModelSchema,
   parsePackageModelOutput,
+  parseRecoveryModelOutput,
   parseSingleModelOutput,
 } from "@/lib/editorial/generate-schema";
-import type { EditorialCategory } from "@/lib/editorial/categories";
+import {
+  assessEditorialPackage,
+  validateEditorialPackageStructure,
+  validateSingleTransmission,
+} from "@/lib/editorial/quality";
+import type {
+  EditorialBrief,
+  EditorialContextPack,
+  EditorialDraftTransmission,
+  EditorialGeneratedPackage,
+} from "@/lib/editorial/types";
 import {
   EDITORIAL_OPENAI_MODEL,
   EDITORIAL_PACKAGE_MAX_COMPLETION_TOKENS,
+  EDITORIAL_RECOVERY_MAX_COMPLETION_TOKENS,
   EDITORIAL_SINGLE_MAX_COMPLETION_TOKENS,
 } from "@/lib/editorial/types";
-import {
-  validateEditorialPackage,
-  validateSingleTransmission,
-} from "@/lib/editorial/validate";
-import type {
-  EditorialBrief,
-  EditorialDraftTransmission,
-  EditorialGeneratedPackage,
-  EditorialRobinhoodContext,
-  EditorialWorldContext,
-} from "@/lib/editorial/types";
+import { categoryForMode } from "@/lib/editorial/categories";
 
 export type EditorialModelCaller = (args: {
   model: string;
   system: string;
   user: string;
   maxCompletionTokens: number;
-  mode: "package" | "single";
+  mode: "package" | "single" | "recovery";
 }) => Promise<unknown>;
 
 async function defaultCaller(args: {
@@ -47,7 +53,7 @@ async function defaultCaller(args: {
   system: string;
   user: string;
   maxCompletionTokens: number;
-  mode: "package" | "single";
+  mode: "package" | "single" | "recovery";
 }): Promise<unknown> {
   const { getOpenAIClient, OpenAIUnavailableError } = await import(
     "@/lib/ai/openai"
@@ -66,6 +72,19 @@ async function defaultCaller(args: {
     throw error;
   }
 
+  const schema =
+    args.mode === "package"
+      ? editorialPackageModelSchema
+      : args.mode === "recovery"
+        ? editorialRecoveryModelSchema
+        : editorialSingleModelSchema;
+  const name =
+    args.mode === "package"
+      ? "fenn_editorial_package"
+      : args.mode === "recovery"
+        ? "fenn_editorial_recovery"
+        : "fenn_editorial_transmission";
+
   const completion = await client.chat.completions.parse({
     model: args.model,
     max_completion_tokens: args.maxCompletionTokens,
@@ -73,14 +92,7 @@ async function defaultCaller(args: {
       { role: "system", content: args.system },
       { role: "user", content: args.user },
     ],
-    response_format: zodResponseFormat(
-      args.mode === "package"
-        ? editorialPackageModelSchema
-        : editorialSingleModelSchema,
-      args.mode === "package"
-        ? "fenn_editorial_package"
-        : "fenn_editorial_transmission",
-    ),
+    response_format: zodResponseFormat(schema, name),
   });
 
   const parsed = completion.choices[0]?.message?.parsed;
@@ -95,12 +107,26 @@ async function defaultCaller(args: {
   return parsed;
 }
 
+function forceSlotModes(
+  transmissions: EditorialDraftTransmission[],
+): EditorialDraftTransmission[] {
+  const slots = orderedModeSlots();
+  return transmissions.map((t, i) => {
+    const mode = slots[i] ?? t.mode;
+    return {
+      ...t,
+      mode,
+      category: categoryForMode(mode),
+    };
+  });
+}
+
 /**
  * Single structured model call → full 24-transmission package.
+ * At most one recovery pass for quality failures.
  */
 export async function generateEditorialPackage(input: {
-  world: EditorialWorldContext;
-  robinhood: EditorialRobinhoodContext;
+  pack: EditorialContextPack;
   brief: EditorialBrief;
   caller?: EditorialModelCaller;
 }): Promise<EditorialGeneratedPackage> {
@@ -111,8 +137,7 @@ export async function generateEditorialPackage(input: {
       model: EDITORIAL_OPENAI_MODEL,
       system: buildEditorialPackageSystemPrompt(),
       user: buildEditorialPackageUserPayload({
-        world: input.world,
-        robinhood: input.robinhood,
+        pack: input.pack,
         brief: input.brief,
       }),
       maxCompletionTokens: EDITORIAL_PACKAGE_MAX_COMPLETION_TOKENS,
@@ -130,6 +155,7 @@ export async function generateEditorialPackage(input: {
   let transmissions: EditorialDraftTransmission[];
   try {
     ({ transmissions } = parsePackageModelOutput(raw));
+    transmissions = forceSlotModes(transmissions);
   } catch {
     throw new EditorialError(
       "editorial_generation_failed",
@@ -138,21 +164,99 @@ export async function generateEditorialPackage(input: {
     );
   }
 
-  validateEditorialPackage(transmissions, input.world);
+  let assessment = assessEditorialPackage(transmissions, input.pack.world);
+  if (assessment.structuralErrors.length > 0) {
+    throw new EditorialError(
+      "editorial_validation_failed",
+      assessment.structuralErrors[0]!,
+      422,
+    );
+  }
+
+  let recoveryUsed = false;
+
+  if (assessment.qualityFailures.length > 0) {
+    recoveryUsed = true;
+    const failures = assessment.qualityFailures.map((f) => ({
+      index: f.index,
+      mode: transmissions[f.index]!.mode,
+      body: transmissions[f.index]!.body,
+      reasons: f.reasons,
+    }));
+
+    let recoveryRaw: unknown;
+    try {
+      recoveryRaw = await caller({
+        model: EDITORIAL_OPENAI_MODEL,
+        system: buildEditorialRecoverySystemPrompt(),
+        user: buildEditorialRecoveryUserPayload({
+          pack: input.pack,
+          brief: input.brief,
+          failures,
+          neighbourBodies: transmissions.map((t) => t.body),
+        }),
+        maxCompletionTokens: EDITORIAL_RECOVERY_MAX_COMPLETION_TOKENS,
+        mode: "recovery",
+      });
+    } catch (error) {
+      if (error instanceof EditorialError) throw error;
+      throw new EditorialError(
+        "editorial_generation_failed",
+        "Editorial recovery failed",
+        502,
+      );
+    }
+
+    try {
+      const repairs = parseRecoveryModelOutput(recoveryRaw);
+      const next = [...transmissions];
+      for (const r of repairs) {
+        if (r.index < 0 || r.index >= next.length) continue;
+        const forcedMode = orderedModeSlots()[r.index]!;
+        next[r.index] = {
+          ...r.draft,
+          mode: forcedMode,
+          category: categoryForMode(forcedMode),
+        };
+      }
+      transmissions = forceSlotModes(next);
+    } catch {
+      throw new EditorialError(
+        "editorial_generation_failed",
+        "Editorial recovery could not be parsed",
+        502,
+      );
+    }
+
+    // After one recovery: structural must pass; remaining soft quality is accepted.
+    validateEditorialPackageStructure(transmissions, input.pack.world);
+  } else {
+    validateEditorialPackageStructure(transmissions, input.pack.world);
+  }
+
+  // Prevent accidental second recovery: quality re-assess not looped.
+  assessment = assessEditorialPackage(transmissions, input.pack.world);
+  if (assessment.structuralErrors.length > 0) {
+    throw new EditorialError(
+      "editorial_validation_failed",
+      assessment.structuralErrors[0]!,
+      422,
+    );
+  }
 
   return {
-    brief: input.brief,
+    brief: { ...input.brief, recoveryUsed },
     transmissions,
+    recoveryUsed,
   };
 }
 
 /**
- * Regenerate one transmission; keep category, avoid prior bodies.
+ * Regenerate one transmission; keep mode, avoid prior bodies.
  */
 export async function generateEditorialSingle(input: {
-  category: EditorialCategory;
-  world: EditorialWorldContext;
-  robinhood: EditorialRobinhoodContext;
+  mode: EditorialMode;
+  pack: EditorialContextPack;
   brief: EditorialBrief;
   avoidBodies: string[];
   caller?: EditorialModelCaller;
@@ -164,9 +268,8 @@ export async function generateEditorialSingle(input: {
       model: EDITORIAL_OPENAI_MODEL,
       system: buildEditorialRegenerateSystemPrompt(),
       user: buildEditorialRegenerateUserPayload({
-        category: input.category,
-        world: input.world,
-        robinhood: input.robinhood,
+        mode: input.mode,
+        pack: input.pack,
         brief: input.brief,
         avoidBodies: input.avoidBodies,
       }),
@@ -193,12 +296,15 @@ export async function generateEditorialSingle(input: {
     );
   }
 
-  // Force category from request.
-  draft = { ...draft, category: input.category };
+  draft = {
+    ...draft,
+    mode: input.mode,
+    category: categoryForMode(input.mode),
+  };
   validateSingleTransmission(
     draft,
-    input.category,
-    input.world,
+    input.mode,
+    input.pack.world,
     input.avoidBodies,
   );
   return draft;

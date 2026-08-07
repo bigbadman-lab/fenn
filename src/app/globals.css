@@ -6156,6 +6156,23 @@ button.wall-mark__action:focus-visible {
   margin: 0.75rem 0 1.25rem;
 }
 
+.desk-editorial__intent {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.85rem;
+}
+
+.desk-editorial__intent span {
+  display: block;
+  margin-bottom: 0.35rem;
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+}
+
+.desk-editorial__newsroom {
+  margin-bottom: 0.75rem;
+}
+
 .desk-editorial__prepare {
   margin: 0 0 1.5rem;
   display: flex;

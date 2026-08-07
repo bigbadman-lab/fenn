@@ -20,9 +20,23 @@ async function copyText(value: string): Promise<boolean> {
 }
 
 function OverviewBlock({ overview }: { overview: EditorialDailyOverview }) {
+  const headlines = overview.newsroomHeadlines ?? [];
   return (
     <div className="desk-editorial__overview">
-      <p className="muted">Today&apos;s world has been read.</p>
+      <p className="muted">TODAY IN THE WOOD</p>
+      {headlines.length > 0 ? (
+        <ul className="desk-member__facts desk-editorial__newsroom">
+          {headlines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">
+          {overview.quiet
+            ? "A quiet day. Stillness is allowed."
+            : "Today's world has been read."}
+        </p>
+      )}
       <ul className="desk-member__facts">
         <li>
           Book
@@ -92,11 +106,13 @@ function TransmissionCard({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.body);
   const busy = busyId === item.id;
+  const modeLabel = item.modeLabel ?? item.categoryLabel;
 
   return (
-    <article className="desk-editorial__tx" aria-label={item.categoryLabel}>
+    <article className="desk-editorial__tx" aria-label={modeLabel}>
       <h3 className="desk-editorial__tx-cat">
-        {item.categoryLabel}
+        {modeLabel}
+        {item.grounded ? " · FROM TODAY" : ""}
         {item.approvalState === "approved" ? " · APPROVED" : ""}
       </h3>
       <p className="desk-editorial__tx-title muted">{item.title}</p>
@@ -207,6 +223,7 @@ export function DeskEditorialPanel() {
   const [busy, setBusy] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [whatMattersToday, setWhatMattersToday] = useState("");
 
   const load = useCallback(async () => {
     setError(null);
@@ -232,6 +249,10 @@ export function DeskEditorialPanel() {
     }
     setRoom(data.room);
     setRun(data.room.latestRun);
+    const stored = data.room.latestRun?.editorialBrief?.whatMattersToday;
+    if (typeof stored === "string" && stored.trim()) {
+      setWhatMattersToday(stored);
+    }
   }, [getAuthHeaders]);
 
   useEffect(() => {
@@ -269,7 +290,10 @@ export function DeskEditorialPanel() {
       const response = await fetch("/api/desk/editorial/generate", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ confirm: true }),
+        body: JSON.stringify({
+          confirm: true,
+          whatMattersToday: whatMattersToday.trim() || null,
+        }),
         cache: "no-store",
       });
       const data = (await response.json()) as {
@@ -423,6 +447,18 @@ export function DeskEditorialPanel() {
           <OverviewBlock overview={room.overview} />
 
           <div className="desk-editorial__prepare">
+            <label className="desk-editorial__intent">
+              <span className="muted">WHAT MATTERS TODAY</span>
+              <textarea
+                className="desk-editorial__editor"
+                value={whatMattersToday}
+                onChange={(e) => setWhatMattersToday(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="Optional. One thought or several lines for the desk."
+                aria-label="What matters today"
+              />
+            </label>
             <button
               type="button"
               className="btn-text"
@@ -434,6 +470,11 @@ export function DeskEditorialPanel() {
             <p className="muted">
               One reading of the world. Twenty-four drafts. Manual posting only.
             </p>
+            {run?.createdAt ? (
+              <p className="muted">
+                Last prepared {new Date(run.createdAt).toLocaleString()}
+              </p>
+            ) : null}
           </div>
 
           {run ? (
@@ -443,6 +484,7 @@ export function DeskEditorialPanel() {
               </h3>
               <p className="muted">
                 {run.approvedCount} approved · {run.draftCount} draft
+                {run.promptVersion ? ` · ${run.promptVersion}` : ""}
               </p>
               <div className="desk-editorial__list">
                 {run.transmissions.map((item) => (

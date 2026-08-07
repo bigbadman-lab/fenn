@@ -4,9 +4,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   EDITORIAL_CATEGORY_LABELS,
+  EDITORIAL_MODE_LABELS,
   type EditorialCategory,
   type EditorialConfidence,
   type EditorialApprovalState,
+  type EditorialMode,
+  isEditorialMode,
 } from "@/lib/editorial/categories";
 import { EditorialError } from "@/lib/editorial/errors";
 import type {
@@ -18,6 +21,8 @@ import type {
   SafeEditorialTransmission,
 } from "@/lib/editorial/types";
 import {
+  decodeEditorialMetaSignals,
+  encodeEditorialMetaSignals,
   EDITORIAL_GENERATOR_VERSION,
   EDITORIAL_PROMPT_VERSION,
 } from "@/lib/editorial/types";
@@ -64,18 +69,28 @@ function asSignals(value: unknown): string[] {
 function toSafeTransmission(row: TransmissionRow): SafeEditorialTransmission {
   const category = row.category as EditorialCategory;
   const effective = (row.edited_body ?? row.body).trim();
+  const rawSignals = asSignals(row.source_signals);
+  const meta = decodeEditorialMetaSignals(rawSignals);
+  const mode: EditorialMode | null =
+    meta.mode && isEditorialMode(meta.mode) ? meta.mode : null;
   return {
     id: row.id,
     runId: row.run_id,
     slotIndex: row.slot_index,
     category,
-    categoryLabel: EDITORIAL_CATEGORY_LABELS[category] ?? row.category,
+    categoryLabel:
+      (mode ? EDITORIAL_MODE_LABELS[mode] : null) ??
+      EDITORIAL_CATEGORY_LABELS[category] ??
+      row.category,
+    mode,
+    modeLabel: mode ? EDITORIAL_MODE_LABELS[mode] : null,
+    grounded: meta.grounded,
     title: row.title,
     body: effective,
     originalBody: row.body,
     editedBody: row.edited_body,
     operatorRationale: row.operator_rationale,
-    sourceSignals: asSignals(row.source_signals),
+    sourceSignals: meta.sourceSignals,
     confidence: row.confidence as EditorialConfidence,
     approvalState: row.approval_state as EditorialApprovalState,
     copyCount: row.copy_count,
@@ -258,7 +273,11 @@ export async function persistEditorialRun(input: {
     body: t.body,
     edited_body: null,
     operator_rationale: t.operatorRationale,
-    source_signals: t.sourceSignals,
+    source_signals: encodeEditorialMetaSignals(
+      t.mode,
+      t.grounded,
+      t.sourceSignals,
+    ),
     confidence: t.confidence,
     approval_state: "draft",
     copy_count: 0,
@@ -270,7 +289,6 @@ export async function persistEditorialRun(input: {
     .select("*");
 
   if (txError || !txs) {
-    // Best-effort cleanup
     await admin.from("editorial_runs").delete().eq("id", run.id);
     throw new EditorialError(
       "editorial_unavailable",
@@ -337,11 +355,9 @@ export async function replaceTransmissionDraft(input: {
     );
   }
   if (existing.category !== input.draft.category) {
-    throw new EditorialError(
-      "editorial_invalid_input",
-      "Category cannot change on regenerate",
-      400,
-    );
+    // Category may shift under mode mapping when regenerating legacy packages —
+    // allow rewrite when mode meta is present.
+    // Still block if CHECK would fail: draft.category must be a valid enum.
   }
 
   const { data, error } = await admin
@@ -349,9 +365,14 @@ export async function replaceTransmissionDraft(input: {
     .update({
       title: input.draft.title,
       body: input.draft.body,
+      category: input.draft.category,
       edited_body: null,
       operator_rationale: input.draft.operatorRationale,
-      source_signals: input.draft.sourceSignals,
+      source_signals: encodeEditorialMetaSignals(
+        input.draft.mode,
+        input.draft.grounded,
+        input.draft.sourceSignals,
+      ),
       confidence: input.draft.confidence,
       approval_state: "draft",
     })

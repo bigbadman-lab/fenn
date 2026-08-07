@@ -1,63 +1,66 @@
 import type {
   EditorialBrief,
+  EditorialContextPack,
   EditorialRobinhoodContext,
   EditorialWorldContext,
 } from "@/lib/editorial/types";
 
+const DEFAULT_AVOID = [
+  "hype",
+  "price discussion",
+  "generic crypto clichés",
+  "hashtags",
+  "emojis",
+  "GM greetings",
+  "marketing speak",
+  "fake partnerships",
+  "invented statistics",
+  "platform/ecosystem language",
+  "repeating recentWriting",
+] as const;
+
 /**
- * Compact deterministic editorial brief from trusted contexts.
- * Internal only — never published as a transmission body.
+ * Compact editorial brief from context pack.
+ * Evidence only — no slogan conversions of counts.
+ */
+export function buildEditorialBriefFromPack(
+  pack: EditorialContextPack,
+): EditorialBrief {
+  const themes = pack.newsroom.headlines
+    .slice(0, 8)
+    .map((h) => h.headline);
+
+  if (themes.length === 0 && pack.newsroom.quiet) {
+    themes.push("Quiet day — no fabricated busyness.");
+  }
+
+  return {
+    themes,
+    avoid: [...DEFAULT_AVOID],
+    whatMattersToday: pack.editorialFocus.whatMattersToday,
+    recoveryUsed: false,
+  };
+}
+
+/**
+ * @deprecated Prefer buildEditorialBriefFromPack. Kept for tests calling the old shape.
+ * Does not invent growth slogans from counts.
  */
 export function buildEditorialBrief(
   world: EditorialWorldContext,
-  robinhood: EditorialRobinhoodContext,
+  _robinhood: EditorialRobinhoodContext,
+  whatMattersToday?: string | null,
 ): EditorialBrief {
   const themes: string[] = [];
-
-  if (world.greenwoodAdmissions > 0) {
-    themes.push("Greenwood is growing.");
-  }
-  if (world.newOutlaws > 0) {
-    themes.push("Builders and Outlaws are arriving.");
-  }
-  if (world.deedSubmissionsApproved > 0 || world.deedsCreated > 0) {
-    themes.push("Deeds mark real work.");
-  }
-  if (world.campMessages > 0) {
-    themes.push("The Camp still speaks.");
-  }
-  if (world.wallInscriptions > 0) {
-    themes.push("The Wall carries new marks.");
-  }
-  if (world.book.written) {
-    themes.push("The Book has been written for this day.");
-  }
-  if (robinhood.hasTrustedSignals) {
-    themes.push("Robinhood Chain feels active enough to notice.");
-  }
   if (world.quiet) {
-    themes.push("A quiet day. Stillness is allowed.");
+    themes.push("Quiet day — no fabricated busyness.");
   } else {
-    themes.push("FENN feels alive.");
+    themes.push("Activity present in day counts — consult newsroom for detail.");
   }
-  if (themes.length < 2) {
-    themes.push("Quiet optimism.");
-  }
-
-  const avoid = [
-    "hype",
-    "price discussion",
-    "generic crypto clichés",
-    "hashtags",
-    "emojis",
-    "GM greetings",
-    "marketing speak",
-    "fake partnerships",
-    "invented statistics",
-  ];
-
   return {
-    themes: themes.slice(0, 8),
-    avoid,
+    themes,
+    avoid: [...DEFAULT_AVOID],
+    whatMattersToday: whatMattersToday?.trim() || null,
+    recoveryUsed: false,
   };
 }

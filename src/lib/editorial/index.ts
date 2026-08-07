@@ -3,8 +3,12 @@ export {
   EDITORIAL_CATEGORIES,
   EDITORIAL_CATEGORY_LABELS,
   EDITORIAL_CATEGORY_QUOTAS,
+  EDITORIAL_MODES,
+  EDITORIAL_MODE_LABELS,
+  EDITORIAL_MODE_QUOTAS,
   EDITORIAL_PACKAGE_SIZE,
   type EditorialCategory,
+  type EditorialMode,
 } from "@/lib/editorial/categories";
 export { EditorialError } from "@/lib/editorial/errors";
 export {

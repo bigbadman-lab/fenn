@@ -13,6 +13,7 @@ const bodySchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
+  whatMattersToday: z.string().max(2000).optional().nullable(),
 });
 
 /**
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     const run = await prepareTodaysEditorialPackage({
       createdBy: identity.actorId,
       coveredDate: parsed.data.coveredDate,
+      whatMattersToday: parsed.data.whatMattersToday ?? null,
     });
 
     const db = createAdminClient();
