@@ -22,7 +22,7 @@ const bodySchema = z.object({
 });
 
 /**
- * Prepare a full day’s editorial package (one model call → 24 drafts).
+ * Prepare a full day’s editorial package (one model call → 30 drafts).
  * No automatic posting.
  */
 export async function POST(request: Request) {

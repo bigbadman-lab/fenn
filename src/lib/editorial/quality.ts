@@ -110,6 +110,54 @@ export function detectGenericCrypto(body: string): string | null {
 }
 
 /**
+ * Lightweight structural ASCII detector.
+ * Accepts multi-line visual layout and/or terminal/glyph density.
+ * Rejects ordinary prose paragraphs for ASCII mode.
+ */
+export function looksLikeAsciiStructure(body: string): boolean {
+  const raw = body.replace(/\r\n/g, "\n").trim();
+  if (!raw) return false;
+
+  const lines = raw.split("\n").map((l) => l.trimEnd());
+  const nonEmpty = lines.filter((l) => l.trim().length > 0);
+  const structural = raw.match(/[\\/|_+\-><\[\]{}()*=#:@~^`.]/g) ?? [];
+  const multiLine = nonEmpty.length >= 2;
+
+  // Dense structural glyphs alone can pass (one-line status/diagrams).
+  if (structural.length >= 6) return true;
+
+  if (multiLine && structural.length >= 3) return true;
+
+  // Terminal stack / indented block without many glyphs still OK.
+  if (
+    multiLine &&
+    nonEmpty.length >= 3 &&
+    nonEmpty.some((l) => /^\s{2,}/.test(l) || /^[>\\|/\-+*]/.test(l.trim()))
+  ) {
+    return true;
+  }
+
+  // bracket / arrow mini-diagrams
+  if (
+    multiLine &&
+    nonEmpty.some((l) => /[\[\]<>|\\/]/.test(l)) &&
+    structural.length >= 2
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+const LORE_MOTIF_PATTERNS: RegExp[] = [
+  /\bthe wood remembers\b/i,
+  /\bthe road waits\b/i,
+  /\bthe crown watches\b/i,
+  /\bthe trees know\b/i,
+  /\bsomething stirs\b/i,
+];
+
+/**
  * Soft factual guard: reject positive day-activity claims when trusted snapshot is zero.
  */
 export function assertNoInventedStats(
@@ -324,16 +372,56 @@ export function assessEditorialPackage(
     }
 
     // CURRENT should not claim grounded when nothing factual referenced.
-    if (t.mode === "current" && t.grounded && t.sourceSignals.filter((s) => !isEditorialMetaSignal(s)).length === 0) {
+    if (
+      t.mode === "current" &&
+      t.grounded &&
+      t.sourceSignals.filter((s) => !isEditorialMetaSignal(s)).length === 0
+    ) {
       pushQ(i, "CURRENT marked grounded without source signals");
+    }
+
+    // ASCII slots must look structurally different from ordinary prose.
+    if (t.mode === "ascii" && !looksLikeAsciiStructure(t.body)) {
+      pushQ(i, "ASCII mode lacks visual/terminal structure");
+    }
+  }
+
+  // LORE diversity: near-dupes among lore slots, repeated stock motifs.
+  const loreIndices = transmissions
+    .map((t, i) => (t.mode === "world_lore" ? i : -1))
+    .filter((i) => i >= 0);
+  const loreNear = new Map<string, number>();
+  const motifHits = new Map<string, number[]>();
+  for (const i of loreIndices) {
+    const body = transmissions[i]!.body;
+    const nk = nearKey(body);
+    if (loreNear.has(nk)) {
+      pushQ(i, `Lore near-duplicate of slot ${loreNear.get(nk)}`);
+    } else {
+      loreNear.set(nk, i);
+    }
+    for (const motif of LORE_MOTIF_PATTERNS) {
+      if (motif.test(body)) {
+        const key = motif.source;
+        const list = motifHits.get(key) ?? [];
+        list.push(i);
+        motifHits.set(key, list);
+      }
+    }
+  }
+  for (const [, indices] of motifHits) {
+    if (indices.length >= 2) {
+      for (const i of indices.slice(1)) {
+        pushQ(i, "Repeated stock lore motif across WORLD/LORE slots");
+      }
     }
   }
 
   // Package-level noun overuse → mark heavily contributing slots.
+  // Threshold raised for 30-slot packages; still soft quality only.
   for (const noun of FENN_NOUNS) {
     const total = countNounHits(allBodies, noun);
-    if (total >= 10) {
-      // flag slots with highest density of this noun
+    if (total >= 14) {
       const scores = allBodies.map((b, i) => ({
         i,
         n: (b.match(new RegExp(`\\b${noun}\\b`, "gi")) ?? []).length,
@@ -449,6 +537,14 @@ export function validateSingleTransmission(
     throw new EditorialError(
       "editorial_validation_failed",
       "Banned marketing language",
+      422,
+    );
+  }
+
+  if (expectedMode === "ascii" && !looksLikeAsciiStructure(draft.body)) {
+    throw new EditorialError(
+      "editorial_validation_failed",
+      "ASCII mode lacks visual/terminal structure",
       422,
     );
   }

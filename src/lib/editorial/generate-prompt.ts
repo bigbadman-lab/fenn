@@ -7,6 +7,7 @@ import {
   buildEditorialAudienceContract,
   buildEditorialLaw,
   buildEditorialModeGuide,
+  buildEditorialModeRegenNote,
   buildEditorialVoiceContract,
 } from "@/lib/editorial/voice";
 import type {
@@ -37,7 +38,9 @@ You have been given:
 6. the Keeper's current intent (if any)
 
 Your task is not to advertise FENN.
-Your task is to decide what FENN should say today.
+Your task is to decide what FENN should say today — including what must stay strange.
+
+FENN already knows what happened. It has not forgotten that something was living in the wood before the reader arrived.
 
 ${buildBookOfSpeechPrecedenceNote()}
 
@@ -57,14 +60,18 @@ Hard rules:
 - Set mode exactly as assigned on each slot.
 - grounded must be true or false (required boolean).
 - No exact-duplicate bodies. No near-duplicate openings or ideas.
-- protectedFacts and newsroom facts may be stated and poetically interpreted.
-- You may NEVER alter, embellish, invent, or inventively fill factual details, counts, dates, names, Deeds, Gatherings, LEAF awards, token/contract events, X interactions, people, launches, or feature claims not present in the trusted context.
-- If the newsroom is quiet, write a strong quiet day — do not fabricate activity.
+- CURRENT may only state supported recent/current facts.
+- WORLD / LORE / ASCII / WILD must not invent current factual events; mythology and scenes are allowed when not misframed as news.
+- protectedFacts and newsroom facts may be stated and poetically interpreted where appropriate to mode.
+- You may NEVER alter, embellish, invent factual details, counts, dates, names, Deeds, Gatherings, LEAF awards, token/contract events, X interactions, people, launches, or feature claims not present in the trusted context.
+- If the newsroom is quiet, CURRENT stays quiet; LORE / ASCII / WILD may still deepen the place.
 - recentWriting is for anti-repetition only — do not restate those lines.
-- WHAT MATTERS TODAY influences prioritisation; it does not turn the package into a campaign.
-- sourceSignals must name keys from allowedSignalKeys only (never invent keys).
+- WHAT MATTERS TODAY influences prioritisation across relevant modes; it does not turn the whole package into a campaign.
+- sourceSignals must name keys from allowedSignalKeys only (never invent keys). Empty arrays are valid for LORE / ASCII / WILD.
 - grounded=true only when the body draws on newsroom or protected facts.
-- confidence reflects factual grounding (high = tightly tied to trusted facts).
+- confidence reflects factual grounding (high = tightly tied to trusted facts); LORE/WILD may be medium/low.
+- ASCII slots must be structural/visual. Do not deliver ordinary prose for mode=ascii.
+- Do not "repair" intentional mystery into explanatory product copy in advance.
 
 Output structured JSON only as specified.`;
 }
@@ -77,7 +84,7 @@ export function buildEditorialPackageUserPayload(input: {
   return JSON.stringify(
     {
       instruction:
-        "Generate today's full editorial package from the newsroom context only.",
+        "Generate today's full editorial package. Use newsroom where modes require it; leave lore/ascii/wild free to deepen the world.",
       coveredDate: input.pack.coveredDate,
       generatedAt: input.pack.generatedAt,
       slots: slots.map((mode, index) => ({ index, mode })),
@@ -123,8 +130,11 @@ ${buildEditorialLaw()}
 Hard rules:
 - Keep the assigned mode exactly.
 - Produce a different body from the avoided drafts provided.
-- Do not invent facts outside NEWSROOM / PROTECTED_FACTS / dayCounts.
-- sourceSignals must use allowedSignalKeys only.
+- Do not invent current factual events outside NEWSROOM / PROTECTED_FACTS / dayCounts.
+- WORLD / LORE may remain mysterious without newsroom grounding.
+- ASCII must remain visual/terminal structure — never ordinary prose.
+- WILD must remain genuinely strange, not mildly cryptic prose.
+- sourceSignals must use allowedSignalKeys only (empty allowed for LORE/ASCII/WILD).
 - Body only is for X; title and operatorRationale are operator metadata.
 - grounded=true only when drawing on newsroom/protected facts.`;
 }
@@ -139,6 +149,7 @@ export function buildEditorialRegenerateUserPayload(input: {
     {
       instruction: "Regenerate a single transmission for this mode.",
       mode: input.mode,
+      modeNote: buildEditorialModeRegenNote(input.mode),
       avoidBodies: input.avoidBodies.slice(0, 8),
       NEWSROOM: {
         quiet: input.pack.newsroom.quiet,
@@ -180,10 +191,14 @@ ${buildEditorialLaw()}
 
 Hard rules:
 - Keep each assigned mode.
-- Fix the listed failure reasons.
+- Fix the listed failure reasons only.
+- Do NOT convert intentional mystery, lore, or strange structure into generic explanatory product copy.
+- If mode is ascii, the repair MUST remain visual/terminal structure (not prose).
+- If mode is world_lore, the repair may stay mysterious; do not invent current facts.
+- If mode is wild, keep genuine strangeness.
 - Differ from neighbouring transmissions and avoided near-duplicates.
 - Do not invent facts outside trusted context.
-- sourceSignals ⊆ allowedSignalKeys.
+- sourceSignals ⊆ allowedSignalKeys (empty ok for LORE/ASCII/WILD).
 - grounded only when drawing on newsroom/protected facts.`;
 }
 
@@ -201,9 +216,12 @@ export function buildEditorialRecoveryUserPayload(input: {
   return JSON.stringify(
     {
       instruction:
-        "Repair only these transmissions. Do not rewrite the whole package strategy.",
-      failures: input.failures,
-      neighbourBodies: input.neighbourBodies.slice(0, 24),
+        "Repair only these transmissions. Do not rewrite the whole package strategy. Do not sand mystery into marketing.",
+      failures: input.failures.map((f) => ({
+        ...f,
+        modeNote: buildEditorialModeRegenNote(f.mode),
+      })),
+      neighbourBodies: input.neighbourBodies.slice(0, EDITORIAL_PACKAGE_SIZE),
       NEWSROOM: {
         quiet: input.pack.newsroom.quiet,
         headlines: input.pack.newsroom.headlines,

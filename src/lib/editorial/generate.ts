@@ -143,7 +143,7 @@ function forceSlotModes(
 }
 
 /**
- * Single structured model call → full 24-transmission package.
+ * Single structured model call → full 30-transmission package.
  * At most one recovery pass for quality failures.
  */
 export async function generateEditorialPackage(input: {

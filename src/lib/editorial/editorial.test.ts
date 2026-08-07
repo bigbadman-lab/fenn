@@ -17,6 +17,7 @@ import {
   buildEditorialPackageSystemPrompt,
   buildEditorialPackageUserPayload,
   buildEditorialRecoverySystemPrompt,
+  buildEditorialRegenerateUserPayload,
 } from "@/lib/editorial/generate-prompt";
 import { generateEditorialPackage } from "@/lib/editorial/generate";
 import { buildEditorialRobinhoodContext } from "@/lib/editorial/robinhood-context";
@@ -38,6 +39,7 @@ import {
   detectBannedMarketing,
   EDITORIAL_BAD_FIXTURES,
   EDITORIAL_GOOD_FIXTURES,
+  looksLikeAsciiStructure,
   validateEditorialPackage,
   validateSingleTransmission,
 } from "@/lib/editorial/validate";
@@ -164,9 +166,9 @@ function draft(
     title,
     body,
     operatorRationale: "grounded",
-    sourceSignals: ["quiet"],
+    sourceSignals: mode === "current" ? ["quiet"] : [],
     confidence: "medium",
-    grounded: false,
+    grounded: mode === "current",
     ...extras,
   };
 }
@@ -177,21 +179,34 @@ function packageFromBodies(bodies: string[]): EditorialDraftTransmission[] {
   return slots.map((mode, i) => draft(mode, bodies[i]!, `t${i}`));
 }
 
-function uniqueBodies(n = 24): string[] {
+function uniqueBodies(n = EDITORIAL_PACKAGE_SIZE): string[] {
   return Array.from({ length: n }, (_, i) => {
     const mode = orderedModeSlots()[i]!;
-    if (mode === "wild") {
-      return `wild form ${i}\n  /\\ \n /  \\ slot`;
+    if (mode === "ascii" || mode === "wild") {
+      return `> slot ${i}\n| ${mode}\n| _`;
     }
     return `Post ${i}: distinct ${mode} transmission stands alone tonight.`;
   });
 }
 
 describe("Editorial modes + categories", () => {
-  it("mode quotas sum to exactly twenty-four", () => {
+  it("mode quotas sum to exactly thirty", () => {
     const total = Object.values(EDITORIAL_MODE_QUOTAS).reduce((a, b) => a + b, 0);
     assert.equal(total, EDITORIAL_PACKAGE_SIZE);
-    assert.equal(orderedModeSlots().length, 24);
+    assert.equal(EDITORIAL_PACKAGE_SIZE, 30);
+    assert.equal(orderedModeSlots().length, 30);
+  });
+
+  it("matches exact Editorial 2.1 composition counts", () => {
+    assert.equal(EDITORIAL_MODE_QUOTAS.current, 4);
+    assert.equal(EDITORIAL_MODE_QUOTAS.explanation, 4);
+    assert.equal(EDITORIAL_MODE_QUOTAS.outlaw, 3);
+    assert.equal(EDITORIAL_MODE_QUOTAS.leaf_deeds, 3);
+    assert.equal(EDITORIAL_MODE_QUOTAS.agent, 3);
+    assert.equal(EDITORIAL_MODE_QUOTAS.world_lore, 5);
+    assert.equal(EDITORIAL_MODE_QUOTAS.direct, 2);
+    assert.equal(EDITORIAL_MODE_QUOTAS.ascii, 3);
+    assert.equal(EDITORIAL_MODE_QUOTAS.wild, 3);
   });
 
   it("category quotas match mode→category mapping", () => {
@@ -202,14 +217,14 @@ describe("Editorial modes + categories", () => {
       derived[categoryForMode(mode)] += 1;
     }
     assert.deepEqual(derived, { ...EDITORIAL_CATEGORY_QUOTAS });
-    assert.equal(orderedCategorySlots().length, 24);
+    assert.equal(orderedCategorySlots().length, 30);
   });
 });
 
 describe("Editorial versions + Book of Speech", () => {
-  it("uses prompt v2 and generator v2", () => {
-    assert.equal(EDITORIAL_PROMPT_VERSION, "editorial-prompt-v2");
-    assert.equal(EDITORIAL_GENERATOR_VERSION, "editorial-generator-v2");
+  it("uses prompt v2.1 and generator v2.1", () => {
+    assert.equal(EDITORIAL_PROMPT_VERSION, "editorial-prompt-v2.1");
+    assert.equal(EDITORIAL_GENERATOR_VERSION, "editorial-generator-v2.1");
   });
 
   it("injects canonical Book of Speech v2 into system prompt", () => {
@@ -219,7 +234,9 @@ describe("Editorial versions + Book of Speech", () => {
     const block = buildBookOfSpeechCanonBlock();
     assert.ok(system.includes(block.slice(0, 40)));
     assert.match(system, /Truth outranks voice/i);
-    assert.match(system, /REALITY BEFORE MYTHOLOGY/);
+    assert.match(system, /REALITY BEFORE MYTHOLOGY DOES NOT MEAN/);
+    assert.match(system, /PACKAGE-LEVEL CLARITY/);
+    assert.match(system, /mode=ascii|ASCII slots/i);
   });
 });
 
@@ -275,6 +292,7 @@ describe("Prompt payload structure", () => {
     assert.match(user, /2026-08-07/);
     assert.match(user, /push people into Camp/);
     assert.match(user, /prior wall/);
+    assert.match(user, /"ascii"/);
   });
 
   it("blank keeper intent is valid", () => {
@@ -284,6 +302,27 @@ describe("Prompt payload structure", () => {
       brief: buildEditorialBriefFromPack(pack),
     });
     assert.match(user, /"WHAT_MATTERS_TODAY": null/);
+  });
+
+  it("regenerate preserves ASCII and LORE mode notes", () => {
+    const pack = mockPack();
+    const asciiPayload = buildEditorialRegenerateUserPayload({
+      mode: "ascii",
+      pack,
+      brief: buildEditorialBriefFromPack(pack),
+      avoidBodies: [],
+    });
+    assert.match(asciiPayload, /"mode": "ascii"/);
+    assert.match(asciiPayload, /visual\/terminal structure/i);
+
+    const lorePayload = buildEditorialRegenerateUserPayload({
+      mode: "world_lore",
+      pack,
+      brief: buildEditorialBriefFromPack(pack),
+      avoidBodies: [],
+    });
+    assert.match(lorePayload, /"mode": "world_lore"/);
+    assert.match(lorePayload, /Do NOT force newsroom grounding/i);
   });
 });
 
@@ -304,20 +343,51 @@ describe("Context pack bounds (unit-level caps)", () => {
 });
 
 describe("Meta encoding (mode/grounded without migration)", () => {
-  it("round-trips mode and grounded in source_signals", () => {
-    const encoded = encodeEditorialMetaSignals("current", true, [
-      "newOutlaws",
-      "mode:should-be-stripped",
-    ]);
+  it("round-trips mode and grounded in source_signals including ascii", () => {
+    const encoded = encodeEditorialMetaSignals("ascii", false, ["newOutlaws"]);
     const decoded = decodeEditorialMetaSignals(encoded);
-    assert.equal(decoded.mode, "current");
-    assert.equal(decoded.grounded, true);
+    assert.equal(decoded.mode, "ascii");
+    assert.equal(decoded.grounded, false);
     assert.deepEqual(decoded.sourceSignals, ["newOutlaws"]);
   });
 });
 
+describe("ASCII structure quality", () => {
+  it("rejects plain prose as ASCII", () => {
+    assert.equal(
+      looksLikeAsciiStructure("The Greenwood is quiet this morning."),
+      false,
+    );
+    assert.throws(
+      () =>
+        validateSingleTransmission(
+          draft("ascii", "The Greenwood is quiet this morning."),
+          "ascii",
+          quietWorld(),
+          [],
+        ),
+      /visual\/terminal structure/i,
+    );
+  });
+
+  it("accepts multi-line terminal/visual output", () => {
+    const tree = `       /\\\n      /  \\\n     /FENN\\\n    /______\\\n       ||`;
+    assert.equal(looksLikeAsciiStructure(tree), true);
+
+    const terminal = `> listening...\n\n> road found\n\n> name required`;
+    assert.equal(looksLikeAsciiStructure(terminal), true);
+
+    const map = `[ REGISTER ]\n\nSTRANGER\n   |\n   v\n OUTLAW`;
+    assert.equal(looksLikeAsciiStructure(map), true);
+
+    assert.doesNotThrow(() =>
+      validateSingleTransmission(draft("ascii", tree), "ascii", quietWorld(), []),
+    );
+  });
+});
+
 describe("Editorial validation + quality fixtures", () => {
-  it("accepts a valid 24-slot package with unique bodies", () => {
+  it("accepts a valid 30-slot package with unique bodies", () => {
     const world = quietWorld();
     validateEditorialPackage(packageFromBodies(uniqueBodies()), world);
   });
@@ -326,7 +396,7 @@ describe("Editorial validation + quality fixtures", () => {
     const world = quietWorld();
     assert.throws(
       () => validateEditorialPackage([draft("world_lore", "only one")], world),
-      /24|mode|Expected/,
+      /30|mode|Expected/,
     );
 
     const bodies = uniqueBodies();
@@ -339,7 +409,6 @@ describe("Editorial validation + quality fixtures", () => {
 
   it("near-duplicate opens quality failure", () => {
     const bodies = uniqueBodies();
-    // Make two near-identical long openings
     bodies[0] = "The same almost identical opening prefix occupies this one body here A.";
     bodies[1] = "The same almost identical opening prefix occupies this one body here B.";
     const assessment = assessEditorialPackage(
@@ -364,6 +433,40 @@ describe("Editorial validation + quality fixtures", () => {
     assert.ok(
       assessment.qualityFailures.some((f) =>
         f.reasons.some((r) => /opening/i.test(r)),
+      ),
+    );
+  });
+
+  it("lore does not require source signals; mysterious lore is not empty failure", () => {
+    const world = quietWorld();
+    assert.doesNotThrow(() =>
+      validateSingleTransmission(
+        draft(
+          "world_lore",
+          "if the path returns you to the same tree twice,\ndo not continue.",
+          "warning",
+          { sourceSignals: [], grounded: false },
+        ),
+        "world_lore",
+        world,
+        [],
+      ),
+    );
+  });
+
+  it("CURRENT grounded claims still require valid signals", () => {
+    const bodies = uniqueBodies();
+    const pkg = packageFromBodies(bodies);
+    // first slot is current
+    pkg[0] = {
+      ...pkg[0]!,
+      grounded: true,
+      sourceSignals: [],
+    };
+    const assessment = assessEditorialPackage(pkg, quietWorld());
+    assert.ok(
+      assessment.qualityFailures.some((f) =>
+        f.reasons.some((r) => /CURRENT marked grounded without source/i.test(r)),
       ),
     );
   });
@@ -411,6 +514,33 @@ describe("Editorial validation + quality fixtures", () => {
     );
   });
 
+  it("ASCII prose in package fails quality; ASCII terminal forms pass", () => {
+    const bodies = uniqueBodies();
+    const slots = orderedModeSlots();
+    const asciiIndex = slots.findIndex((m) => m === "ascii");
+    assert.ok(asciiIndex >= 0);
+    bodies[asciiIndex] = "Ordinary prose that pretends to be ascii art for FENN.";
+    let assessment = assessEditorialPackage(
+      packageFromBodies(bodies),
+      quietWorld(),
+    );
+    assert.ok(
+      assessment.qualityFailures.some((f) =>
+        f.reasons.some((r) => /ASCII mode lacks visual/i.test(r)),
+      ),
+    );
+
+    bodies[asciiIndex] = `> ok\n| path\n| ___`;
+    assessment = assessEditorialPackage(packageFromBodies(bodies), quietWorld());
+    assert.ok(
+      !assessment.qualityFailures.some(
+        (f) =>
+          f.index === asciiIndex &&
+          f.reasons.some((r) => /ASCII mode lacks visual/i.test(r)),
+      ),
+    );
+  });
+
   it("regeneration rejects matching old body", () => {
     const world = quietWorld();
     assert.throws(
@@ -425,13 +555,23 @@ describe("Editorial validation + quality fixtures", () => {
     );
   });
 
-  it("regeneration keeps required mode", () => {
+  it("regeneration keeps required mode including ASCII and LORE", () => {
     const world = quietWorld();
     assert.throws(
       () =>
         validateSingleTransmission(
           draft("wild", "----\nx\n----", "x"),
           "world_lore",
+          world,
+          [],
+        ),
+      /Expected mode/,
+    );
+    assert.throws(
+      () =>
+        validateSingleTransmission(
+          draft("world_lore", "quiet lore remains"),
+          "ascii",
           world,
           [],
         ),
@@ -465,9 +605,9 @@ describe("Recovery path (one pass)", () => {
             title: `t${i}`,
             body: badBodies[i]!,
             operatorRationale: "draft",
-            sourceSignals: ["quiet"],
+            sourceSignals: mode === "current" ? ["quiet"] : [],
             confidence: "medium" as const,
-            grounded: false,
+            grounded: mode === "current",
           })),
         };
       }
@@ -483,7 +623,7 @@ describe("Recovery path (one pass)", () => {
               operatorRationale: "repaired",
               sourceSignals: ["quiet"],
               confidence: "medium" as const,
-              grounded: false,
+              grounded: true,
             },
             {
               index: 1,
@@ -493,7 +633,7 @@ describe("Recovery path (one pass)", () => {
               operatorRationale: "repaired",
               sourceSignals: ["quiet"],
               confidence: "medium" as const,
-              grounded: false,
+              grounded: true,
             },
           ],
         };
@@ -510,14 +650,15 @@ describe("Recovery path (one pass)", () => {
     assert.equal(packageCalls, 1);
     assert.equal(recoveryCalls, 1);
     assert.equal(result.recoveryUsed, true);
-    assert.equal(result.transmissions.length, 24);
+    assert.equal(result.transmissions.length, 30);
     assert.equal(result.transmissions[0]!.body, goodBodies[0]);
   });
 
-  it("recovery system prompt forbids rejudging strategy", () => {
+  it("recovery system prompt forbids rejudging strategy and preserves mystery", () => {
     const prompt = buildEditorialRecoverySystemPrompt();
     assert.match(prompt, /Do not rejudge/i);
     assert.match(prompt, /book-of-speech-v2/);
+    assert.match(prompt, /Do NOT convert intentional mystery/i);
   });
 });
 
@@ -554,6 +695,13 @@ describe("Editorial Room surface and security (source)", () => {
     assert.match(mig, /TO service_role/);
     assert.doesNotMatch(mig, /GRANT[\s\S]{0,80}TO (anon|authenticated)/);
     assert.match(mig, /private key|wallet|No automatic posting/i);
+  });
+
+  it("slot_index migration expands package to 30", () => {
+    const mig = read(
+      "supabase/migrations/20260807100000_52_editorial_30_package.sql",
+    );
+    assert.match(mig, /slot_index < 30/);
   });
 
   it("Desk APIs require requireFennDeskAccess and never post to X", () => {
@@ -597,7 +745,7 @@ describe("Editorial Room surface and security (source)", () => {
     assert.match(pack, /getCurrentPublishedFireMessage/);
   });
 
-  it("UI has newsroom, intent, operator controls without auto-post", () => {
+  it("UI has newsroom, intent, thirty posts, ASCII mode without auto-post", () => {
     const ui = read("src/components/desk/desk-editorial-panel.tsx");
     const page = read("src/app/desk/editorial/page.tsx");
     assert.match(page, /DeskEditorialPanel/);
@@ -605,12 +753,17 @@ describe("Editorial Room surface and security (source)", () => {
     assert.match(ui, /WHAT MATTERS TODAY/);
     assert.match(ui, /TODAY IN THE WOOD/);
     assert.match(ui, /FROM TODAY/);
+    assert.match(ui, /Thirty transmissions prepared/);
+    assert.match(ui, /Thirty drafts/);
     assert.match(ui, /\[ COPY \]/);
     assert.match(ui, /\[ EDIT \]/);
     assert.match(ui, /\[ REGENERATE \]/);
     assert.match(ui, /\[ APPROVE \]/);
     assert.match(ui, /Manual posting only/);
     assert.doesNotMatch(ui, /schedule|analytics|auto.?post|publish to x/i);
+    const categories = read("src/lib/editorial/categories.ts");
+    assert.match(categories, /ascii: 3/);
+    assert.match(categories, /ASCII/);
   });
 
   it("nav and error mapper include Editorial Room", () => {
@@ -629,45 +782,60 @@ describe("Editorial Room surface and security (source)", () => {
 });
 
 describe("Example mock transmissions (fixture modes, not production events)", () => {
-  it("labels eight representative fixture posts by mode", () => {
+  it("labels representative fixture posts by mode", () => {
     const examples: Array<{ mode: string; body: string }> = [
       {
         mode: "current",
         body: "[fixture] Three names entered the Register before noon.",
       },
       {
-        mode: "explanation",
-        body: "[fixture] LEAF records contribution. Not attention.",
-      },
-      {
-        mode: "outlaw",
-        body: "[fixture] A name on the Register is not a follow count.",
-      },
-      {
-        mode: "leaf_deeds",
-        body: "[fixture] The board still holds work that can be done.",
-      },
-      {
-        mode: "agent",
-        body: "[fixture] Outside the wood, FENN still answers some doors.",
+        mode: "current",
+        body: "[fixture] A Deed still waits on the board.",
       },
       {
         mode: "world_lore",
-        body: "[fixture] The trees do not announce themselves.",
+        body: "[fixture] the third rule was removed from the Book.\nnobody agrees on what it said.",
+      },
+      {
+        mode: "world_lore",
+        body: "[fixture] REGISTER NOTE 0041\n\nname accepted.\nreason withheld.",
+      },
+      {
+        mode: "world_lore",
+        body: "[fixture] if the path returns you to the same tree twice,\ndo not continue.",
+      },
+      {
+        mode: "ascii",
+        body: "[fixture]\n       /\\\n      /  \\\n     /FENN\\\n    /______\\\n       ||",
+      },
+      {
+        mode: "ascii",
+        body: "[fixture]\n[ REGISTER ]\n\nSTRANGER\n   |\n   v\n OUTLAW",
+      },
+      {
+        mode: "ascii",
+        body: "[fixture]\n> listening...\n\n> road found\n\n> name required",
+      },
+      {
+        mode: "wild",
+        body: "[fixture]\nerr // path looped\n// do not trust map:04",
+      },
+      {
+        mode: "wild",
+        body: "[fixture] redacted: ██ names spoken under Oak",
       },
       {
         mode: "direct",
         body: "[fixture] FENN is a living place where contribution is recorded.",
       },
-      {
-        mode: "wild",
-        body: "[fixture]\n> greenwood --status\nlive",
-      },
     ];
-    assert.equal(examples.length, 8);
+    assert.equal(examples.length, 11);
     for (const ex of examples) {
-      assert.ok(ex.body.startsWith("[fixture]"));
+      assert.ok(ex.body.includes("[fixture]"));
       assert.equal(detectBannedMarketing(ex.body), null);
     }
+    assert.equal(looksLikeAsciiStructure(examples[5]!.body), true);
+    assert.equal(looksLikeAsciiStructure(examples[6]!.body), true);
+    assert.equal(looksLikeAsciiStructure(examples[7]!.body), true);
   });
 });

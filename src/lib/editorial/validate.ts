@@ -8,6 +8,7 @@ export {
   detectGenericCrypto,
   EDITORIAL_BAD_FIXTURES,
   EDITORIAL_GOOD_FIXTURES,
+  looksLikeAsciiStructure,
   nearKey,
   normalizeBody,
   openingPhrase,

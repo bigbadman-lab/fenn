@@ -21,21 +21,23 @@ export const EDITORIAL_MODES = [
   "agent",
   "world_lore",
   "direct",
+  "ascii",
   "wild",
 ] as const;
 
 export type EditorialMode = (typeof EDITORIAL_MODES)[number];
 
-/** Exact daily package mode quotas — total 24. */
+/** Exact daily package mode quotas — total 30 (Editorial 2.1). */
 export const EDITORIAL_MODE_QUOTAS: Readonly<Record<EditorialMode, number>> = {
   current: 4,
   explanation: 4,
   outlaw: 3,
   leaf_deeds: 3,
   agent: 3,
-  world_lore: 3,
+  world_lore: 5,
   direct: 2,
-  wild: 2,
+  ascii: 3,
+  wild: 3,
 };
 
 /**
@@ -52,6 +54,7 @@ export const EDITORIAL_MODE_TO_CATEGORY: Readonly<
   agent: "robinhood_echo",
   world_lore: "lore",
   direct: "founder_note",
+  ascii: "ascii",
   wild: "ascii",
 };
 
@@ -60,14 +63,14 @@ export const EDITORIAL_CATEGORY_QUOTAS: Readonly<
   Record<EditorialCategory, number>
 > = {
   world_transmission: 11, // current 4 + explanation 4 + leaf_deeds 3
-  lore: 3,
+  lore: 5,
   robinhood_echo: 3,
-  ascii: 2,
+  ascii: 6, // ascii mode 3 + wild mode 3
   invitation: 3,
   founder_note: 2,
 };
 
-export const EDITORIAL_PACKAGE_SIZE = 24;
+export const EDITORIAL_PACKAGE_SIZE = 30;
 
 export const EDITORIAL_MODE_LABELS: Readonly<Record<EditorialMode, string>> = {
   current: "CURRENT",
@@ -77,6 +80,7 @@ export const EDITORIAL_MODE_LABELS: Readonly<Record<EditorialMode, string>> = {
   agent: "AGENT",
   world_lore: "LORE",
   direct: "DIRECT",
+  ascii: "ASCII",
   wild: "WILD",
 };
 
@@ -103,7 +107,7 @@ export function categoryForMode(mode: EditorialMode): EditorialCategory {
   return EDITORIAL_MODE_TO_CATEGORY[mode];
 }
 
-/** Expand mode quotas into ordered slots 0..23. */
+/** Expand mode quotas into ordered slots 0..29. */
 export function orderedModeSlots(): EditorialMode[] {
   const slots: EditorialMode[] = [];
   for (const mode of EDITORIAL_MODES) {

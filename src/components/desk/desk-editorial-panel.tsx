@@ -306,7 +306,7 @@ export function DeskEditorialPanel() {
         return;
       }
       setRun(data.run);
-      setStatus("Twenty-four transmissions prepared.");
+      setStatus("Thirty transmissions prepared.");
       await load();
     } finally {
       setBusy(false);
@@ -468,7 +468,7 @@ export function DeskEditorialPanel() {
               [ PREPARE TODAY&apos;S TRANSMISSIONS ]
             </button>
             <p className="muted">
-              One reading of the world. Twenty-four drafts. Manual posting only.
+              One reading of the world. Thirty drafts. Manual posting only.
             </p>
             {run?.createdAt ? (
               <p className="muted">

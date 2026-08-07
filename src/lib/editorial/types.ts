@@ -6,13 +6,13 @@ import type {
 } from "@/lib/editorial/categories";
 
 /** Version strings stored on each run for audit replay. */
-export const EDITORIAL_PROMPT_VERSION = "editorial-prompt-v2";
-export const EDITORIAL_GENERATOR_VERSION = "editorial-generator-v2";
+export const EDITORIAL_PROMPT_VERSION = "editorial-prompt-v2.1";
+export const EDITORIAL_GENERATOR_VERSION = "editorial-generator-v2.1";
 
 export const EDITORIAL_OPENAI_MODEL = "gpt-4o-mini";
-export const EDITORIAL_PACKAGE_MAX_COMPLETION_TOKENS = 12_000;
+export const EDITORIAL_PACKAGE_MAX_COMPLETION_TOKENS = 16_000;
 export const EDITORIAL_SINGLE_MAX_COMPLETION_TOKENS = 1_200;
-export const EDITORIAL_RECOVERY_MAX_COMPLETION_TOKENS = 6_000;
+export const EDITORIAL_RECOVERY_MAX_COMPLETION_TOKENS = 8_000;
 
 /** Hard caps for context pack assembly. */
 export const EDITORIAL_CONTEXT_CAPS = {
@@ -320,6 +320,7 @@ export function decodeEditorialMetaSignals(signals: string[]): {
             "agent",
             "world_lore",
             "direct",
+            "ascii",
             "wild",
           ] as const
         ).includes(raw as EditorialMode)
