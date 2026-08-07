@@ -25,5 +25,11 @@ export const WORLD_PULSE_GREENWOOD_HOLLOW_MS = 60_000;
  */
 export const WORLD_PULSE_HOME_GATHERING_MS = 30_000;
 
+/**
+ * Homepage live ticker strip — isolated no-store poll.
+ * Matches Wall/Ledger cadence.
+ */
+export const WORLD_PULSE_LIVE_TICKER_MS = 25_000;
+
 /** Minimum gap between focus/visibility profile refreshes. */
 export const WORLD_PULSE_PROFILE_FOCUS_MIN_MS = 15_000;

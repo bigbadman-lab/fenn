@@ -171,6 +171,17 @@ export function HomePaths() {
           >
             ask fenn
           </a>
+          <span className="old-dir__ask-sep" aria-hidden="true">
+            ·
+          </span>
+          <a
+            href="https://t.me/fennspeaks"
+            className="old-dir__ask-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            fenn speaks
+          </a>
           <span className="old-dir__ask-cursor" aria-hidden="true">
             _
           </span>
