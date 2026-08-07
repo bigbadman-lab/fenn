@@ -54,7 +54,8 @@ ${buildEditorialModeGuide()}
 Hard rules:
 - Exactly ${EDITORIAL_PACKAGE_SIZE} transmissions.
 - Return transmissions in the exact mode order given in the user payload slots array.
-- Set mode exactly as assigned on each slot. category is derived from mode by the server; still set category consistently if present.
+- Set mode exactly as assigned on each slot.
+- grounded must be true or false (required boolean).
 - No exact-duplicate bodies. No near-duplicate openings or ideas.
 - protectedFacts and newsroom facts may be stated and poetically interpreted.
 - You may NEVER alter, embellish, invent, or inventively fill factual details, counts, dates, names, Deeds, Gatherings, LEAF awards, token/contract events, X interactions, people, launches, or feature claims not present in the trusted context.

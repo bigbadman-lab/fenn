@@ -85,18 +85,39 @@ async function defaultCaller(args: {
         ? "fenn_editorial_recovery"
         : "fenn_editorial_transmission";
 
-  const completion = await client.chat.completions.parse({
-    model: args.model,
-    max_completion_tokens: args.maxCompletionTokens,
-    messages: [
-      { role: "system", content: args.system },
-      { role: "user", content: args.user },
-    ],
-    response_format: zodResponseFormat(schema, name),
-  });
+  let completion;
+  try {
+    completion = await client.chat.completions.parse({
+      model: args.model,
+      max_completion_tokens: args.maxCompletionTokens,
+      messages: [
+        { role: "system", content: args.system },
+        { role: "user", content: args.user },
+      ],
+      response_format: zodResponseFormat(schema, name),
+    });
+  } catch (error) {
+    console.error("[editorial] openai structured call failed", {
+      mode: args.mode,
+      model: args.model,
+      name: error instanceof Error ? error.name : "unknown",
+      message: error instanceof Error ? error.message.slice(0, 400) : "unknown",
+    });
+    throw new EditorialError(
+      "editorial_generation_failed",
+      "Editorial package generation failed",
+      502,
+    );
+  }
 
   const parsed = completion.choices[0]?.message?.parsed;
   if (!parsed) {
+    const refusal = completion.choices[0]?.message?.refusal;
+    console.error("[editorial] model returned no structured output", {
+      mode: args.mode,
+      refusal: typeof refusal === "string" ? refusal.slice(0, 200) : null,
+      finishReason: completion.choices[0]?.finish_reason ?? null,
+    });
     throw new EditorialError(
       "editorial_generation_failed",
       "Model returned no structured editorial output",

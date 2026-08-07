@@ -521,6 +521,27 @@ describe("Recovery path (one pass)", () => {
   });
 });
 
+describe("Editorial structured output schema", () => {
+  it("converts package schema for OpenAI (no unsupported optional fields)", async () => {
+    const { zodResponseFormat } = await import("openai/helpers/zod");
+    const {
+      editorialPackageModelSchema,
+      editorialRecoveryModelSchema,
+      editorialSingleModelSchema,
+    } = await import("@/lib/editorial/generate-schema");
+
+    assert.doesNotThrow(() =>
+      zodResponseFormat(editorialPackageModelSchema, "fenn_editorial_package"),
+    );
+    assert.doesNotThrow(() =>
+      zodResponseFormat(editorialSingleModelSchema, "fenn_editorial_transmission"),
+    );
+    assert.doesNotThrow(() =>
+      zodResponseFormat(editorialRecoveryModelSchema, "fenn_editorial_recovery"),
+    );
+  });
+});
+
 describe("Editorial Room surface and security (source)", () => {
   it("migration stores runs and transmissions with RLS service-role only", () => {
     const mig = read(

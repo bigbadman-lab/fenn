@@ -7,6 +7,10 @@ import { mapDeskError } from "@/lib/desk/route-errors";
 import { regenerateEditorialTransmission } from "@/lib/editorial";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 const bodySchema = z.object({
   confirm: z.literal(true),
 });

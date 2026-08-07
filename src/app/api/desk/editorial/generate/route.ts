@@ -7,6 +7,11 @@ import { mapDeskError } from "@/lib/desk/route-errors";
 import { prepareTodaysEditorialPackage } from "@/lib/editorial";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+/** Editorial package generation is model-bound; allow a full newsroom pass. */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 120;
+
 const bodySchema = z.object({
   confirm: z.literal(true),
   coveredDate: z

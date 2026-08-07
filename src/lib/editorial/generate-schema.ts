@@ -1,32 +1,32 @@
 import { z } from "zod";
 
 import {
-  EDITORIAL_CATEGORIES,
   EDITORIAL_MODES,
   EDITORIAL_PACKAGE_SIZE,
   categoryForMode,
-  type EditorialCategory,
   type EditorialMode,
 } from "@/lib/editorial/categories";
 import type { EditorialDraftTransmission } from "@/lib/editorial/types";
-
-const categoryEnum = z.enum(
-  EDITORIAL_CATEGORIES as unknown as [EditorialCategory, ...EditorialCategory[]],
-);
 
 const modeEnum = z.enum(
   EDITORIAL_MODES as unknown as [EditorialMode, ...EditorialMode[]],
 );
 
+/**
+ * Model output schema.
+ *
+ * OpenAI structured outputs require every field to be required
+ * (no .optional() without .nullable()). Category is assigned server-side
+ * from mode — never requested from the model.
+ */
 export const editorialTransmissionModelSchema = z.object({
   mode: modeEnum,
-  category: categoryEnum.optional(),
   title: z.string().min(1).max(120),
   body: z.string().min(1).max(2000),
   operatorRationale: z.string().min(1).max(500),
   sourceSignals: z.array(z.string().min(1).max(64)).max(12),
   confidence: z.enum(["high", "medium", "low"]),
-  grounded: z.boolean().optional().default(false),
+  grounded: z.boolean(),
 });
 
 export const editorialPackageModelSchema = z.object({
