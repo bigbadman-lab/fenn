@@ -3464,6 +3464,15 @@ a.home-welcome__inline-link:focus-visible {
   letter-spacing: 0.03em;
 }
 
+.commons-subheading {
+  margin: 1.1rem 0 0.45rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-hoard);
+  font-weight: 500;
+}
+
 .commons-table {
   width: 100%;
   border-collapse: collapse;

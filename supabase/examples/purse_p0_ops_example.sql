@@ -1,0 +1,40 @@
+-- FENN Purse Stage P0 — Operator configuration EXAMPLE (non-migration)
+--
+-- Do NOT apply as a migration.
+-- Do NOT commit real production wallet addresses here.
+-- Private keys never belong in SQL / Supabase.
+--
+-- Live P0 balances + transfer require ALL of:
+--   1. ROBINHOOD_CHAIN_RPC_URL (server env)
+--   2. FENN_PURSE_PRIVATE_KEY (server env — never NEXT_PUBLIC_*)
+--   3. One row in public.purse_config (address matches the private key)
+--   4. Official FENN row in public.treasury_assets (existing Stage 9 path)
+--
+-- Replace PLACEHOLDER values before running in a trusted SQL editor.
+
+-- ---------------------------------------------------------------------------
+-- 1) Canonical Purse wallet (singleton)
+-- ---------------------------------------------------------------------------
+-- INSERT INTO public.purse_config (
+--   purse_wallet_address,
+--   is_enabled,
+--   notes,
+--   updated_by_actor_id
+-- ) VALUES (
+--   '0xPLACEHOLDER_PURSE_WALLET_LOWERCASE_40HEX',
+--   true,
+--   'p0 bootstrap — not treasury',
+--   'ops:manual'
+-- );
+--
+-- Address must already be lowercase 0x + 40 hex (is_normalized_evm_address).
+-- The address must match the account derived from FENN_PURSE_PRIVATE_KEY.
+
+-- ---------------------------------------------------------------------------
+-- 2) Inspect after a manual transfer
+-- ---------------------------------------------------------------------------
+-- SELECT operation_id, status, recipient_address, amount_formatted,
+--        tx_hash, confirmed_at, failure_class, last_error
+-- FROM public.purse_transfers
+-- ORDER BY created_at DESC
+-- LIMIT 20;

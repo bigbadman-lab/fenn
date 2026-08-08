@@ -10,7 +10,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --conditions=react-server --test src/lib/leaf/**/*.test.ts src/lib/deeds/**/*.test.ts src/lib/admin/**/*.test.ts src/lib/desk/**/*.test.ts src/lib/wallet/**/*.test.ts src/lib/camp/**/*.test.ts src/lib/greenwood/**/*.test.ts src/lib/road/**/*.test.ts src/lib/treasury/**/*.test.ts src/lib/commons/**/*.test.ts src/lib/wall/**/*.test.ts src/lib/canon/**/*.test.ts src/lib/memory/**/*.test.ts src/lib/agent/**/*.test.ts src/lib/x/**/*.test.ts src/lib/world-pulse/**/*.test.ts src/lib/ledger/**/*.test.ts src/lib/home/**/*.test.ts src/lib/live-ticker/**/*.test.ts src/lib/chronicle/**/*.test.ts src/lib/ops/**/*.test.ts src/lib/first-thirty/**/*.test.ts src/lib/invites/**/*.test.ts src/lib/auth/**/*.test.ts src/lib/editorial/**/*.test.ts src/lib/site/**/*.test.ts src/lib/shell/**/*.test.ts src/lib/fenn-voice/**/*.test.ts src/lib/profiles/**/*.test.ts src/lib/clearing/**/*.test.ts src/lib/market-watch/**/*.test.ts",
+    "test": "tsx --conditions=react-server --test src/lib/leaf/**/*.test.ts src/lib/deeds/**/*.test.ts src/lib/admin/**/*.test.ts src/lib/desk/**/*.test.ts src/lib/wallet/**/*.test.ts src/lib/camp/**/*.test.ts src/lib/greenwood/**/*.test.ts src/lib/road/**/*.test.ts src/lib/treasury/**/*.test.ts src/lib/commons/**/*.test.ts src/lib/wall/**/*.test.ts src/lib/canon/**/*.test.ts src/lib/memory/**/*.test.ts src/lib/agent/**/*.test.ts src/lib/x/**/*.test.ts src/lib/world-pulse/**/*.test.ts src/lib/ledger/**/*.test.ts src/lib/home/**/*.test.ts src/lib/live-ticker/**/*.test.ts src/lib/chronicle/**/*.test.ts src/lib/ops/**/*.test.ts src/lib/first-thirty/**/*.test.ts src/lib/invites/**/*.test.ts src/lib/auth/**/*.test.ts src/lib/editorial/**/*.test.ts src/lib/site/**/*.test.ts src/lib/shell/**/*.test.ts src/lib/fenn-voice/**/*.test.ts src/lib/profiles/**/*.test.ts src/lib/clearing/**/*.test.ts src/lib/market-watch/**/*.test.ts src/lib/purse/**/*.test.ts",
     "canon:sync": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/sync-fenn-canon.ts",
     "memory:process-pending": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/process-pending-memory.ts",
     "memory:index": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/index-fenn-memory.ts",
@@ -27,7 +27,8 @@
     "chronicle:daily": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/chronicle-daily.ts",
     "market-watch:worker": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-worker.ts",
     "market-watch:replay": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-replay.ts",
-    "market-watch:verify": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-verify.ts"
+    "market-watch:verify": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-verify.ts",
+    "purse:transfer-one": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/purse-transfer-one.ts"
   },
   "dependencies": {
     "@privy-io/node": "^0.27.0",

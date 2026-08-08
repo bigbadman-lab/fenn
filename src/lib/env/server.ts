@@ -78,6 +78,13 @@ const serverOnlySchema = z.object({
    * This env value must not override a populated DB row.
    */
   FENN_TREASURY_ADDRESS: optionalSecret,
+  /**
+   * THE PURSE OF FENN — server-only private key for operator-manual ERC-20 transfer (P0).
+   * Hex 32-byte key. Never NEXT_PUBLIC_*. Never store in Supabase.
+   * Public Purse address lives in purse_config (DB). Key must match that address.
+   * Missing is fine for website boot; transfer CLI fails closed without it.
+   */
+  FENN_PURSE_PRIVATE_KEY: optionalSecret,
   X_API_KEY: optionalSecret,
   X_API_SECRET: optionalSecret,
   X_BEARER_TOKEN: optionalSecret,
@@ -118,6 +125,7 @@ function readServerOnlyEnv(): ServerOnlyEnv {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ROBINHOOD_CHAIN_RPC_URL: process.env.ROBINHOOD_CHAIN_RPC_URL,
     FENN_TREASURY_ADDRESS: process.env.FENN_TREASURY_ADDRESS,
+    FENN_PURSE_PRIVATE_KEY: process.env.FENN_PURSE_PRIVATE_KEY,
     X_API_KEY: process.env.X_API_KEY,
     X_API_SECRET: process.env.X_API_SECRET,
     X_BEARER_TOKEN: process.env.X_BEARER_TOKEN,

@@ -1,0 +1,114 @@
+import type { PurseFailureClass, PurseTransferStatus } from "@/lib/purse/constants";
+
+/** Public Purse wallet identity (no notes / keys / actors). */
+export type PublicPurseConfig = {
+  configured: true;
+  walletAddress: string;
+  isEnabled: boolean;
+};
+
+export type PurseConfigState =
+  | { configured: false }
+  | PublicPurseConfig;
+
+/** Durable settlement row (server-side). */
+export type PurseTransferRow = {
+  id: string;
+  operationId: string;
+  recipientAddress: string;
+  amountRaw: string;
+  amountFormatted: string;
+  tokenAddress: string;
+  chainId: number;
+  txHash: string | null;
+  status: PurseTransferStatus;
+  failureClass: PurseFailureClass | null;
+  lastError: string | null;
+  actorId: string | null;
+  createdAt: string;
+  submittedAt: string | null;
+  confirmedAt: string | null;
+};
+
+/** Public confirmed movement for Commons. */
+export type PublicPurseTransfer = {
+  id: string;
+  operationId: string;
+  recipientAddress: string;
+  amountFormatted: string;
+  tokenAddress: string;
+  chainId: number;
+  txHash: string;
+  confirmedAt: string;
+  explorerTxUrl: string | null;
+};
+
+export type PublicPurseFennBalance =
+  | {
+      state: "available";
+      balance: string;
+      decimals: number;
+      tokenAddress: string;
+      symbol: "FENN";
+      chainId: number;
+    }
+  | {
+      state: "unavailable";
+      reason: "rpc_failed" | "token_unavailable" | "configuration_error";
+    };
+
+/**
+ * Public Purse snapshot for /commons.
+ * Balance from live chain. History is confirmed DB rows only.
+ */
+export type PublicPurseSnapshot =
+  | {
+      state: "unconfigured";
+    }
+  | {
+      state: "ready";
+      purseAddress: string;
+      isEnabled: boolean;
+      observedAt: string;
+      fennBalance: PublicPurseFennBalance;
+      transfers: PublicPurseTransfer[];
+    }
+  | {
+      state: "unavailable";
+      purseAddress: string;
+      isEnabled: boolean;
+      observedAt: string;
+      fennBalance: PublicPurseFennBalance;
+      transfers: PublicPurseTransfer[];
+    };
+
+export type ManualOneFennTransferInput = {
+  recipientAddress: string;
+  operationId: string;
+  actorId?: string;
+};
+
+export type ManualOneFennTransferResult =
+  | {
+      ok: true;
+      status: "confirmed";
+      operationId: string;
+      transferId: string;
+      recipientAddress: string;
+      amountFormatted: "1";
+      tokenAddress: string;
+      chainId: number;
+      purseAddress: string;
+      txHash: string;
+      confirmedAt: string;
+      reusedExisting: boolean;
+    }
+  | {
+      ok: false;
+      code: string;
+      message: string;
+      operationId: string;
+      status?: PurseTransferStatus;
+      txHash?: string | null;
+      failureClass?: PurseFailureClass | null;
+    };
