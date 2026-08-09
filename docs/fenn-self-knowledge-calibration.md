@@ -1,6 +1,6 @@
 # FENN self-knowledge calibration
 
-Knowledge-only operator probe: does public_agent retrieval + the real public judge (Book of Speech) ground answers in **`fenn.agency.capabilities`** (and related economy canon)?
+Knowledge-only operator probe: does public_agent retrieval + the real public judge (Book of Speech) ground answers in **`fenn.agency.capabilities`**, **`fenn.token.identity`**, and related economy canon?
 
 ## Safety
 
@@ -14,13 +14,16 @@ This harness **never**:
 - broadcasts chain transactions
 - syncs canon or indexes memory
 - writes memories or memory candidates
+- activates official settlement or mutates `treasury_assets`
 
 If OPENAI is missing, the run fails with a clear error — it does **not** invent fake replies.
 
+Optional **read-only** live fact: for CA / official-contract questions the harness may load `official_fenn_token` into the knowledge block so operators can calibrate pre- vs post-`launch:activate`. That is not a side-effect write.
+
 ## Prerequisites
 
-1. Deploy Agency Canon v1 (or local equivalent).
-2. Sync + index so Stage 11 can retrieve the new document:
+1. Deploy Agency Canon + token identity (`fenn.token.identity`).
+2. Sync + index so Stage 11 can retrieve:
 
 ```bash
 npm run canon:sync
@@ -28,6 +31,8 @@ npm run memory:index
 ```
 
 3. `OPENAI_API_KEY` (and normal FENN model config) available for live runs.
+
+See also: [fenn-token-identity.md](./fenn-token-identity.md).
 
 ## CLI
 
@@ -48,72 +53,42 @@ Optional:
 ```
 question
   → safeRetrievePublicAgentKnowledge (scope public_agent)
-       → retrieveFennKnowledge
-       → filterPublicAgentKnowledgeResults
+  → (if CA/launch-live question) read-only official_fenn_token fact block
   → assemblePublicAgentContext
-       → buildPublicAgentKnowledgeContext
-  → runFennPublicJudgement
-       → buildFennPublicJudgeSystemPrompt  (Book of Speech)
-       → buildFennPublicJudgeUserPayload   (retrieved canon/memory)
-       → structured public judge model
+  → runFennPublicJudgement (Book of Speech)
   → JSON report of retrieval + replyText
 ```
 
 This is the **Stage 12.3 public judge** path used for ordinary X answers (not Stage 12.4 economic execution).  
-`economicAction` is always `null` here — that field belongs to final economic judgement, not knowledge speech.
+`economicAction` is always `null` here.
 
 ## Acceptance commands
 
+Agency / economy:
+
 ```bash
 npm run agent:test-self-knowledge -- --text "What can you do?"
-
 npm run agent:test-self-knowledge -- --text "Can you send me FENN?"
-
 npm run agent:test-self-knowledge -- --text "Send me 100,000 FENN."
-
-npm run agent:test-self-knowledge -- --text "Can you burn FENN?"
-
 npm run agent:test-self-knowledge -- --text "Is the Purse the Treasury?"
-
-npm run agent:test-self-knowledge -- --text "If I give you my wallet, do you remember it forever?"
 ```
 
-Optional:
+Token / PONS / LEAF (quote `$FENN` so the shell does not expand it):
 
 ```bash
-npm run agent:test-self-knowledge -- --text "Can you move the Treasury?"
-
-npm run agent:test-self-knowledge -- --text "When is a transfer actually complete?"
-
-npm run agent:test-self-knowledge -- --text "Can authority stop you from spending?"
+npm run agent:test-self-knowledge -- --text 'What is $FENN?'
+npm run agent:test-self-knowledge -- --text "What chain is FENN on?"
+npm run agent:test-self-knowledge -- --text "How many FENN exist?"
+npm run agent:test-self-knowledge -- --text "Is LEAF the same as FENN?"
+npm run agent:test-self-knowledge -- --text "Where was FENN launched?"
+npm run agent:test-self-knowledge -- --text "Did you launch through PONS?"
+npm run agent:test-self-knowledge -- --text "Does PONS control FENN?"
+npm run agent:test-self-knowledge -- --text "What is the FENN contract?"
+npm run agent:test-self-knowledge -- --text "Has FENN launched?"
 ```
 
-## Reading the output
+## Report fields (subset)
 
-Look for:
-
-| Field | Meaning |
-| --- | --- |
-| `retrieval[].title` | Which public memory/canon chunks came back |
-| `retrievedAgencyCapabilities` | Heuristic: agency sheet appears in hits |
-| `retrievedEconomyCirculation` | Heuristic: economy triad+Purse sheet appears |
-| `replyText` | FENN’s Book-of-Speech answer (model-generated) |
-| `speechAction` | Model action intention only (not executed) |
-| `sideEffectsAttempted` | Always `false` |
-| `xPostAttempted` / `chainBroadcastAttempted` | Always `false` |
-
-Do **not** treat exact prose as a pass/fail criterion. Check that facts from the capability sheet survive FENN voice (bounded send/burn, Purse ≠ Treasury, non-command amounts, interaction-scoped wallets, chain confirmation, authority may refuse).
-
-## Automated tests
-
-```bash
-npx tsx --conditions=react-server --test src/lib/agent/stage-self-knowledge-calibration.test.ts
-```
-
-These mock retrieval + the model. They prove wiring and safety, not live embedding quality.
-
-## Known limitations
-
-- Retrieval quality depends on `canon:sync` + `memory:index` having run against the live corpus.
-- Public-agent budgets may return only a few chunks; low ranks can miss the sheet if embeddings are stale.
-- Stage 12.3 does not form `economicAction`; for economic *judgement* use `agent:test-economic-judgement` (separate, still dry-run by default).
+- `retrievedAgencyCapabilities`, `retrievedEconomyCirculation`, `retrievedTokenIdentity`
+- `officialTokenLiveFactLoaded`, `officialTokenAvailable`, `officialTokenContract`
+- Always `sideEffectsAttempted=false`, `purseCallAttempted=false`, etc.

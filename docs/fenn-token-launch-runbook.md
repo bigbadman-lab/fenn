@@ -131,3 +131,4 @@ This is **not** economic authority or P2B ceiling law.
 - Activation SQL is emergency fallback with the same single-column intent.
 - Neither path sets settlement activation; Purse Executor does that on tick.
 - `launch:check` is read-only (`sideEffectsAttempted=false`, `chainBroadcastAttempted=false`).
+- Token identity knowledge (P2D): [fenn-token-identity.md](./fenn-token-identity.md) — **never** store the official CA in Canon; live CA follows `launch:activate`.

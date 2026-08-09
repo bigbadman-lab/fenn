@@ -26,6 +26,7 @@ const REQUIRED_KEYS = [
   "fenn.agency.capabilities",
   "fenn.wall",
   "fenn.knowledge",
+  "fenn.token.identity",
   "fenn.philosophy.crown",
   "fenn.philosophy.road",
 ] as const;
@@ -64,6 +65,23 @@ describe("Fenn Canon corpus", () => {
     assert.ok(wall);
     assert.match(wall.content, /FENN speaks/);
     assert.match(wall.content, /Everyone else witnesses/);
+  });
+
+  it("registers $FENN token identity as public stable knowledge without live CA", () => {
+    const token = getFennCanonDocument("fenn.token.identity");
+    assert.ok(token);
+    assert.equal(token.visibility, "public");
+    assert.match(token.content, /Robinhood Chain/i);
+    assert.match(token.content, /4663/);
+    assert.match(token.content, /ERC-20/i);
+    assert.match(token.content, /\b18\b/);
+    assert.match(token.content, /1,000,000,000/);
+    assert.match(token.content, /10,000,000/);
+    assert.match(token.content, /PONS/i);
+    assert.match(token.content, /LEAF is not/i);
+    assert.match(token.content, /live state/i);
+    assert.doesNotMatch(token.content, /0x[a-fA-F0-9]{40}/);
+    assert.doesNotMatch(token.content, /P2[A-F]|Stage 12|launch:activate|OPENAI|RPC/i);
   });
 
   it("preserves Treasury/Commons/Purse/Circulation/Ledger distinction without live amounts", () => {

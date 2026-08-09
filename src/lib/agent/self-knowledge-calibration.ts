@@ -3,6 +3,10 @@
  *
  * Exercises production Stage 11 public_agent retrieval + Stage 12 public
  * judge (Book of Speech) without claim, authorize, execute, X, Purse, or chain.
+ *
+ * P2D: may optionally attach trusted live official_fenn_token read
+ * (read-only) when the question needs contract/CA/launch-as-live context.
+ * That is not a speech-side-effect write.
  */
 import "server-only";
 
@@ -29,6 +33,11 @@ import { STAGE12_JUDGE_PROMPT_VERSION } from "@/lib/agent/judge-config";
 import { AgentJudgeError } from "@/lib/agent/judge-errors";
 import type { RetrievedFennKnowledge } from "@/lib/memory/retrieve";
 import { retrieveFennKnowledge } from "@/lib/memory/retrieve";
+import {
+  loadOfficialTokenLiveContextForCalibration,
+  questionNeedsOfficialTokenLiveState,
+} from "@/lib/agent/token-live-knowledge";
+import type { PublicFactEvidence } from "@/lib/agent/public-fact-evidence";
 import { createHash } from "node:crypto";
 
 export const SELF_KNOWLEDGE_CALIBRATION_MODE =
@@ -58,6 +67,15 @@ export type SelfKnowledgeCalibrationResult = {
   retrievedAgencyCapabilities: boolean;
   /** Operator hint: economy circulation sheet content appears in hits. */
   retrievedEconomyCirculation: boolean;
+  /** Operator hint: fenn.token.identity sheet content appears in hits. */
+  retrievedTokenIdentity: boolean;
+  /**
+   * True when calibration attached a read-only official_fenn_token fact block
+   * (or explicitly attempted that live config read for a token-live question).
+   */
+  officialTokenLiveFactLoaded: boolean;
+  officialTokenAvailable: boolean | null;
+  officialTokenContract: string | null;
   replyText: string | null;
   speechAction: string | null;
   reasonCode: string | null;
@@ -88,6 +106,14 @@ export type SelfKnowledgeCalibrationDeps = {
   callModel?: JudgeModelCaller;
   /** Soft timeout for knowledge lookup (ms). */
   timeoutMs?: number;
+  /**
+   * Override read-only live official token fact for contract/CA questions.
+   * Default: production public_fact_readers when question needs live token.
+   * Pass a function that returns UNAVAILABLE to test pre-launch.
+   */
+  loadOfficialTokenFact?: () => Promise<PublicFactEvidence>;
+  /** When true, never load live token fact even for CA questions (unit tests). */
+  skipOfficialTokenLiveFact?: boolean;
 };
 
 function syntheticXPostId(question: string): string {
@@ -147,6 +173,23 @@ export function looksLikeEconomyCirculation(row: {
   );
 }
 
+/** Content match for fenn.token.identity / $FENN sheet. */
+export function looksLikeTokenIdentity(row: {
+  title: string;
+  text: string;
+}): boolean {
+  const blob = `${row.title}\n${row.text}`;
+  return (
+    /fenn\.token\.identity/i.test(blob) ||
+    (/\$FENN is the on-chain token/i.test(blob) &&
+      /Robinhood Chain/i.test(blob) &&
+      /PONS/i.test(blob)) ||
+    (/\b1,000,000,000\b/.test(blob) &&
+      /LEAF is not/i.test(blob) &&
+      /official contract address comes only from trusted live state/i.test(blob))
+  );
+}
+
 function buildDefaultRetriever(limit: number): PublicAgentKnowledgeRetriever {
   return async (args) =>
     retrieveFennKnowledge({
@@ -181,6 +224,10 @@ export async function runSelfKnowledgeCalibration(
     knowledgeContextChars: 0,
     retrievedAgencyCapabilities: false,
     retrievedEconomyCirculation: false,
+    retrievedTokenIdentity: false,
+    officialTokenLiveFactLoaded: false,
+    officialTokenAvailable: null,
+    officialTokenContract: null,
     replyText: null,
     speechAction: null,
     reasonCode: null,
@@ -236,6 +283,42 @@ export async function runSelfKnowledgeCalibration(
   const retrievedEconomyCirculation = knowledge.results.some((r) =>
     looksLikeEconomyCirculation({ title: r.title ?? "", text: r.text }),
   );
+  const retrievedTokenIdentity = knowledge.results.some((r) =>
+    looksLikeTokenIdentity({ title: r.title ?? "", text: r.text }),
+  );
+
+  let knowledgeContext = assembled.knowledgeContext;
+  let officialTokenLiveFactLoaded = false;
+  let officialTokenAvailable: boolean | null = null;
+  let officialTokenContract: string | null = null;
+
+  const needsTokenLive =
+    !deps.skipOfficialTokenLiveFact &&
+    questionNeedsOfficialTokenLiveState(question);
+
+  if (needsTokenLive) {
+    try {
+      const live = await loadOfficialTokenLiveContextForCalibration(question, {
+        readToken: deps.loadOfficialTokenFact,
+      });
+      officialTokenLiveFactLoaded = true;
+      officialTokenAvailable = live.fact.available;
+      officialTokenContract = live.officialContract;
+      knowledgeContext = knowledgeContext
+        ? `${knowledgeContext}\n\n${live.block}`
+        : live.block;
+    } catch {
+      officialTokenLiveFactLoaded = true;
+      officialTokenAvailable = false;
+      officialTokenContract = null;
+      knowledgeContext = knowledgeContext
+        ? `${knowledgeContext}\n\nofficial_fenn_token: UNAVAILABLE (live read failed closed)`
+        : "official_fenn_token: UNAVAILABLE (live read failed closed)";
+    }
+  }
+
+  const knowledgeAvailable =
+    assembled.knowledgeAvailable || officialTokenLiveFactLoaded;
 
   try {
     const intention = await runFennPublicJudgement({
@@ -244,8 +327,8 @@ export async function runSelfKnowledgeCalibration(
       authorXUserId: CALIBRATION_AUTHOR_X_USER_ID,
       authorUsername: "self_knowledge_calibration",
       body: question,
-      knowledgeAvailable: assembled.knowledgeAvailable,
-      knowledgeContext: assembled.knowledgeContext,
+      knowledgeAvailable,
+      knowledgeContext,
       callModel: deps.callModel,
     });
 
@@ -254,10 +337,14 @@ export async function runSelfKnowledgeCalibration(
       mode: SELF_KNOWLEDGE_CALIBRATION_MODE,
       question,
       retrieval,
-      knowledgeAvailable: assembled.knowledgeAvailable,
-      knowledgeContextChars: assembled.knowledgeContext?.length ?? 0,
+      knowledgeAvailable,
+      knowledgeContextChars: knowledgeContext?.length ?? 0,
       retrievedAgencyCapabilities,
       retrievedEconomyCirculation,
+      retrievedTokenIdentity,
+      officialTokenLiveFactLoaded,
+      officialTokenAvailable,
+      officialTokenContract,
       replyText: intention.replyText,
       speechAction: intention.action,
       reasonCode: intention.reasonCode,
@@ -290,10 +377,14 @@ export async function runSelfKnowledgeCalibration(
     return {
       ...baseFail(errorCode, errorMessage),
       retrieval,
-      knowledgeAvailable: assembled.knowledgeAvailable,
-      knowledgeContextChars: assembled.knowledgeContext?.length ?? 0,
+      knowledgeAvailable,
+      knowledgeContextChars: knowledgeContext?.length ?? 0,
       retrievedAgencyCapabilities,
       retrievedEconomyCirculation,
+      retrievedTokenIdentity,
+      officialTokenLiveFactLoaded,
+      officialTokenAvailable,
+      officialTokenContract,
       durationMs: Date.now() - started,
     };
   }

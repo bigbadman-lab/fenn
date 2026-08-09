@@ -35,7 +35,21 @@ export function isSelfKnowledgeOrEconomicBoundaryConversation(
     /\bhow do you know where to send\b/i.test(t) ||
     /\bwhen is (a |the )?transfer (actually )?complete\b/i.test(t) ||
     /\bremember (it |my wallet )?forever\b/i.test(t) ||
-    /\bpermanent (identity|wallet)\b/i.test(t)
+    /\bpermanent (identity|wallet)\b/i.test(t) ||
+    // P2D — token identity / LEAF / PONS / CA (still speech-only at 12.3)
+    /\bwhat is \$?fenn\b/i.test(t) ||
+    /\bwhat is your token\b/i.test(t) ||
+    /\bhow many fenn (exist|are there)\b/i.test(t) ||
+    /\bhow many decimals\b/i.test(t) ||
+    /\bwhat chain is fenn\b/i.test(t) ||
+    /\bis leaf\b/i.test(t) ||
+    /\bleaf (the same|on-chain|for fenn)\b/i.test(t) ||
+    /\b(pons|launchpad)\b/i.test(t) ||
+    /\bwhere was fenn launched\b/i.test(t) ||
+    /\b(did you|how did you) (launch|deploy)\b/i.test(t) ||
+    /\b(what is|what'?s) (the )?(fenn )?(ca|contract)\b/i.test(t) ||
+    /\bhas fenn launched\b/i.test(t) ||
+    /\bofficial (fenn )?contract\b/i.test(t)
   ) {
     return true;
   }

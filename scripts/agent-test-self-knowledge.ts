@@ -97,6 +97,16 @@ async function main() {
     console.log(
       `retrievedEconomyCirculation: ${result.retrievedEconomyCirculation}`,
     );
+    console.log(`retrievedTokenIdentity: ${result.retrievedTokenIdentity}`);
+    console.log(
+      `officialTokenLiveFactLoaded: ${result.officialTokenLiveFactLoaded}`,
+    );
+    console.log(
+      `officialTokenAvailable: ${result.officialTokenAvailable}`,
+    );
+    console.log(
+      `officialTokenContract: ${result.officialTokenContract}`,
+    );
     if (args.showRetrieval) {
       console.log("retrieval:");
       for (const row of result.retrieval) {
