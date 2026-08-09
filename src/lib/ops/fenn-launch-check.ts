@@ -471,9 +471,11 @@ export async function runFennLaunchCheck(
 
   let limitsOk = false;
   let limitsError: string | null = null;
-  let maxTransfer = PRODUCTION_HARD_MAX_SINGLE_TRANSFER_FORMATTED;
-  let maxBurn = PRODUCTION_HARD_MAX_SINGLE_BURN_FORMATTED;
-  let maxRolling = PRODUCTION_HARD_MAX_ROLLING_24H_OUTFLOW_FORMATTED;
+  // Widen to string: production hard-max consts are literal strings, but loaded
+  // ceilings may be strictly smaller env-tightened values.
+  let maxTransfer: string = PRODUCTION_HARD_MAX_SINGLE_TRANSFER_FORMATTED;
+  let maxBurn: string = PRODUCTION_HARD_MAX_SINGLE_BURN_FORMATTED;
+  let maxRolling: string = PRODUCTION_HARD_MAX_ROLLING_24H_OUTFLOW_FORMATTED;
   try {
     const loadLimits =
       deps.loadLimits ?? loadProductionEconomicAuthorityLimits;
