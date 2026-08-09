@@ -12,6 +12,7 @@ import {
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { CLEARING_PATH } from "@/lib/clearing/origin";
+import { CLEARING_PUBLIC_SURFACE_ENABLED } from "@/lib/clearing/visibility";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 
 function LeaveConfirmDialog({
@@ -188,9 +189,11 @@ export function ShellAuthControls() {
       <Link href="/outlaw" className="btn-text">
         [ outlaw {formatOutlawNumber(profile.outlawNumber)} ]
       </Link>
-      <Link href={CLEARING_PATH} className="btn-text">
-        [ clearing ]
-      </Link>
+      {CLEARING_PUBLIC_SURFACE_ENABLED ? (
+        <Link href={CLEARING_PATH} className="btn-text">
+          [ clearing ]
+        </Link>
+      ) : null}
       <button type="button" className="btn-text" onClick={requestLeave}>
         [ leave ]
       </button>

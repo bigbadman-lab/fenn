@@ -288,11 +288,12 @@ describe("Clearing post domain rules (source)", () => {
     assert.doesNotMatch(mig, /market_watch/i);
   });
 
-  it("no Market Watch worker; public route exists under /camp/clearing", () => {
+  it("no Market Watch worker; public route module exists under /camp/clearing", () => {
     const travellerRoute = read("src/app/api/clearing/traveller/route.ts");
     assert.match(travellerRoute, /mintOrResumeTraveller/);
     const page = read("src/app/camp/clearing/page.tsx");
     assert.match(page, /ClearingPage/);
+    assert.match(page, /CLEARING_PUBLIC_SURFACE_ENABLED/);
   });
 });
 

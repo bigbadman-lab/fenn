@@ -22,6 +22,7 @@ import {
   CLEARING_SLOW_MODE_PRESETS,
 } from "@/lib/clearing/desk-types";
 import { CLEARING_DESK_POLL_MS } from "@/lib/clearing/config";
+import { CLEARING_PUBLIC_SURFACE_ENABLED } from "@/lib/clearing/visibility";
 
 const POLL_MS = CLEARING_DESK_POLL_MS;
 
@@ -202,9 +203,14 @@ export function DeskClearingPanel() {
       </div>
       <p className="muted">Keeper control of the public road.</p>
       <p className="muted">
-        <Link href="/camp/clearing" className="btn-text">
-          [ open public clearing ]
+        <Link href="/desk" className="btn-text">
+          [ desk overview ]
         </Link>
+        {CLEARING_PUBLIC_SURFACE_ENABLED ? (
+          <Link href="/camp/clearing" className="btn-text">
+            [ open public clearing ]
+          </Link>
+        ) : null}
       </p>
 
       <p className="desk-divider" aria-hidden>

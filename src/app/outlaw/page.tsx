@@ -12,6 +12,7 @@ import {
   CLEARING_PATH,
   peekClearingRegistrationOrigin,
 } from "@/lib/clearing/origin";
+import { CLEARING_PUBLIC_SURFACE_ENABLED } from "@/lib/clearing/visibility";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 
 function formatJoinedDate(iso: string): string {
@@ -146,16 +147,18 @@ export default function OutlawPage() {
         }
       />
 
-      <div className="place__body outlaw-page__clearing-return">
-        {fromClearing ? <p>YOUR NAME IS WRITTEN.</p> : null}
-        <p>
-          <Link href={CLEARING_PATH} className="btn-text">
-            {fromClearing
-              ? "[ RETURN TO THE CLEARING ]"
-              : "[ THE CLEARING ]"}
-          </Link>
-        </p>
-      </div>
+      {CLEARING_PUBLIC_SURFACE_ENABLED ? (
+        <div className="place__body outlaw-page__clearing-return">
+          {fromClearing ? <p>YOUR NAME IS WRITTEN.</p> : null}
+          <p>
+            <Link href={CLEARING_PATH} className="btn-text">
+              {fromClearing
+                ? "[ RETURN TO THE CLEARING ]"
+                : "[ THE CLEARING ]"}
+            </Link>
+          </p>
+        </div>
+      ) : null}
 
       <div className="place__body profile-block outlaw-page__identity">
         <p>

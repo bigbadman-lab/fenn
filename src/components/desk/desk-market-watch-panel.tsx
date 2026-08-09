@@ -710,8 +710,6 @@ export function DeskMarketWatchPanel() {
             </p>
             <p>
               <Link href="/desk">[ desk ]</Link>
-              {" · "}
-              <Link href="/desk/clearing">[ clearing ]</Link>
             </p>
           </footer>
         </>

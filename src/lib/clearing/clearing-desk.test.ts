@@ -19,18 +19,21 @@ function read(rel: string): string {
 }
 
 describe("Clearing 1.0C Desk access and route", () => {
-  it("exposes /desk/clearing with DeskGate layout", () => {
+  it("exposes /desk/clearing module; desk surface gated while hidden", () => {
     const page = read("src/app/desk/clearing/page.tsx");
     assert.match(page, /DeskClearingPanel/);
-    assert.match(page, /THE CLEARING/);
+    assert.match(page, /CLEARING_DESK_SURFACE_ENABLED/);
+    assert.match(page, /notFound/);
     const layout = read("src/app/desk/layout.tsx");
     assert.match(layout, /DeskGate/);
+    const visibility = read("src/lib/clearing/visibility.ts");
+    assert.match(visibility, /CLEARING_DESK_SURFACE_ENABLED\s*=\s*false/);
   });
 
-  it("Desk nav includes CLEARING link", () => {
+  it("Desk nav omits CLEARING link while desk surface is hidden", () => {
     const gate = read("src/components/desk/desk-gate.tsx");
+    assert.match(gate, /CLEARING_DESK_SURFACE_ENABLED/);
     assert.match(gate, /href="\/desk\/clearing"/);
-    assert.match(gate, /CLEARING/);
   });
 
   it("GET /api/desk/clearing requires Desk access", () => {
@@ -128,7 +131,7 @@ describe("Clearing Desk UI panel", () => {
 
   it("public clearing and camp AI remain separate surfaces", () => {
     const camp = read("src/components/camp/camp-ground.tsx");
-    assert.match(camp, /GO TO THE CLEARING/);
+    assert.doesNotMatch(camp, /GO TO THE CLEARING/);
     assert.match(camp, /FENN/);
     const publicUi = read("src/components/clearing/clearing-page.tsx");
     assert.match(publicUi, /Nothing spoken here earns LEAF automatically/);

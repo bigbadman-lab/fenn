@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { CLEARING_DESK_SURFACE_ENABLED } from "@/lib/clearing/visibility";
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import type { SafeDeskKeeper } from "@/lib/desk/types";
 
@@ -58,7 +59,6 @@ function DeskNav() {
   const editorialActive = pathname.startsWith("/desk/editorial");
   const speaksActive = pathname.startsWith("/desk/speaks");
   const agentActive = pathname.startsWith("/desk/agent");
-  const clearingActive = pathname.startsWith("/desk/clearing");
   const marketWatchActive = pathname.startsWith("/desk/market-watch");
 
   return (
@@ -83,16 +83,18 @@ function DeskNav() {
       >
         The Fire
       </Link>
-      <Link
-        href="/desk/clearing"
-        className={
-          clearingActive
-            ? "desk__nav-link desk__nav-link--active"
-            : "desk__nav-link"
-        }
-      >
-        CLEARING
-      </Link>
+      {CLEARING_DESK_SURFACE_ENABLED ? (
+        <Link
+          href="/desk/clearing"
+          className={
+            pathname.startsWith("/desk/clearing")
+              ? "desk__nav-link desk__nav-link--active"
+              : "desk__nav-link"
+          }
+        >
+          CLEARING
+        </Link>
+      ) : null}
       <Link
         href="/desk/market-watch"
         className={

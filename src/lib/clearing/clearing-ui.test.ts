@@ -45,11 +45,13 @@ function msg(
 }
 
 describe("Clearing 1.0B route and orientation", () => {
-  it("exposes /camp/clearing with THE CLEARING title", () => {
+  it("exposes /camp/clearing module; public surface gated while hidden", () => {
     const page = read("src/app/camp/clearing/page.tsx");
-    assert.match(page, /title:\s*"THE CLEARING"/);
-    assert.match(page, /path:\s*"\/camp\/clearing"/);
+    assert.match(page, /CLEARING_PUBLIC_SURFACE_ENABLED/);
+    assert.match(page, /notFound/);
     assert.match(page, /ClearingPage/);
+    const visibility = read("src/lib/clearing/visibility.ts");
+    assert.match(visibility, /CLEARING_PUBLIC_SURFACE_ENABLED\s*=\s*false/);
   });
 
   it("page carries core law copy and no automatic LEAF", () => {
@@ -63,13 +65,10 @@ describe("Clearing 1.0B route and orientation", () => {
     assert.doesNotMatch(ui, /earn LEAF|awarded LEAF|LEAF for speaking/i);
   });
 
-  it("Camp links to The Clearing without redesigning chat roster", () => {
+  it("Camp does not surface The Clearing while public surface is hidden", () => {
     const camp = read("src/components/camp/camp-ground.tsx");
-    assert.match(camp, /href="\/camp\/clearing"/);
-    assert.match(camp, /GO TO THE CLEARING/);
-    assert.match(camp, /Only Outlaws may speak/);
-    assert.match(camp, /No LEAF is awarded automatically here/);
-    assert.match(camp, /FENN, WREN, ROOK/);
+    assert.doesNotMatch(camp, /href="\/camp\/clearing"/);
+    assert.doesNotMatch(camp, /GO TO THE CLEARING/);
   });
 });
 
@@ -204,18 +203,18 @@ describe("Clearing composer and feed UI sources", () => {
     assert.match(feed, /slowModeSeconds/);
   });
 
-  it("outlaw page offers Clearing and register uses homepage section", () => {
+  it("outlaw/shell clearing entry points respect public surface flag", () => {
     const outlaw = read("src/app/outlaw/page.tsx");
+    assert.match(outlaw, /CLEARING_PUBLIC_SURFACE_ENABLED/);
     assert.match(outlaw, /RETURN TO THE CLEARING|THE CLEARING/);
     assert.match(outlaw, /CLEARING_PATH|\/camp\/clearing/);
-    assert.match(outlaw, /\/#outlaw-register/);
     assert.match(outlaw, /peekClearingRegistrationOrigin/);
     const composer = read("src/components/clearing/clearing-composer.tsx");
     assert.match(composer, /CLEARING_REGISTER_HREF|\/#outlaw-register/);
     assert.match(composer, /markClearingRegistrationOrigin/);
     const shell = read("src/components/shell/shell-auth-controls.tsx");
+    assert.match(shell, /CLEARING_PUBLIC_SURFACE_ENABLED/);
     assert.match(shell, /\[ clearing \]/);
-    assert.match(shell, /CLEARING_PATH|\/camp\/clearing/);
   });
 
   it("does not use Supabase from browser components", () => {
