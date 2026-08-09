@@ -66,7 +66,14 @@ describe("P2E OfficialFennContract pending + live wiring", () => {
   it("homepage ISR and commons force-dynamic preserve live update path", () => {
     const page = read("src/app/page.tsx");
     const commons = read("src/app/commons/page.tsx");
+    const identity = read("src/components/home/home-identity.tsx");
     assert.match(page, /revalidate\s*=\s*60/);
+    assert.match(page, /HomeIdentity/);
+    assert.doesNotMatch(page, /HomeOfficialContract/);
+    assert.match(
+      identity,
+      /HomeOfficialContract[\s\S]*FennWorldMap/,
+    );
     assert.match(commons, /dynamic\s*=\s*"force-dynamic"/);
     assert.match(commons, /FennTokenIdentity/);
     assert.match(commons, /OfficialFennContract token=\{officialToken\}/);

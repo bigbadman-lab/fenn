@@ -255,15 +255,25 @@ describe("official FENN source safety + surfaces", () => {
     assert.doesNotMatch(ui, /dexscreener|uniswap|coingecko|market cap|writeContract/i);
   });
 
-  it("homepage mounts compact strip with ISR freshness and pending surface", () => {
+  it("homepage mounts compact strip with ISR freshness in world/map section", () => {
     const page = readFileSync(join(repo, "src/app/page.tsx"), "utf8");
     const home = readFileSync(
       join(repo, "src/components/home/home-official-contract.tsx"),
       "utf8",
     );
-    assert.match(page, /HomeOfficialContract/);
+    const identity = readFileSync(
+      join(repo, "src/components/home/home-identity.tsx"),
+      "utf8",
+    );
+    assert.match(page, /HomeIdentity/);
     assert.match(page, /revalidate\s*=\s*60/);
-    assert.match(page, /HomeGreenwoodTeaser[\s\S]*HomeOfficialContract[\s\S]*HomePaths/);
+    assert.doesNotMatch(page, /HomeOfficialContract/);
+    assert.match(page, /HomeFirstThirty[\s\S]*HomeIdentity[\s\S]*HomeOutlawRegister/);
+    assert.match(identity, /HomeOfficialContract/);
+    assert.match(
+      identity,
+      /home-world-orient[\s\S]*HomeOfficialContract[\s\S]*FennWorldMap/,
+    );
     assert.match(home, /getPublicOfficialFennToken/);
     assert.match(home, /OfficialFennContract token=\{token\}/);
     assert.doesNotMatch(home, /if \(!token\) return null/);

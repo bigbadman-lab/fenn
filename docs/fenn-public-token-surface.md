@@ -6,7 +6,7 @@ Public website verification for `$FENN` before and after launch.
 
 | Surface | Role |
 |---------|------|
-| `/` | Fast official-contract verification (`HomeOfficialContract`) |
+| `/` | Fast official-contract verification — top of world/map section (`HomeIdentity` → `HomeOfficialContract`, above the map) |
 | `/commons` | Full identity · LEAF vs $FENN · official CA · Purse · Treasury |
 
 No dedicated `/token` route.

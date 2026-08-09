@@ -1,7 +1,13 @@
 import { FennWorldMap } from "@/components/home/fenn-world-map";
+import { HomeOfficialContract } from "@/components/home/home-official-contract";
 import { HOMEPAGE_MAP_ORIENTATION } from "@/lib/home/homepage-audience";
 
-export function HomeIdentity() {
+/**
+ * World / map section: orientation, official $FENN contract (trust surface),
+ * then the geographic map. Contract sits above the map so verification is
+ * early and independent of deep lore / directory.
+ */
+export async function HomeIdentity() {
   return (
     <section className="home-section home-identity" aria-labelledby="home-fenn">
       <h1 id="home-fenn" className="visually-hidden">
@@ -20,6 +26,8 @@ export function HomeIdentity() {
           ))}
         </div>
       </header>
+
+      <HomeOfficialContract />
 
       <FennWorldMap />
       <p className="home-identity__line">

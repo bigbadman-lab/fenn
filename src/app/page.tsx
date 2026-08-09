@@ -6,7 +6,6 @@ import { HomeGreenwoodTeaser } from "@/components/home/home-greenwood-teaser";
 import { HomeIdentity } from "@/components/home/home-identity";
 import { HomeLiveTicker } from "@/components/home/home-live-ticker";
 import { HomeLoreInterrupt } from "@/components/home/home-lore-interrupt";
-import { HomeOfficialContract } from "@/components/home/home-official-contract";
 import { HomeOutlawRegister } from "@/components/home/home-outlaw-register";
 import { HomePaths } from "@/components/home/home-paths";
 import { HomeWelcome } from "@/components/home/home-welcome";
@@ -23,7 +22,8 @@ export const metadata: Metadata = buildHomeMetadata();
 export const revalidate = 60;
 
 /**
- * Homepage V2 order: live wire → orient → (journey) → map → Outlaw → deeper lore.
+ * Homepage order: live wire → orient → journey → world/map (+ official $FENN
+ * contract above the map) → Outlaw → deeper lore → directory.
  */
 export default function HomePage() {
   return (
@@ -37,7 +37,6 @@ export default function HomePage() {
       <LoreTransmission />
       <HomeLoreInterrupt />
       <HomeGreenwoodTeaser />
-      <HomeOfficialContract />
       <HomePaths />
     </div>
   );
