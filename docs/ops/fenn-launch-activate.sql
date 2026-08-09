@@ -1,5 +1,10 @@
 -- FENN P2C.1 — Launch-day official $FENN contract activation (OPS, not a migration)
 --
+-- EMERGENCY / MANUAL FALLBACK ONLY.
+-- Primary launch-day path (P2C.2):
+--   npm run launch:activate -- --contract 0x…
+--
+-- Use this SQL only when the CLI cannot run. Same safety law:
 -- TOMORROW ONLY — after $FENN is deployed and the contract address is verified.
 --
 -- Single operator action:

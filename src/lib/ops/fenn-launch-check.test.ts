@@ -382,7 +382,19 @@ describe("P2C.1 ops artifacts", () => {
     assert.match(prepSql, /'official',\s*true/);
     assert.match(prepSql, /'public_contract',\s*true/);
     assert.match(prepSql, /FENN_LAUNCH_PREP/);
+    // Single DO $tag$ scope — scalars, not session TEMP/CTE across statements
+    assert.match(prepSql, /DO\s+\$prep\$/);
+    assert.match(prepSql, /n_official\s*:=\s*\(/);
+    assert.match(prepSql, /n_dormant\s*:=\s*\(/);
+    assert.match(prepSql, /existing_id\s+uuid/i);
+    assert.doesNotMatch(prepSql, /fenn_launch_prep_scan/);
+    assert.doesNotMatch(prepSql, /CREATE\s+TEMP\s+TABLE/i);
+    assert.doesNotMatch(prepSql, /FROM\s+n_official\b/i);
     assert.doesNotMatch(prepSql, /try_activate_official_settlement/);
+    assert.doesNotMatch(prepSql, /official_settlement_activated_at/i);
+    assert.doesNotMatch(prepSql, /purse_config/i);
+    assert.doesNotMatch(prepSql, /UPDATE\s+public\.treasury_assets/i);
+    assert.doesNotMatch(prepSql, /DELETE\s+FROM\s+public\.treasury_assets/i);
 
     const actSql = readFileSync(act, "utf8");
     assert.match(actSql, /0xOFFICIAL_FENN_CONTRACT/);
@@ -396,6 +408,7 @@ describe("P2C.1 ops artifacts", () => {
       scripts: Record<string, string>;
     };
     assert.match(pkg.scripts["launch:check"] ?? "", /fenn-launch-check/);
+    assert.match(pkg.scripts["launch:activate"] ?? "", /fenn-launch-activate/);
   });
 
   it("launch check source never mutates via supabase writes", () => {
