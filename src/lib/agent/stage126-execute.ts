@@ -1,8 +1,11 @@
 import "server-only";
 
 import {
+  PRE_OFFICIAL_SETTLEMENT_ACTIVATION_ERROR,
+  PRODUCTION_TEST_RAIL_FORBIDDEN_ERROR,
   STAGE126_EXECUTE_BATCH_DEFAULT,
   STAGE126_EXECUTE_BATCH_MAX,
+  STAGE126_SPEECH_EFFECT_TYPES,
   type Stage126FailureClass,
 } from "@/lib/agent/execute-config";
 import {
@@ -54,8 +57,12 @@ export type ExecuteOneResult = {
   failureClass?: Stage126FailureClass;
   errorCode?: string;
   dryRunPreview?: string;
-  /** Post-confirmation trusted speech draft (P1B; not auto-posted). */
+  /** Post-confirmation trusted speech draft (P1B/P1E; not auto-posted). */
   economicFollowupPreview?: string;
+  /** Whether a durable P1E reply_on_x was planned/persisted. */
+  p1eFollowupPlanned?: boolean;
+  p1eFollowupPersisted?: boolean;
+  chainBroadcastAttempted?: boolean;
 };
 
 export type ExecuteBatchAggregate = {
@@ -64,6 +71,27 @@ export type ExecuteBatchAggregate = {
   failed: number;
   dryRun: number;
   results: ExecuteOneResult[];
+};
+
+export type Stage126ExecuteOptions = {
+  xPostId?: string;
+  dryRun?: boolean;
+  /**
+   * Claim type filter. Defaults to speech-only (X Agent production scope).
+   * Empty array claims nothing. Never defaults to "all types".
+   */
+  effectTypes?: readonly string[];
+  /**
+   * Official settlement activation instant (ISO). When set, economic effects
+   * created strictly before this instant fail terminal without broadcast.
+   * Null/omitted: no pre-activation gate (caller must ensure gate when needed).
+   */
+  officialSettlementActivatedAt?: string | null;
+  /**
+   * Production Purse Executor: official rail only; refuse p1a_test payload;
+   * P1E uses deterministic fallback speech (no OpenAI).
+   */
+  productionOfficialSettlement?: boolean;
 };
 
 type Stage126Deps = {
@@ -80,8 +108,32 @@ function clampLimit(limit: number | undefined): number {
   return Math.min(n, STAGE126_EXECUTE_BATCH_MAX);
 }
 
+function resolveClaimEffectTypes(
+  options: Stage126ExecuteOptions,
+): readonly string[] {
+  if (options.effectTypes !== undefined) {
+    return options.effectTypes;
+  }
+  return STAGE126_SPEECH_EFFECT_TYPES;
+}
+
+/**
+ * effect.created_at < activation → never may settle against official token.
+ */
+export function isEffectCreatedBeforeOfficialActivation(
+  effectCreatedAt: string | null | undefined,
+  activatedAt: string | null | undefined,
+): boolean {
+  if (!effectCreatedAt?.trim() || !activatedAt?.trim()) return false;
+  const createdMs = Date.parse(effectCreatedAt);
+  const activatedMs = Date.parse(activatedAt);
+  if (!Number.isFinite(createdMs) || !Number.isFinite(activatedMs)) return false;
+  return createdMs < activatedMs;
+}
+
 async function executeClaimedEffect(
   claimed: ClaimedEffect,
+  options: Stage126ExecuteOptions,
   deps: Stage126Deps,
 ): Promise<ExecuteOneResult> {
   const base = {
@@ -168,6 +220,55 @@ async function executeClaimedEffect(
       };
     }
 
+    if (
+      claimed.effectType === "transfer_fenn" ||
+      claimed.effectType === "burn_fenn"
+    ) {
+      if (
+        isEffectCreatedBeforeOfficialActivation(
+          claimed.createdAt,
+          options.officialSettlementActivatedAt,
+        )
+      ) {
+        await failXPerceptionEffect(
+          {
+            effectId: claimed.effectId,
+            failureClass: "terminal",
+            lastError: PRE_OFFICIAL_SETTLEMENT_ACTIVATION_ERROR,
+          },
+          { admin: deps.admin },
+        );
+        return {
+          ...base,
+          status: "failed",
+          failureClass: "terminal",
+          errorCode: PRE_OFFICIAL_SETTLEMENT_ACTIVATION_ERROR,
+          chainBroadcastAttempted: false,
+        };
+      }
+
+      if (
+        options.productionOfficialSettlement &&
+        claimed.payload.executionRail === "p1a_test"
+      ) {
+        await failXPerceptionEffect(
+          {
+            effectId: claimed.effectId,
+            failureClass: "terminal",
+            lastError: PRODUCTION_TEST_RAIL_FORBIDDEN_ERROR,
+          },
+          { admin: deps.admin },
+        );
+        return {
+          ...base,
+          status: "failed",
+          failureClass: "terminal",
+          errorCode: PRODUCTION_TEST_RAIL_FORBIDDEN_ERROR,
+          chainBroadcastAttempted: false,
+        };
+      }
+    }
+
     if (claimed.effectType === "transfer_fenn") {
       const payload = validateTransferFennEffectPayload(claimed.payload);
       const interactionId =
@@ -178,6 +279,7 @@ async function executeClaimedEffect(
         {
           effectId: claimed.effectId,
           payload,
+          forceOfficialRail: options.productionOfficialSettlement === true,
         },
         deps.transferAdapter,
       );
@@ -210,6 +312,7 @@ async function executeClaimedEffect(
           status: "failed",
           failureClass: transferResult.failureClass,
           errorCode: transferResult.code,
+          chainBroadcastAttempted: transferResult.failureClass !== "terminal",
         };
       }
 
@@ -238,8 +341,10 @@ async function executeClaimedEffect(
         }
       }
 
-      // P1E: confirmed settlement only → Book of Speech completion + reply_on_x effect.
+      // P1E: confirmed settlement only → durable reply_on_x (never posts here).
       let economicFollowupPreview: string | undefined;
+      let p1eFollowupPlanned = false;
+      let p1eFollowupPersisted = false;
       try {
         const follow = await planEconomicCompletionFollowup({
           actionType: "transfer",
@@ -254,8 +359,12 @@ async function executeClaimedEffect(
           recipientAddress: transferResult.recipientAddress,
           economicInteractionId: interactionId || null,
           admin: deps.admin as never,
+          forceSpeechFallback:
+            options.productionOfficialSettlement === true,
         });
         economicFollowupPreview = follow.speech?.replyText;
+        p1eFollowupPlanned = follow.replyEffectPlanned;
+        p1eFollowupPersisted = follow.replyEffectPersisted;
       } catch {
         const followup = buildEconomicFollowupDraft({
           actionType: "transfer",
@@ -270,6 +379,9 @@ async function executeClaimedEffect(
         status: "completed",
         externalResultId: transferResult.txHash,
         economicFollowupPreview,
+        p1eFollowupPlanned,
+        p1eFollowupPersisted,
+        chainBroadcastAttempted: true,
       };
     }
 
@@ -279,6 +391,7 @@ async function executeClaimedEffect(
         {
           effectId: claimed.effectId,
           payload,
+          forceOfficialRail: options.productionOfficialSettlement === true,
         },
         deps.burnAdapter,
       );
@@ -309,6 +422,8 @@ async function executeClaimedEffect(
       );
 
       let economicFollowupPreview: string | undefined;
+      let p1eFollowupPlanned = false;
+      let p1eFollowupPersisted = false;
       try {
         const follow = await planEconomicCompletionFollowup({
           actionType: "burn",
@@ -322,8 +437,12 @@ async function executeClaimedEffect(
           perceptionEventId: claimed.perceptionEventId,
           recipientAddress: burnResult.recipientAddress,
           admin: deps.admin as never,
+          forceSpeechFallback:
+            options.productionOfficialSettlement === true,
         });
         economicFollowupPreview = follow.speech?.replyText;
+        p1eFollowupPlanned = follow.replyEffectPlanned;
+        p1eFollowupPersisted = follow.replyEffectPersisted;
       } catch {
         const followup = buildEconomicFollowupDraft({
           actionType: "burn",
@@ -337,6 +456,9 @@ async function executeClaimedEffect(
         status: "completed",
         externalResultId: burnResult.txHash,
         economicFollowupPreview,
+        p1eFollowupPlanned,
+        p1eFollowupPersisted,
+        chainBroadcastAttempted: true,
       };
     }
 
@@ -398,16 +520,19 @@ async function executeClaimedEffect(
 }
 
 /**
- * Execute one pending/retryable authorised effect. No model calls.
+ * Execute one pending/retryable authorised effect. No model calls on speech path.
+ * Default claim scope is speech-only (reply_on_x / write_to_wall).
  */
 export async function executeOneXPerceptionEffect(
-  options: { xPostId?: string; dryRun?: boolean } = {},
+  options: Stage126ExecuteOptions = {},
   deps: Stage126Deps = {},
 ): Promise<ExecuteOneResult> {
+  const effectTypes = resolveClaimEffectTypes(options);
+
   if (options.dryRun) {
     const pending = await listPendingXPerceptionEffects(
       options.xPostId ? 50 : 1,
-      { admin: deps.admin },
+      { admin: deps.admin, effectTypes },
     );
     const filterId = options.xPostId?.trim();
     const filtered = filterId
@@ -428,7 +553,7 @@ export async function executeOneXPerceptionEffect(
   let claimed: ClaimedEffect | null;
   try {
     claimed = await claimXPerceptionEffect(
-      { xPostId: options.xPostId },
+      { xPostId: options.xPostId, effectTypes },
       { admin: deps.admin },
     );
   } catch (error) {
@@ -441,11 +566,11 @@ export async function executeOneXPerceptionEffect(
   }
 
   if (!claimed) return { status: "empty" };
-  return executeClaimedEffect(claimed, deps);
+  return executeClaimedEffect(claimed, options, deps);
 }
 
 export async function executePendingXPerceptionEffects(
-  options: { limit?: number; xPostId?: string; dryRun?: boolean } = {},
+  options: Stage126ExecuteOptions & { limit?: number } = {},
   deps: Stage126Deps = {},
 ): Promise<ExecuteBatchAggregate> {
   const limit = clampLimit(options.limit);
@@ -456,7 +581,13 @@ export async function executePendingXPerceptionEffects(
 
   for (let i = 0; i < limit; i += 1) {
     const one = await executeOneXPerceptionEffect(
-      { xPostId: options.xPostId, dryRun: options.dryRun },
+      {
+        xPostId: options.xPostId,
+        dryRun: options.dryRun,
+        effectTypes: options.effectTypes,
+        officialSettlementActivatedAt: options.officialSettlementActivatedAt,
+        productionOfficialSettlement: options.productionOfficialSettlement,
+      },
       deps,
     );
     if (one.status === "empty") break;

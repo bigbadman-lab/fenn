@@ -22,6 +22,7 @@ import {
   validateTransferFennEffectPayload,
 } from "@/lib/agent/effect-payload";
 import { executeOneXPerceptionEffect } from "@/lib/agent/stage126-execute";
+import { STAGE126_ECONOMIC_EFFECT_TYPES } from "@/lib/agent/execute-config";
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -261,7 +262,11 @@ export async function runP1aPurseEffectTest(input: {
 
     if (input.dryRun) {
       const one = await executeOneXPerceptionEffect(
-        { xPostId: scaffold.xPostId, dryRun: true },
+        {
+          xPostId: scaffold.xPostId,
+          dryRun: true,
+          effectTypes: STAGE126_ECONOMIC_EFFECT_TYPES,
+        },
         { admin: input.admin as never },
       );
       return {
@@ -276,9 +281,13 @@ export async function runP1aPurseEffectTest(input: {
       };
     }
 
-    // Live path: claim+dispatch via the same Stage 12.6 entry used in production.
+    // Live path: claim+dispatch via Stage 12.6 (economic scope — operator harness).
     const one = await executeOneXPerceptionEffect(
-      { xPostId: scaffold.xPostId, dryRun: false },
+      {
+        xPostId: scaffold.xPostId,
+        dryRun: false,
+        effectTypes: STAGE126_ECONOMIC_EFFECT_TYPES,
+      },
       { admin: input.admin as never },
     );
 

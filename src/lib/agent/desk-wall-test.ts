@@ -458,7 +458,10 @@ export async function runDeskAgentWallTest(options?: {
 
     // Claim ONLY effects for this reserved synthetic x_post_id (never open queue).
     const claimed = await claimXPerceptionEffect(
-      { xPostId: DESK_WALL_TEST_X_POST_ID },
+      {
+        xPostId: DESK_WALL_TEST_X_POST_ID,
+        effectTypes: ["write_to_wall"],
+      },
       { admin: db as never },
     );
 

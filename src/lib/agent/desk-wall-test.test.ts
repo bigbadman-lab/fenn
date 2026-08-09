@@ -124,7 +124,7 @@ describe("Desk Wall-only agent test — source safety", () => {
     assert.doesNotMatch(lib, /runFennPublicJudgement/);
     assert.match(
       lib,
-      /claimXPerceptionEffect\(\s*\{\s*xPostId:\s*DESK_WALL_TEST_X_POST_ID/,
+      /claimXPerceptionEffect\(\s*\{[\s\S]*xPostId:\s*DESK_WALL_TEST_X_POST_ID/,
     );
     assert.match(lib, /effectType !== "write_to_wall"/);
   });

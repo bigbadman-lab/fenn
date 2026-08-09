@@ -356,24 +356,33 @@ describe("Stage 12.6 executor", () => {
       },
       async rpc(fn: string, args?: Record<string, unknown>) {
         if (fn === "list_pending_x_perception_effects") {
+          const types = Array.isArray(args?.p_effect_types)
+            ? (args.p_effect_types as string[])
+            : null;
+          const rows = store
+            .filter((e) => {
+              const executable =
+                e.status === "pending" ||
+                (e.status === "failed" && e.failure_class === "retryable");
+              if (!executable) return false;
+              if (types && types.length > 0 && !types.includes(e.effect_type)) {
+                return false;
+              }
+              return true;
+            })
+            .map((e) => ({
+              effect_id: e.id,
+              effect_type: e.effect_type,
+              idempotency_key: e.idempotency_key,
+              status: e.status,
+              failure_class: e.failure_class ?? null,
+              attempt_count: e.attempt_count,
+              x_post_id: e.x_post_id,
+              created_at: e.created_at,
+              payload_preview: "…",
+            }));
           return {
-            data: store
-              .filter(
-                (e) =>
-                  e.status === "pending" ||
-                  (e.status === "failed" && e.failure_class === "retryable"),
-              )
-              .map((e) => ({
-                effect_id: e.id,
-                effect_type: e.effect_type,
-                idempotency_key: e.idempotency_key,
-                status: e.status,
-                failure_class: e.failure_class ?? null,
-                attempt_count: e.attempt_count,
-                x_post_id: e.x_post_id,
-                created_at: e.created_at,
-                payload_preview: "…",
-              })),
+            data: rows,
             error: null,
           };
         }
@@ -381,12 +390,19 @@ describe("Stage 12.6 executor", () => {
         if (fn === "claim_x_perception_effect") {
           const xPostFilter =
             typeof args?.p_x_post_id === "string" ? args.p_x_post_id : null;
+          const typeFilter = Array.isArray(args?.p_effect_types)
+            ? (args.p_effect_types as string[]).filter(
+                (t) => typeof t === "string" && t.length > 0,
+              )
+            : [];
+          if (typeFilter.length === 0) return { data: [], error: null };
           const idx = store.findIndex((e) => {
             const executable =
               e.status === "pending" ||
               (e.status === "failed" && e.failure_class === "retryable");
             if (!executable) return false;
             if (xPostFilter && e.x_post_id !== xPostFilter) return false;
+            if (!typeFilter.includes(e.effect_type)) return false;
             return true;
           });
           if (idx < 0) return { data: [], error: null };
@@ -405,6 +421,8 @@ describe("Stage 12.6 executor", () => {
                 status: e.status,
                 attempt_count: e.attempt_count,
                 x_post_id: e.x_post_id,
+                effect_created_at:
+                  e.created_at ?? "2026-07-28T00:00:00.000Z",
               },
             ],
             error: null,

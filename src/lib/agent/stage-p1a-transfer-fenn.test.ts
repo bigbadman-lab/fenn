@@ -18,6 +18,7 @@ import {
   mapPurseOutcomeToFailureClass,
 } from "@/lib/agent/transfer-effect-adapter";
 import { executeOneXPerceptionEffect } from "@/lib/agent/stage126-execute";
+import { STAGE126_ECONOMIC_EFFECT_TYPES } from "@/lib/agent/execute-config";
 import type { ClaimedEffect } from "@/lib/agent/effect-persist";
 import { STAGE12_LIVE_AGENT_ACTIONS } from "@/lib/agent/actions";
 import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
@@ -284,7 +285,7 @@ describe("Stage P1A transfer_fenn effect contract", () => {
     };
 
     const one = await executeOneXPerceptionEffect(
-      { dryRun: true },
+      { dryRun: true, effectTypes: STAGE126_ECONOMIC_EFFECT_TYPES },
       {
         admin: admin as never,
         transferAdapter: {
@@ -342,7 +343,7 @@ describe("Stage P1A transfer_fenn effect contract", () => {
     };
 
     const one = await executeOneXPerceptionEffect(
-      {},
+      { effectTypes: STAGE126_ECONOMIC_EFFECT_TYPES },
       {
         admin: admin as never,
         transferAdapter: {

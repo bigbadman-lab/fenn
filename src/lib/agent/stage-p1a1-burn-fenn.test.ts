@@ -19,6 +19,7 @@ import {
   mapPurseOutcomeToFailureClass,
 } from "@/lib/agent/transfer-effect-adapter";
 import { executeOneXPerceptionEffect } from "@/lib/agent/stage126-execute";
+import { STAGE126_ECONOMIC_EFFECT_TYPES } from "@/lib/agent/execute-config";
 import { STAGE12_LIVE_AGENT_ACTIONS } from "@/lib/agent/actions";
 import { FENN_DEAD_ADDRESS } from "@/lib/purse/constants";
 import { parseEvmAddress } from "@/lib/wallet/evm";
@@ -273,7 +274,7 @@ describe("Stage P1A.1 burn_fenn effect contract", () => {
     };
 
     const one = await executeOneXPerceptionEffect(
-      { dryRun: true },
+      { dryRun: true, effectTypes: STAGE126_ECONOMIC_EFFECT_TYPES },
       {
         admin: admin as never,
         burnAdapter: {
@@ -330,7 +331,7 @@ describe("Stage P1A.1 burn_fenn effect contract", () => {
     };
 
     const one = await executeOneXPerceptionEffect(
-      {},
+      { effectTypes: STAGE126_ECONOMIC_EFFECT_TYPES },
       {
         admin: admin as never,
         burnAdapter: {

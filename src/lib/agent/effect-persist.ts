@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Stage126FailureClass } from "@/lib/agent/execute-config";
+import { STAGE126_SPEECH_EFFECT_TYPES } from "@/lib/agent/execute-config";
 import { ExecuteError } from "@/lib/agent/execute-errors";
 
 export type ClaimedEffect = {
@@ -13,6 +14,8 @@ export type ClaimedEffect = {
   status: string;
   attemptCount: number;
   xPostId: string;
+  /** Effect row creation time (UTC). Used for pre-activation law. */
+  createdAt: string | null;
 };
 
 export type PendingEffectListItem = {
@@ -40,12 +43,47 @@ async function getAdmin(): Promise<AdminLike> {
   return createAdminClient() as unknown as AdminLike;
 }
 
+/**
+ * Normalize claim type filter. Empty / all-invalid → empty array (claim nothing).
+ */
+export function normalizeEffectTypeFilter(
+  effectTypes: readonly string[] | undefined | null,
+): string[] {
+  if (!effectTypes || effectTypes.length === 0) return [];
+  const allowed = new Set([
+    "reply_on_x",
+    "write_to_wall",
+    "transfer_fenn",
+    "burn_fenn",
+  ]);
+  const out: string[] = [];
+  for (const raw of effectTypes) {
+    const t = typeof raw === "string" ? raw.trim() : "";
+    if (allowed.has(t) && !out.includes(t)) out.push(t);
+  }
+  return out;
+}
+
+/**
+ * Claim one pending/retryable effect among allowed types only.
+ * Requires a non-empty type filter — empty filter claims nothing (fail closed).
+ */
 export async function claimXPerceptionEffect(
-  options: { xPostId?: string } = {},
+  options: {
+    xPostId?: string;
+    /** Required for safe claiming. Empty/missing → no claim. */
+    effectTypes?: readonly string[];
+  } = {},
   deps: { admin?: AdminLike } = {},
 ): Promise<ClaimedEffect | null> {
+  const types = normalizeEffectTypeFilter(options.effectTypes);
+  if (types.length === 0) {
+    return null;
+  }
+
   const admin = deps.admin ?? (await getAdmin());
   const { data, error } = await admin.rpc("claim_x_perception_effect", {
+    p_effect_types: types,
     p_x_post_id: options.xPostId?.trim() || null,
   });
 
@@ -73,10 +111,25 @@ export async function claimXPerceptionEffect(
     );
   }
 
+  // Defense in depth: never return a type outside the requested filter.
+  if (!types.includes(row.effect_type)) {
+    throw new ExecuteError(
+      "execute_claim_failed",
+      "claim returned effect type outside requested filter",
+      500,
+    );
+  }
+
   const payload =
     row.payload && typeof row.payload === "object" && !Array.isArray(row.payload)
       ? (row.payload as Record<string, unknown>)
       : {};
+
+  const createdAtRaw = row.effect_created_at ?? row.created_at;
+  const createdAt =
+    typeof createdAtRaw === "string" && createdAtRaw.trim()
+      ? createdAtRaw
+      : null;
 
   return {
     effectId: row.effect_id,
@@ -88,6 +141,7 @@ export async function claimXPerceptionEffect(
     status: String(row.status),
     attemptCount: Number(row.attempt_count ?? 0),
     xPostId: row.x_post_id,
+    createdAt,
   };
 }
 
@@ -150,11 +204,16 @@ export async function failXPerceptionEffect(
 
 export async function listPendingXPerceptionEffects(
   limit = 20,
-  deps: { admin?: AdminLike } = {},
+  deps: {
+    admin?: AdminLike;
+    effectTypes?: readonly string[];
+  } = {},
 ): Promise<PendingEffectListItem[]> {
   const admin = deps.admin ?? (await getAdmin());
+  const types = normalizeEffectTypeFilter(deps.effectTypes);
   const { data, error } = await admin.rpc("list_pending_x_perception_effects", {
     p_limit: limit,
+    ...(types.length > 0 ? { p_effect_types: types } : {}),
   });
 
   if (error) {
@@ -182,4 +241,9 @@ export async function listPendingXPerceptionEffects(
         typeof r.payload_preview === "string" ? r.payload_preview : null,
     };
   });
+}
+
+/** Default claim filter for production X Agent / agent:execute-x (speech only). */
+export function defaultSpeechClaimEffectTypes(): string[] {
+  return [...STAGE126_SPEECH_EFFECT_TYPES];
 }

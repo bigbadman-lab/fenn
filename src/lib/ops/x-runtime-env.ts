@@ -39,6 +39,11 @@ export const X_AGENT_RUNTIME_OPTIONAL_ENV = [
   "FENN_X_AGENT_MAX_RUNTIME_SECONDS",
   /** Postgres lease key; default x_agent. */
   "FENN_X_AGENT_LEASE_KEY",
+  /**
+   * Intentionally NOT required and NOT used by production agent:run-x.
+   * Purse signing belongs only to purse:settle / intentional operator CLIs.
+   */
+  // "FENN_PURSE_PRIVATE_KEY" — do not add to required list
 ] as const;
 
 export class XAgentRuntimeEnvError extends Error {
@@ -61,6 +66,7 @@ function isPresent(value: string | undefined): boolean {
 /**
  * Fail early if required runtime env vars are missing or blank.
  * Does not read or print secret values.
+ * Does not require FENN_PURSE_PRIVATE_KEY (P2A — Purse Executor only).
  */
 export function validateXAgentRuntimeEnv(
   env: NodeJS.ProcessEnv = process.env,
@@ -78,6 +84,13 @@ export function validateXAgentRuntimeEnv(
       "FENN_X_USER_ID (must be a digit snowflake string)",
     ]);
   }
+}
+
+/** X Agent must never require the Purse private key (P2A boundary). */
+export function xAgentRequiresPursePrivateKey(): boolean {
+  return (X_AGENT_RUNTIME_REQUIRED_ENV as readonly string[]).includes(
+    "FENN_PURSE_PRIVATE_KEY",
+  );
 }
 
 export function listMissingXAgentRuntimeEnv(

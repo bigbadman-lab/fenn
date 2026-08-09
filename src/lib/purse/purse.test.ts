@@ -516,6 +516,8 @@ describe("public Purse snapshot safety", () => {
         configured: true,
         walletAddress: PURSE,
         isEnabled: true,
+        officialSettlementActivatedAt: null,
+        economicSettlementEnabled: true,
       }),
       getOfficialToken: async () => OFFICIAL,
       listConfirmed: async () => [
@@ -559,6 +561,8 @@ describe("public Purse snapshot safety", () => {
         configured: true,
         walletAddress: PURSE,
         isEnabled: true,
+        officialSettlementActivatedAt: null,
+        economicSettlementEnabled: true,
       }),
       getOfficialToken: async () => OFFICIAL,
       listConfirmed: async () => [],

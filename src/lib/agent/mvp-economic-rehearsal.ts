@@ -1043,7 +1043,11 @@ export async function runMvpEconomicRehearsal(input: {
         input.executeEffect ??
         (await import("@/lib/agent/stage126-execute")).executeOneXPerceptionEffect;
       const one = await executeOne(
-        { xPostId: burnXPostId, dryRun: false },
+        {
+          xPostId: burnXPostId,
+          dryRun: false,
+          effectTypes: ["transfer_fenn", "burn_fenn"],
+        },
         { admin: db as never },
       );
 
@@ -1785,7 +1789,11 @@ export async function runMvpEconomicRehearsal(input: {
       (await import("@/lib/agent/stage126-execute")).executeOneXPerceptionEffect;
 
     const one = await executeOne(
-      { xPostId: confirmXPostId, dryRun: false },
+      {
+        xPostId: confirmXPostId,
+        dryRun: false,
+        effectTypes: ["transfer_fenn", "burn_fenn"],
+      },
       { admin: db as never },
     );
 

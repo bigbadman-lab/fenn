@@ -15,6 +15,7 @@ import {
   formatExecuteBatchReport,
   type ExecuteBatchAggregate,
 } from "@/lib/agent/stage126-execute";
+import { STAGE126_SPEECH_EFFECT_TYPES } from "@/lib/agent/execute-config";
 import {
   finalizePendingXPerceptionsWithLiveState,
   formatSightBatchReport,
@@ -158,6 +159,8 @@ export async function runXAgentPipeline(
       executePendingXPerceptionEffects({
         ...(limit !== undefined ? { limit } : {}),
         dryRun,
+        // P2A: production X Agent claims speech only (never transfer/burn).
+        effectTypes: STAGE126_SPEECH_EFFECT_TYPES,
       }));
 
   if (!quiet) {

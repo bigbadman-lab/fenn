@@ -1211,7 +1211,11 @@ async function runForceIntentBranch(args: {
       { admin: db as never },
     );
     const one = await executeOneXPerceptionEffect(
-      { xPostId, dryRun: false },
+      {
+        xPostId,
+        dryRun: false,
+        effectTypes: ["transfer_fenn", "burn_fenn"],
+      },
       { admin: db as never },
     );
     return baseResult({

@@ -143,18 +143,24 @@ export async function executeTransferFennViaPurse(
     effectId: string;
     payload: ValidatedTransferFennPayload;
     actorId?: string;
+    /**
+     * Production Purse Executor: never use p1a_test rail even if payload marks it.
+     */
+    forceOfficialRail?: boolean;
   },
   deps: TransferFennAdapterDeps = {},
 ): Promise<TransferFennExecuteResult> {
   const operationId = stage12TransferPurseOperationId(input.effectId);
+  const useTestRail =
+    input.payload.executionRail === "p1a_test" && !input.forceOfficialRail;
   const actorId =
     input.actorId?.trim() ||
-    (input.payload.executionRail === "p1a_test"
+    (useTestRail
       ? "ops:stage12-transfer-fenn-p1a"
       : "ops:stage12-transfer-fenn");
 
   try {
-    if (input.payload.executionRail === "p1a_test") {
+    if (useTestRail) {
       const executeTest = deps.executeTest ?? executeManualTestTransfer;
       const result = await executeTest({
         recipientAddress: input.payload.recipientAddress,
@@ -203,18 +209,22 @@ export async function executeBurnFennViaPurse(
     effectId: string;
     payload: ValidatedBurnFennPayload;
     actorId?: string;
+    /** Production Purse Executor: never use p1a_test rail. */
+    forceOfficialRail?: boolean;
   },
   deps: BurnFennAdapterDeps = {},
 ): Promise<TransferFennExecuteResult> {
   const operationId = stage12BurnPurseOperationId(input.effectId);
+  const useTestRail =
+    input.payload.executionRail === "p1a_test" && !input.forceOfficialRail;
   const actorId =
     input.actorId?.trim() ||
-    (input.payload.executionRail === "p1a_test"
+    (useTestRail
       ? "ops:stage12-burn-fenn-p1a"
       : "ops:stage12-burn-fenn");
 
   try {
-    if (input.payload.executionRail === "p1a_test") {
+    if (useTestRail) {
       const executeTest = deps.executeTest ?? executeManualTestBurn;
       const result = await executeTest({
         operationId,

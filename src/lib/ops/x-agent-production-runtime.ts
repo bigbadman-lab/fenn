@@ -29,6 +29,7 @@ import {
   executePendingXPerceptionEffects,
   type ExecuteBatchAggregate,
 } from "@/lib/agent/stage126-execute";
+import { STAGE126_SPEECH_EFFECT_TYPES } from "@/lib/agent/execute-config";
 
 export type XAgentProductionRunResult = {
   ok: boolean;
@@ -151,7 +152,11 @@ async function runDryRun(
   const list =
     deps.listPendingEffectsDryRun ??
     ((limit: number) =>
-      executePendingXPerceptionEffects({ limit, dryRun: true }));
+      executePendingXPerceptionEffects({
+        limit,
+        dryRun: true,
+        effectTypes: STAGE126_SPEECH_EFFECT_TYPES,
+      }));
 
   const probe =
     deps.probeInternalWork ??

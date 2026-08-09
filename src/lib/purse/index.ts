@@ -12,7 +12,7 @@ export {
   PUBLIC_PURSE_TRANSFER_HISTORY_LIMIT,
 } from "@/lib/purse/constants";
 export { PurseError } from "@/lib/purse/errors";
-export { getPurseConfig, requireEnabledPurseConfig } from "@/lib/purse/config";
+export { getPurseConfig, requireEnabledPurseConfig, tryActivateOfficialSettlement } from "@/lib/purse/config";
 export {
   executeManualOneFennTransfer,
   executeManualTestTransfer,

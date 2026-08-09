@@ -9,6 +9,17 @@ export type PublicPurseConfig = {
   configured: true;
   walletAddress: string;
   isEnabled: boolean;
+  /**
+   * When official FENN settlement first activated (UTC ISO).
+   * null = never activated. Immutable once set.
+   */
+  officialSettlementActivatedAt: string | null;
+  /**
+   * Emergency economic settlement brake (P2A).
+   * true = normal; false = executor claims nothing.
+   * null = undetermined (fail closed for settlement).
+   */
+  economicSettlementEnabled: boolean | null;
 };
 
 export type PurseConfigState =

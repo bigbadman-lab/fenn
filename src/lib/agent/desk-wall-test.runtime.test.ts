@@ -280,12 +280,19 @@ function createFakeAdmin() {
       const xPostId = args?.p_x_post_id
         ? String(args.p_x_post_id).trim()
         : null;
+      const typeFilter = Array.isArray(args?.p_effect_types)
+        ? (args.p_effect_types as string[]).filter(
+            (t) => typeof t === "string" && t.length > 0,
+          )
+        : [];
+      if (typeFilter.length === 0) return { data: [], error: null };
       // Must not claim open queue: only synthetic id is claimable when filtered.
       const candidates = state.effects.filter((e) => {
         const event = state.events.find((ev) => ev.id === e.perception_event_id);
         if (!event) return false;
         if (xPostId && event.x_post_id !== xPostId) return false;
         if (!xPostId) return false; // test path always passes xPostId
+        if (!typeFilter.includes(e.effect_type)) return false;
         return (
           e.status === "pending" ||
           (e.status === "failed" && e.failure_class === "retryable")
@@ -308,6 +315,7 @@ function createFakeAdmin() {
             status: effect.status,
             attempt_count: effect.attempt_count,
             x_post_id: event.x_post_id,
+            effect_created_at: "2026-07-28T00:00:00.000Z",
           },
         ],
         error: null,

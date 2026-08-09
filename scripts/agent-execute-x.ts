@@ -6,8 +6,10 @@
  *   npm run agent:execute-x -- --dry-run
  *   npm run agent:execute-x -- --x-post-id=<id>
  *   npm run agent:execute-x -- --limit=1
+ *   npm run agent:execute-x -- --economic   # intentional economic harness
  *
- * Does not accept reply/wall body overrides. Executes persisted effects only.
+ * Defaults to speech-only claim scope (P2A). Does not accept reply/wall body
+ * overrides. Executes persisted effects only.
  */
 
 import {
@@ -16,7 +18,11 @@ import {
   formatPendingEffectsReport,
 } from "@/lib/agent/stage126-execute";
 import { listPendingXPerceptionEffects } from "@/lib/agent/effect-persist";
-import { STAGE126_EXECUTE_BATCH_DEFAULT } from "@/lib/agent/execute-config";
+import {
+  STAGE126_ECONOMIC_EFFECT_TYPES,
+  STAGE126_EXECUTE_BATCH_DEFAULT,
+  STAGE126_SPEECH_EFFECT_TYPES,
+} from "@/lib/agent/execute-config";
 
 function parseLimit(argv: string[]): number {
   const flag = argv.find((a) => a.startsWith("--limit="));
@@ -36,11 +42,18 @@ async function main() {
   const argv = process.argv.slice(2);
   const listOnly = argv.includes("--list");
   const dryRun = argv.includes("--dry-run");
+  // Ops: speech default. --economic for intentional economic harness only.
+  const economic = argv.includes("--economic");
+  const effectTypes = economic
+    ? STAGE126_ECONOMIC_EFFECT_TYPES
+    : STAGE126_SPEECH_EFFECT_TYPES;
   const xPostId = parseXPostId(argv);
   const limit = parseLimit(argv);
 
   if (listOnly) {
-    const items = await listPendingXPerceptionEffects(Math.max(limit, 20));
+    const items = await listPendingXPerceptionEffects(Math.max(limit, 20), {
+      effectTypes,
+    });
     console.log(formatPendingEffectsReport(items));
     return;
   }
@@ -49,6 +62,7 @@ async function main() {
     limit,
     xPostId,
     dryRun,
+    effectTypes,
   });
   console.log(formatExecuteBatchReport(result));
   if (result.failed > 0 && result.completed === 0 && result.dryRun === 0) {

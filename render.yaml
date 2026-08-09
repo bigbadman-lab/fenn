@@ -62,6 +62,34 @@ services:
         sync: false
       - key: FENN_TREASURY_ADDRESS
         sync: false
+      # Do NOT set FENN_PURSE_PRIVATE_KEY on the X Agent service (P2A).
+
+  # P2A — dedicated production Purse Executor (economic settlement only).
+  # Apply migration 61_purse_p2a_executor before first live economic settle.
+  # Healthy pre-launch: official FENN absent → idle (no claims / no broadcast).
+  - type: cron
+    name: fenn-purse-executor
+    runtime: node
+    plan: starter
+    region: oregon
+    schedule: "* * * * *"
+    buildCommand: npm ci
+    startCommand: npm run purse:settle
+    envVars:
+      - key: NODE_VERSION
+        value: "24.11.1"
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ROBINHOOD_CHAIN_RPC_URL
+        sync: false
+      # Only this service needs the Purse signing key among production crons.
+      - key: FENN_PURSE_PRIVATE_KEY
+        sync: false
+      # Not required: OPENAI_API_KEY, X OAuth, X_BEARER_TOKEN.
 
   # Market Watch 1.0A — always-on official pool observer (separate from X agent).
   # Default mode disabled. Apply migration 50 + config before dry_run/live.

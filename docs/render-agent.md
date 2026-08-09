@@ -96,6 +96,46 @@ Blueprint file: [`render.yaml`](../render.yaml) at the repository root.
 | `FENN_TREASURY_ADDRESS` | optional | Shared if used | |
 | `CRON_SECRET` | optional / Vercel | Vercel | Living Book cron; **not** used by Render agent |
 
+**Never set `FENN_PURSE_PRIVATE_KEY` on the X Agent service.** Purse signing is isolated to the Purse Executor cron (P2A).
+
+# Purse Executor (P2A)
+
+Dedicated Render cron for `transfer_fenn` / `burn_fenn` only.
+
+| Item | Value |
+|------|-------|
+| Service | `fenn-purse-executor` |
+| Command | `npm run purse:settle` |
+| Schedule | `* * * * *` |
+| Lease | `purse_executor` (distinct from `x_agent`) |
+| Claim scope | `transfer_fenn`, `burn_fenn` only |
+| Pre-launch | official FENN unresolved → healthy **idle** (no claim, no broadcast) |
+
+## Purse Executor environment
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | yes | |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes / secret | |
+| `ROBINHOOD_CHAIN_RPC_URL` | yes | Settlement RPC |
+| `FENN_PURSE_PRIVATE_KEY` | yes / secret | **Only this service among production agent crons** |
+
+Not required on Purse Executor: `OPENAI_API_KEY`, `X_*` OAuth, `X_BEARER_TOKEN`, `FENN_X_USER_ID`.
+
+Do **not** set `FENN_PURSE_TEST_MODE` for production settle — official rail only.
+
+## Activation / brake (DB)
+
+| Field | Meaning |
+|-------|---------|
+| `purse_config.official_settlement_activated_at` | NULL until first successful official FENN resolve; set-once |
+| `purse_config.economic_settlement_enabled` | Emergency brake; `false` stops claims without failing rows |
+
+Migration: `20260809200000_61_purse_p2a_executor.sql`.
+
+---
+
 Never commit secret values. Blueprint uses `sync: false` for secrets (Dashboard prompts / Environment Groups).
 
 # Execution modes
