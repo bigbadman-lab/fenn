@@ -383,7 +383,7 @@ describe("Self-knowledge calibration harness", () => {
     assert.doesNotMatch(system, /economicAction/);
     assert.equal(
       STAGE12_JUDGE_PROMPT_VERSION,
-      "fenn-public-judge-book-v2-capability-truth",
+      "fenn-public-judge-book-v2-capability-truth-token-id",
     );
   });
 

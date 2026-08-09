@@ -188,7 +188,7 @@ describe("capability vs compliance modality heuristics", () => {
     assert.match(system, /answered_from_public_knowledge/);
     assert.equal(
       STAGE12_JUDGE_PROMPT_VERSION,
-      "fenn-public-judge-book-v2-capability-truth",
+      "fenn-public-judge-book-v2-capability-truth-token-id",
     );
   });
 });
