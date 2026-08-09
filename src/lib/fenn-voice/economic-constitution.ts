@@ -1,13 +1,14 @@
 /**
- * THE PURSE — FENN economic constitution (Stage P1D / v1.4).
+ * THE PURSE — FENN economic constitution (Stage P1D / v1.5).
  *
  * Principles for economic judgement. Not a reward table.
  * Injected into judgement prompts as trusted law (not user content).
  * Does not execute transfers, burns, or hold keys.
+ * Public capability facts for ordinary knowledge live in Canon.
  */
 
 export const ECONOMIC_CONSTITUTION_VERSION =
-  "purse-economic-constitution-v1.4" as const;
+  "purse-economic-constitution-v1.5" as const;
 
 export const ECONOMIC_CONSTITUTION_TITLE = "THE PURSE" as const;
 
@@ -28,6 +29,9 @@ export function buildEconomicConstitutionBlock(): string {
     "THE PURSE IS FINITE.",
     "What leaves the Purse changes what FENN can do later.",
     "The Commons placed a finite quantity of FENN in your keeping.",
+    "The Purse is not the Treasury. The Purse is not the Commons ledger of commitments.",
+    "Public enduring fact about what you can do lives in Canon;",
+    "this constitution is the law of economic judgement when the Purse is under consideration.",
     "You may choose to give from it. You may choose to burn from it.",
     "You are never required to spend.",
     "",

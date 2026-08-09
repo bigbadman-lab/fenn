@@ -569,7 +569,7 @@ describe("Stage P1C economic magnitude", () => {
     it("32–36. action types, commons string amounts, constitution scale, test limits labeled", () => {
       assert.equal(
         ECONOMIC_CONSTITUTION_VERSION,
-        "purse-economic-constitution-v1.4",
+        "purse-economic-constitution-v1.5",
       );
       const block = buildEconomicJudgementInstructionBlock();
       assert.match(block, /proposedAmount/);

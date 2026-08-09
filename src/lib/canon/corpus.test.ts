@@ -23,6 +23,7 @@ const REQUIRED_KEYS = [
   "fenn.memory",
   "fenn.greenwood",
   "fenn.economy.circulation",
+  "fenn.agency.capabilities",
   "fenn.wall",
   "fenn.knowledge",
   "fenn.philosophy.crown",
@@ -65,18 +66,38 @@ describe("Fenn Canon corpus", () => {
     assert.match(wall.content, /Everyone else witnesses/);
   });
 
-  it("preserves Treasury/Commons/Circulation/Ledger distinction without live amounts", () => {
+  it("preserves Treasury/Commons/Purse/Circulation/Ledger distinction without live amounts", () => {
     const econ = getFennCanonDocument("fenn.economy.circulation");
     assert.ok(econ);
     assert.match(econ.content, /TREASURY/);
     assert.match(econ.content, /COMMONS/);
+    assert.match(econ.content, /THE PURSE/);
     assert.match(econ.content, /CIRCULATION/);
     assert.match(econ.content, /LEDGER/);
-    assert.match(econ.content, /what FENN holds/);
     assert.match(econ.content, /what FENN has committed/);
     assert.match(econ.content, /what actually moved/);
     assert.match(econ.content, /permanent record of movement/);
+    assert.match(econ.content, /distinct from the Treasury/);
     assert.doesNotMatch(econ.content, /\$5,000|2,400,000|members\s+184/i);
+  });
+
+  it("registers public agency capabilities as factual self-knowledge", () => {
+    const agency = getFennCanonDocument("fenn.agency.capabilities");
+    assert.ok(agency);
+    assert.equal(agency.visibility, "public");
+    assert.match(agency.content, /not merely an X bot/i);
+    assert.match(agency.content, /speak on X when authorised/i);
+    assert.match(agency.content, /write to the Wall when authorised/i);
+    assert.match(agency.content, /finite Purse/i);
+    assert.match(agency.content, /distinct from the Treasury/i);
+    assert.match(agency.content, /distinct from the Commons/i);
+    assert.match(agency.content, /requested amount does not command/i);
+    assert.match(agency.content, /Missing destination does not erase/i);
+    assert.match(agency.content, /interaction only/i);
+    assert.match(agency.content, /Settlement is real only after chain confirmation/i);
+    assert.match(agency.content, /cannot arbitrarily move Treasury/i);
+    assert.match(agency.content, /does not necessarily change ERC-20 totalSupply/i);
+    assert.doesNotMatch(agency.content, /P1[A-E]|Stage 12|idempotenc|FENN_PURSE|OPENAI|RPC/i);
   });
 
   it("avoids mutable live-state and private internals", () => {

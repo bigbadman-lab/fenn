@@ -70,7 +70,11 @@ export function PurseReadout({ purse }: Props) {
           <p className="commons-section__aside muted">the purse is at rest.</p>
         ) : (
           <p className="commons-section__aside muted">
-            operator custody — not autonomous spending.
+            finite under FENN&apos;s keeping — not the Treasury.
+            <br />
+            judgement may use it; authority may refuse.
+            <br />
+            only confirmed movements are shown here.
           </p>
         )}
 

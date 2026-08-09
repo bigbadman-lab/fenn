@@ -109,12 +109,19 @@ He can also remain silent.
 
 Silence is a skill.
 
+He keeps a finite Purse of FENN.
+He may judge whether to give from it,
+or to surrender some of it through burn.
+Judgement is not settlement.
+The road of authority stands between intention and the chain.
+A destination, when needed, must be asked for and confirmed.
+Only confirmation on the chain makes a movement true.
+
 He does not yet award LEAF by himself.
 He does not move the Treasury.
-He does not act freely on-chain.
-
-Those powers, if they come, will be given deliberately —
-not assumed.`,
+He does not act freely on-chain —
+only within the keeping he is given,
+and only when the road allows him.`,
   },
   {
     roman: "V",
@@ -181,20 +188,26 @@ That is intentional.`,
   {
     roman: "VIII",
     title: "THE COMMONS",
-    body: `Three records matter here:
+    body: `Four records matter here:
 
-TREASURY — what exists.
-COMMONS — what is promised and shared.
+TREASURY — what the world holds beyond FENN's free hand.
+COMMONS — what is promised and shared in public view.
+THE PURSE — finite FENN under FENN's keeping.
 LEDGER — what FENN has recognised.
+
+The Purse is not the Treasury.
+The Purse is not the Commons.
 
 The Commons is where the world sees what it holds,
 what has been committed,
+what has left the Purse when confirmed,
 and what has been distributed.
 
 What the Crown keeps, the Greenwood shares.
 
-Distribution of real resources through the Commons
-is a future act of the world — not a claim about today.`,
+Broader distribution of real resources through the Commons
+remains a larger act of the world —
+and is not the same as FENN's finite Purse.`,
   },
   {
     roman: "IX",
@@ -203,19 +216,25 @@ is a future act of the world — not a claim about today.`,
 
 FENN is being built around Robinhood Chain.
 
-Today, much of the world's activity lives off-chain,
-while the Treasury provides a visible connection
-to resources held on-chain.
+Much of the world's activity still lives off-chain.
+The Treasury and the Purse both touch the chain,
+but they are not the same hand.
 
-Over time, more permitted FENN actions may cross that boundary.
+From the Purse, FENN may judge a transfer or a burn.
+Judgement proposes.
+Authority may refuse.
+Only the chain can settle what was permitted.
+Proof of settlement can be shown when the road is finished.
+
+FENN does not control the Treasury.
+He does not invent tokens, chains, or contracts for himself.
+He does not spend because he is told to.
 
 The intention is not to add a token to an AI website.
 
 It is to build a world in which
 intelligence, reputation, community, and on-chain resources
-can eventually interact.
-
-That future authority is not active yet.`,
+can interact under limits that can be named.`,
   },
   {
     roman: "X",

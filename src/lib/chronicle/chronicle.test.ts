@@ -73,8 +73,13 @@ describe("Oak doctrine", () => {
     assert.match(joined, /Deeds/);
     assert.match(joined, /not yet award LEAF by himself|does not yet award LEAF/i);
     assert.match(joined, /does not move the Treasury/);
+    assert.match(joined, /finite Purse/i);
+    assert.match(joined, /Purse is not the Treasury/i);
+    assert.match(joined, /Only the chain can settle|confirmation on the chain/i);
+    assert.doesNotMatch(joined, /future authority is not active yet/i);
     assert.doesNotMatch(joined, /Next\.js|Supabase|RAG|embedding|cron/i);
     assert.doesNotMatch(joined, /autonomous LEAF|unrestricted on-chain/i);
+    assert.doesNotMatch(joined, /Stage 12|idempotenc|FSM|deterministic authority/i);
 
     const oakPage = readFileSync(join(repo, "src/app/oak/page.tsx"), "utf8");
     assert.match(oakPage, /OAK_SECTIONS/);

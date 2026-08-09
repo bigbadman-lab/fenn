@@ -50,10 +50,12 @@ export const STAGE12_MAY = [
   "propose Wall body text including ASCII (whitespace preserved)",
   "choose from STAGE12_LIVE_AGENT_ACTIONS (no live wall-only from X)",
   "form and persist Stage 12.3 intentions without executing them",
+  "form economic intent (NONE / transfer_fenn / burn_fenn with proposed magnitude) under THE PURSE constitution",
   "authorise final intentions into pending consequence plans (Stage 12.5)",
-  "execute controlled transfer_fenn Stage 12.6 effects via Purse P0 (operator P1A only)",
-  "execute controlled burn_fenn Stage 12.6 effects via dead-address Purse settlement (operator P1A.1 only)",
-  "form Stage P1B economic intent (transfer_fenn / burn_fenn / NONE) under THE PURSE constitution",
+  "collect and confirm transfer destination with the same immutable X user when merited transfer lacks a destination",
+  "execute controlled transfer_fenn Stage 12.6 effects via the Purse when authorised",
+  "execute controlled burn_fenn Stage 12.6 effects via dead-address Purse settlement when authorised",
+  "plan post-confirmation economic completion speech from trusted settlement facts (Book of Speech owns wording)",
 ] as const;
 
 /** What Stage 12 must never do. */
@@ -75,12 +77,14 @@ export const STAGE12_MAY_NOT = [
   "execute authorised effects in Stage 12.5 (pending only; Stage 12.6 executes)",
   "ask the model what to do during Stage 12.6 effect execution",
   "let Stage 12 hold or log FENN_PURSE_PRIVATE_KEY",
-  "let Stage 12 choose transfer token, chain, calldata, or amount other than 1",
-  "let the live model originate transfer_fenn effects (P1A is operator-controlled only)",
-  "let the live model originate burn_fenn effects (P1A.1 is operator-controlled only)",
+  "let the model choose transfer token, chain, calldata, burn destination, or execution rail",
+  "let a user-requested amount become the authoritative transaction amount",
+  "silently rewrite or clamp FENN's proposed economic amount (authority permits or refuses only)",
   "treat burn_fenn as reducing ERC-20 totalSupply (dead-address transfer only)",
-  "let the model set amount, token, chain, calldata, burn destination, or execution rail",
-  "treat arbitrary X text addresses as trusted transfer recipients",
+  "treat arbitrary X text addresses as trusted transfer recipients without explicit same-user confirmation",
+  "treat interaction-scoped wallet confirmation as permanent Outlaw identity",
+  "claim settlement complete before chain confirmation",
+  "arbitrarily move Treasury assets",
   "use disposable p1a_test rail on ordinary live X traffic",
 ] as const;
 

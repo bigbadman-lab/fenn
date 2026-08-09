@@ -494,7 +494,7 @@ describe("Stage P1B.1 calibration harness", () => {
   });
 
   it("constitution v1.3 balances magnitude with legitimate Purse use; scenarios present", () => {
-    assert.equal(ECONOMIC_CONSTITUTION_VERSION, "purse-economic-constitution-v1.4");
+    assert.equal(ECONOMIC_CONSTITUTION_VERSION, "purse-economic-constitution-v1.5");
     const block = buildEconomicJudgementInstructionBlock();
     assert.match(block, /not merely preserved/);
     assert.match(block, /not merely a defensive reserve/i);

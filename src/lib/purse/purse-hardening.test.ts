@@ -135,6 +135,10 @@ describe("Purse P0 architecture hardening", () => {
     const readout = read("src/components/commons/purse-readout.tsx");
     assert.match(readout, /THE PURSE OF FENN/);
     assert.doesNotMatch(readout, /is_test|TEST token|disposable/i);
+    assert.doesNotMatch(readout, /operator custody — not autonomous spending/i);
+    assert.match(readout, /not the Treasury/i);
+    assert.match(readout, /authority may refuse/i);
+    assert.match(readout, /only confirmed movements/i);
   });
 
   it("env example documents FENN_PURSE_PRIVATE_KEY without a sample key", () => {
