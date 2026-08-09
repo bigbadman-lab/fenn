@@ -2,11 +2,11 @@ import { OfficialFennContract } from "@/components/commons/official-fenn-contrac
 import { getPublicOfficialFennToken } from "@/lib/treasury/official-token";
 
 /**
- * Compact homepage strip for the official $FENN contract.
- * Renders nothing before launch. Uses trusted DB-backed helper only.
+ * Homepage verification strip for the official $FENN contract.
+ * Always visible. Pending when unresolved; live CA only from DB resolver.
+ * Request-time (page ISR) — no cached address at import time.
  */
 export async function HomeOfficialContract() {
   const token = await getPublicOfficialFennToken();
-  if (!token) return null;
   return <OfficialFennContract token={token} variant="home" />;
 }

@@ -228,16 +228,17 @@ describe("official FENN source safety + surfaces", () => {
     }
   });
 
-  it("commons places contract after Treasury and hides when null", () => {
+  it("commons places identity + contract after Treasury; always mounts contract strip", () => {
     const page = readFileSync(join(repo, "src/app/commons/page.tsx"), "utf8");
     assert.match(page, /OfficialFennContract/);
-    assert.match(page, /officialToken \?/);
-    assert.match(page, /TreasuryReadout[\s\S]*OfficialFennContract/);
+    assert.match(page, /FennTokenIdentity/);
+    assert.match(page, /TreasuryReadout[\s\S]*FennTokenIdentity[\s\S]*OfficialFennContract/);
+    assert.match(page, /OfficialFennContract token=\{officialToken\}/);
     assert.doesNotMatch(page, /coming soon|launch soon/i);
     assert.match(page, /WORLD_PULSE_COMMONS_MS/);
   });
 
-  it("commons UI copies full address and Robinhood explorer", () => {
+  it("commons UI copies full address and Robinhood explorer when live", () => {
     const ui = readFileSync(
       join(repo, "src/components/commons/official-fenn-contract.tsx"),
       "utf8",
@@ -248,12 +249,13 @@ describe("official FENN source safety + surfaces", () => {
     assert.match(ui, /token\.contractAddress/);
     assert.match(ui, /token\.explorerUrl/);
     assert.match(ui, /noopener noreferrer/);
-    assert.match(ui, /COPY CONTRACT|COPY/);
-    assert.match(ui, /VIEW ON ROBINHOOD CHAIN|VERIFY/);
+    assert.match(ui, /COPY/);
+    assert.match(ui, /VIEW CONTRACT/);
+    assert.match(ui, /NOT YET INSCRIBED/);
     assert.doesNotMatch(ui, /dexscreener|uniswap|coingecko|market cap|writeContract/i);
   });
 
-  it("homepage mounts compact strip with ISR freshness, no placeholder", () => {
+  it("homepage mounts compact strip with ISR freshness and pending surface", () => {
     const page = readFileSync(join(repo, "src/app/page.tsx"), "utf8");
     const home = readFileSync(
       join(repo, "src/components/home/home-official-contract.tsx"),
@@ -263,7 +265,8 @@ describe("official FENN source safety + surfaces", () => {
     assert.match(page, /revalidate\s*=\s*60/);
     assert.match(page, /HomeGreenwoodTeaser[\s\S]*HomeOfficialContract[\s\S]*HomePaths/);
     assert.match(home, /getPublicOfficialFennToken/);
-    assert.match(home, /if \(!token\) return null/);
+    assert.match(home, /OfficialFennContract token=\{token\}/);
+    assert.doesNotMatch(home, /if \(!token\) return null/);
     assert.doesNotMatch(home, /0x[a-f0-9]{40}/i);
     assert.doesNotMatch(page, /NEXT_PUBLIC_FENN_TOKEN/);
   });
@@ -387,10 +390,13 @@ describe("official FENN source safety + surfaces", () => {
     assert.equal(resolveOfficialFennToken([a, b]).status, "ambiguous");
   });
 
-  it("mobile/a11y CSS uses wrap + forced-colours CanvasText", () => {
+  it("mobile/a11y CSS uses wrap + forced-colours CanvasText + pending styles", () => {
     const css = readFileSync(join(repo, "src/app/globals.css"), "utf8");
     assert.match(css, /commons-official-token__address/);
     assert.match(css, /home-official-token__address/);
+    assert.match(css, /home-official-token__pending/);
+    assert.match(css, /commons-official-token__pending/);
+    assert.match(css, /fenn-token-identity__facts/);
     assert.match(css, /overflow-wrap:\s*anywhere/);
     assert.match(css, /word-break:\s*break-all/);
     assert.match(

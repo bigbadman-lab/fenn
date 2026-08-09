@@ -3,18 +3,32 @@ import {
   formatTreasuryObservedAt,
 } from "@/lib/commons/format";
 import type { CommonsPagePurse } from "@/lib/commons/page-data";
+import {
+  FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED,
+  FENN_TOKEN_PUBLIC_INITIAL_PURSE_PCT,
+  FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED,
+} from "@/lib/treasury/fenn-token-public-identity";
 import { abbreviateEvmAddress } from "@/lib/wallet/evm";
 
 type Props = {
   purse: CommonsPagePurse;
+  /**
+   * Whether official $FENN contract is resolved (DB-backed).
+   * Distinct from whether chain balance read succeeded.
+   */
+  officialTokenResolved?: boolean;
 };
 
 /**
  * THE PURSE OF FENN — dedicated hot wallet of official FENN.
  * Presentation only. Live balance + confirmed outbound history.
  * No pending/failed settlement internals. No private keys.
+ * Initial 10m allocation is context — never presented as permanent balance.
  */
-export function PurseReadout({ purse }: Props) {
+export function PurseReadout({
+  purse,
+  officialTokenResolved = false,
+}: Props) {
   if (purse.state === "error") {
     return (
       <section className="commons-block" aria-labelledby="purse-heading">
@@ -23,6 +37,7 @@ export function PurseReadout({ purse }: Props) {
         </h2>
         <div className="commons-block__body">
           <p className="commons-empty">the purse cannot be read.</p>
+          <InitialPurseAllocationNote />
         </div>
       </section>
     );
@@ -36,24 +51,31 @@ export function PurseReadout({ purse }: Props) {
         </h2>
         <div className="commons-block__body">
           <p className="commons-section__lede">
-            A finite quantity of FENN may be placed
+            A finite quantity of $FENN under FENN&apos;s keeping.
+          </p>
+          <p className="commons-section__aside muted">
+            distinct from the Treasury.
             <br />
-            in FENN&apos;s keeping.
+            judgement may use it; authority may refuse.
+            <br />
+            settlement is real only after chain confirmation.
           </p>
           <p className="commons-empty commons-empty--spaced">
             the purse is not yet set.
           </p>
+          <InitialPurseAllocationNote />
         </div>
       </section>
     );
   }
 
   const observed = formatTreasuryObservedAt(purse.observedAt);
-  const balanceUnavailable = purse.fennBalance.state === "unavailable";
-  const balanceText =
-    purse.fennBalance.state === "available"
-      ? purse.fennBalance.balance
-      : null;
+  const balanceAvailable = purse.fennBalance.state === "available";
+  const balanceText = balanceAvailable ? purse.fennBalance.balance : null;
+  const tokenAwaiting =
+    !officialTokenResolved ||
+    (purse.fennBalance.state === "unavailable" &&
+      purse.fennBalance.reason === "token_unavailable");
 
   return (
     <section className="commons-block" aria-labelledby="purse-heading">
@@ -62,9 +84,7 @@ export function PurseReadout({ purse }: Props) {
       </h2>
       <div className="commons-block__body">
         <p className="commons-section__lede">
-          A finite quantity of FENN may be placed
-          <br />
-          in FENN&apos;s keeping.
+          A finite quantity of $FENN under FENN&apos;s keeping.
         </p>
         {!purse.isEnabled ? (
           <p className="commons-section__aside muted">the purse is at rest.</p>
@@ -82,14 +102,24 @@ export function PurseReadout({ purse }: Props) {
           <span className="commons-wallet__label">wallet</span>{" "}
           <code className="commons-wallet__address">{purse.purseAddress}</code>
         </p>
+        <p className="commons-section__aside muted commons-purse-wallet-note">
+          this is the Purse wallet — not the $FENN token contract.
+        </p>
 
-        {balanceUnavailable || purse.state === "unavailable" ? (
-          <p className="commons-empty commons-empty--spaced">
-            the address is known.
-            <br />
-            the balance cannot be read just now.
+        <InitialPurseAllocationNote />
+
+        <h3 className="commons-subheading">CURRENT $FENN BALANCE</h3>
+        {tokenAwaiting ? (
+          <p className="commons-empty commons-empty--spaced" role="status">
+            awaiting official token.
+            <span className="visually-hidden">
+              {" "}
+              Current on-chain $FENN balance cannot be shown until the official
+              contract is configured. The initial allocation figure above is
+              launch intent, not a live balance.
+            </span>
           </p>
-        ) : (
+        ) : balanceAvailable && balanceText != null ? (
           <table className="commons-table commons-table--treasury">
             <caption className="visually-hidden">
               Live Purse official FENN balance
@@ -109,6 +139,12 @@ export function PurseReadout({ purse }: Props) {
               </tr>
             </tbody>
           </table>
+        ) : (
+          <p className="commons-empty commons-empty--spaced">
+            the address is known.
+            <br />
+            the balance cannot be read just now.
+          </p>
         )}
 
         {observed ? (
@@ -157,5 +193,22 @@ export function PurseReadout({ purse }: Props) {
         )}
       </div>
     </section>
+  );
+}
+
+function InitialPurseAllocationNote() {
+  return (
+    <div className="commons-purse-initial">
+      <h3 className="commons-subheading">INITIAL ALLOCATION</h3>
+      <p className="commons-purse-initial__value">
+        {FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED} FENN
+      </p>
+      <p className="commons-section__aside muted">
+        {FENN_TOKEN_PUBLIC_INITIAL_PURSE_PCT} of total supply (
+        {FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED} FENN).
+        <br />
+        launch intent — not a permanent balance.
+      </p>
+    </div>
   );
 }

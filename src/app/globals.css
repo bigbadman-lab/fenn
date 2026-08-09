@@ -2211,12 +2211,22 @@ a.home-welcome__inline-link:focus-visible {
   font-size: 0.82rem;
 }
 
+.home-official-token__pending {
+  margin: 0.15rem 0 0;
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-bone);
+}
+
 @media (forced-colors: active) {
   .commons-official-token__address,
   .commons-official-token__chain,
+  .commons-official-token__pending,
   .home-official-token__title,
   .home-official-token__address,
-  .home-official-token__full-code {
+  .home-official-token__full-code,
+  .home-official-token__pending {
     color: CanvasText;
   }
 
@@ -3456,6 +3466,94 @@ a.home-welcome__inline-link:focus-visible {
 .commons-official-token__feedback {
   margin: 0.45rem 0 0;
   font-size: 0.82rem;
+}
+
+.commons-official-token__pending {
+  margin: 0.25rem 0 0;
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* P2E — stable $FENN identity (no live CA) */
+.fenn-token-identity__facts {
+  margin: 1rem 0 1.15rem;
+  padding: 0;
+}
+
+.fenn-token-identity__row {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 8.5rem) minmax(0, 1fr);
+  gap: 0.25rem 0.75rem;
+  margin: 0 0 0.4rem;
+  align-items: baseline;
+}
+
+.fenn-token-identity__label {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.fenn-token-identity__value {
+  margin: 0;
+  font-size: 0.88rem;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.fenn-token-identity__compare {
+  margin: 1rem 0 0.85rem;
+}
+
+.fenn-token-identity__columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+  margin: 0.55rem 0 0.65rem;
+}
+
+@media (max-width: 36rem) {
+  .fenn-token-identity__row {
+    grid-template-columns: 1fr;
+  }
+
+  .fenn-token-identity__columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fenn-token-identity__col-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--color-hoard);
+}
+
+.fenn-token-identity__col p:last-child {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.fenn-token-identity__note {
+  margin-top: 0.65rem;
+}
+
+.commons-purse-initial {
+  margin: 0.85rem 0 0.35rem;
+}
+
+.commons-purse-initial__value {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.commons-purse-wallet-note {
+  margin: 0.25rem 0 0.55rem;
+  font-size: 0.8rem;
 }
 
 .commons-observed {

@@ -132,3 +132,4 @@ This is **not** economic authority or P2B ceiling law.
 - Neither path sets settlement activation; Purse Executor does that on tick.
 - `launch:check` is read-only (`sideEffectsAttempted=false`, `chainBroadcastAttempted=false`).
 - Token identity knowledge (P2D): [fenn-token-identity.md](./fenn-token-identity.md) — **never** store the official CA in Canon; live CA follows `launch:activate`.
+- Public site (P2E): [fenn-public-token-surface.md](./fenn-public-token-surface.md) — `/` + `/commons` show pending CA tonight and live CA after activate without redeploy.

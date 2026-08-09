@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CommonsCommitments } from "@/components/commons/commons-commitments";
 import { CommonsHistory } from "@/components/commons/commons-history";
+import { FennTokenIdentity } from "@/components/commons/fenn-token-identity";
 import { OfficialFennContract } from "@/components/commons/official-fenn-contract";
 import { PurseReadout } from "@/components/commons/purse-readout";
 import { TreasuryReadout } from "@/components/commons/treasury-readout";
@@ -15,15 +16,16 @@ import { WORLD_PULSE_COMMONS_MS } from "@/lib/world-pulse/intervals";
 export const metadata: Metadata = buildPublicMetadata({
   title: "THE COMMONS",
   description:
-    "The FENN Treasury, public commitments and the official contract in full view.",
+    "The FENN Treasury, $FENN, the Purse, public commitments and the official contract in full view.",
   path: "/commons",
 });
 
 export const dynamic = "force-dynamic";
 
 /**
- * Public Treasury + Commons surface.
+ * Public Treasury + Commons + $FENN surface.
  * Holdings and commitments are separate facts — no available/remaining calc.
+ * Official CA is live resolution only (pending when unset).
  */
 export default async function CommonsPage() {
   const { treasury, commons, officialToken, purse } = await loadCommonsPageData();
@@ -51,6 +53,8 @@ export default async function CommonsPage() {
                 the treasury is where things arrive.
                 <br />
                 the commons is what fenn has committed to move.
+                <br />
+                the purse is finite $FENN under fenn&apos;s keeping.
               </p>
             </>
           }
@@ -59,10 +63,9 @@ export default async function CommonsPage() {
 
       <div className="commons-sheet" aria-label="treasury and commons accounts">
         <TreasuryReadout treasury={treasury} />
-        {officialToken ? (
-          <OfficialFennContract token={officialToken} variant="commons" />
-        ) : null}
-        <PurseReadout purse={purse} />
+        <FennTokenIdentity />
+        <OfficialFennContract token={officialToken} variant="commons" />
+        <PurseReadout purse={purse} officialTokenResolved={officialToken != null} />
         <CommonsCommitments commons={commons} />
         <CommonsHistory commons={commons} />
 
