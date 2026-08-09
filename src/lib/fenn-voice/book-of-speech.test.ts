@@ -80,7 +80,7 @@ describe("THE BOOK OF SPEECH v2", () => {
     assert.match(system, /book-of-speech-v2/);
     assert.match(system, /Apply THE BOOK OF SPEECH to every replyText and wallBody/);
     assert.match(system, new RegExp(STAGE12_JUDGE_PROMPT_VERSION));
-    assert.equal(STAGE12_JUDGE_PROMPT_VERSION, "fenn-public-judge-book-v2");
+    assert.equal(STAGE12_JUDGE_PROMPT_VERSION, "fenn-public-judge-book-v2-capability-truth");
     assert.match(system, /VISIBLE REPLY GUARANTEE/i);
     assert.match(system, /Wall always requires a reply|no wall-only action/i);
     assert.match(system, /will this still matter in a year/i);

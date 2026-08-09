@@ -66,7 +66,10 @@ describe("Stage 4 versions and Book injection", () => {
   });
 
   it("prompt versions bumped to Book v2", () => {
-    assert.equal(STAGE12_JUDGE_PROMPT_VERSION, "fenn-public-judge-book-v2");
+    assert.equal(
+      STAGE12_JUDGE_PROMPT_VERSION,
+      "fenn-public-judge-book-v2-capability-truth",
+    );
     assert.equal(
       STAGE124_FINAL_PROMPT_VERSION,
       "fenn-public-final-judge-book-v2-purse-p1d-merit",
@@ -80,7 +83,10 @@ describe("Stage 4 versions and Book injection", () => {
   it("Book injected into initial, final, and recovery prompts", () => {
     assert.match(buildFennPublicJudgeSystemPrompt(), /BEGIN_BOOK_OF_SPEECH/);
     assert.match(buildFennPublicJudgeSystemPrompt(), /book-of-speech-v2/);
-    assert.match(buildFennPublicJudgeSystemPrompt(), /fenn-public-judge-book-v2/);
+    assert.match(
+      buildFennPublicJudgeSystemPrompt(),
+      /fenn-public-judge-book-v2-capability-truth/,
+    );
     assert.match(
       buildFennPublicFinalJudgeSystemPrompt(),
       /BEGIN_BOOK_OF_SPEECH/,
