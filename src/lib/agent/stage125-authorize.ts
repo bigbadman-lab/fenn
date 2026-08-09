@@ -330,6 +330,31 @@ export async function authorizeOneXPerception(
       finalReplyText,
       finalWallBody,
       finalReasonCode,
+      finalEconomicIntent: claimed.finalEconomicIntent,
+      economicContext: await (async () => {
+        try {
+          const { loadPurseEconomicState } = await import(
+            "@/lib/agent/purse-economic-context"
+          );
+          // Live authorize: official rail only — never inherits disposable rail.
+          const purseState = await loadPurseEconomicState({
+            forceTestRail: false,
+          });
+          return {
+            harnessBoundWallet: null,
+            executionRail: "official" as const,
+            purseState,
+            sufficientBalance: undefined,
+          };
+        } catch {
+          return {
+            harnessBoundWallet: null,
+            executionRail: "official" as const,
+            purseState: null,
+            sufficientBalance: false,
+          };
+        }
+      })(),
     });
 
     // Attach Chronicler memory id into wall effect payload when planned.
@@ -348,9 +373,17 @@ export async function authorizeOneXPerception(
       decision.policyCode === "permitted_wall" &&
       decision.effects.every((e) => e.type === "write_to_wall");
 
+    const isEconomicOnly =
+      decision.outcome === "permitted" &&
+      !decision.effects.some((e) => e.type === "reply_on_x") &&
+      decision.effects.some(
+        (e) => e.type === "transfer_fenn" || e.type === "burn_fenn",
+      );
+
     if (
       decision.outcome === "permitted" &&
       !isDeskWallOnly &&
+      !isEconomicOnly &&
       !decision.effects.some((e) => e.type === "reply_on_x")
     ) {
       return {

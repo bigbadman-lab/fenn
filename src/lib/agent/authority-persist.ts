@@ -22,6 +22,8 @@ export type ClaimedAuthorityJudgement = {
   alreadyAuthorised: boolean;
   /** Stage 3 structured Wall candidate from final judge (nullable). */
   finalWallCandidate: unknown | null;
+  /** Stage P1B economic intention from final judge (nullable → NONE). */
+  finalEconomicIntent: unknown | null;
 };
 
 export type PersistAuthorizationResult = {
@@ -100,6 +102,8 @@ export async function claimXPerceptionForAuthority(
     alreadyAuthorised: Boolean(row.already_authorised),
     finalWallCandidate:
       row.final_wall_candidate != null ? row.final_wall_candidate : null,
+    finalEconomicIntent:
+      row.final_economic_intent != null ? row.final_economic_intent : null,
   };
 }
 

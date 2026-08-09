@@ -23,6 +23,8 @@ import {
 } from "@/lib/wall/stage12-tool-contract";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
 import { validateWriteFennWallEntryInput } from "@/lib/wall/write";
+import { planEconomicEffects } from "@/lib/agent/economic-authority";
+import { economicIntentFromJson } from "@/lib/agent/economic-intent";
 
 export type AuthorityJudgementInput = {
   perceptionEventId: string;
@@ -41,6 +43,20 @@ export type AuthorityJudgementInput = {
    * Live X pipeline must leave this unset/false — wall always requires a reply.
    */
   allowOperationalWallOnly?: boolean;
+  /**
+   * Stage P1B economic intention from final judge (persisted jsonb).
+   * Model proposal only — amounts/recipients never trusted from here alone.
+   */
+  finalEconomicIntent?: unknown | null;
+  /**
+   * Trusted context for planning economic effects. Absent → no economic plan.
+   */
+  economicContext?: {
+    harnessBoundWallet?: string | null;
+    executionRail: "official" | "p1a_test";
+    purseState: import("@/lib/agent/purse-economic-context").PurseEconomicState | null;
+    sufficientBalance?: boolean;
+  } | null;
 };
 
 export type AuthorityEffectPlan = {
@@ -196,6 +212,70 @@ function permitted(
   };
 }
 
+function appendEconomicEffects(
+  input: AuthorityJudgementInput,
+  base: AuthorityDecision,
+): AuthorityDecision {
+  if (base.outcome === "denied") return base;
+
+  const economicIntent = economicIntentFromJson(
+    input.finalEconomicIntent ?? { type: "NONE" },
+  );
+  if (economicIntent.type === "NONE") return base;
+  if (!input.economicContext) return base;
+
+  const planned = planEconomicEffects({
+    economicIntent,
+    reasonCode: input.finalReasonCode,
+    perceptionEventId: input.perceptionEventId,
+    harnessBoundWallet: input.economicContext.harnessBoundWallet,
+    purseState: input.economicContext.purseState,
+    executionRail: input.economicContext.executionRail,
+    sufficientBalance: input.economicContext.sufficientBalance,
+  });
+
+  if (planned.effects.length === 0) return base;
+
+  const effects = [...base.effects, ...planned.effects];
+  const hasSpeech = effects.some(
+    (e) => e.type === "reply_on_x" || e.type === "write_to_wall",
+  );
+  const policyCode: Stage125PolicyCode =
+    hasSpeech && planned.policyHint
+      ? "permitted_reply_and_economic"
+      : planned.policyHint ?? base.policyCode;
+
+  // Economic-only permitted when speech outcome was no_action.
+  if (base.outcome === "no_action" && !hasSpeech) {
+    const invariant = assertEligibleEffectsInvariant(effects);
+    if (!invariant.ok) {
+      return base;
+    }
+    return {
+      outcome: "permitted",
+      policyCode,
+      policyVersion: STAGE125_POLICY_VERSION,
+      finalAction: base.finalAction,
+      sourceXPostId: base.sourceXPostId,
+      effects,
+      policyOutcome: base.policyOutcome,
+    };
+  }
+
+  if (base.outcome !== "permitted") return base;
+
+  const invariant = assertEligibleEffectsInvariant(effects);
+  if (!invariant.ok) {
+    return base;
+  }
+
+  return {
+    ...base,
+    policyCode,
+    effects,
+  };
+}
+
 /**
  * Pure deterministic authority. No I/O. No model. No side effects.
  *
@@ -291,7 +371,7 @@ export function evaluateAuthorityDecision(
   }
 
   if (finalAction === "do_nothing") {
-    return {
+    return appendEconomicEffects(input, {
       outcome: "no_action",
       policyCode: "no_action",
       policyVersion: STAGE125_POLICY_VERSION,
@@ -299,7 +379,7 @@ export function evaluateAuthorityDecision(
       sourceXPostId,
       effects: [],
       policyOutcome: "blocked",
-    };
+    });
   }
 
   if (finalAction === "reply_on_x") {
@@ -315,9 +395,12 @@ export function evaluateAuthorityDecision(
         policyOutcome: "reply_generation_failed",
       };
     }
-    return permitted(input, "permitted_reply", finalAction, [
-      planReplyEffect(sourceXPostId, reply.text),
-    ]);
+    return appendEconomicEffects(
+      input,
+      permitted(input, "permitted_reply", finalAction, [
+        planReplyEffect(sourceXPostId, reply.text),
+      ]),
+    );
   }
 
   // reply_and_write_to_wall — both must pass; always plan reply + wall.
@@ -338,15 +421,21 @@ export function evaluateAuthorityDecision(
     }
     if (!wall.ok) {
       // Dual missing wall → reply-only elevation (wall never without reply).
-      return permitted(input, "permitted_reply", "reply_on_x", [
-        planReplyEffect(sourceXPostId, reply.text),
-      ]);
+      return appendEconomicEffects(
+        input,
+        permitted(input, "permitted_reply", "reply_on_x", [
+          planReplyEffect(sourceXPostId, reply.text),
+        ]),
+      );
     }
 
-    return permitted(input, "permitted_reply_and_wall", finalAction, [
-      planReplyEffect(sourceXPostId, reply.text),
-      planWallEffect(sourceXPostId, wall.body),
-    ]);
+    return appendEconomicEffects(
+      input,
+      permitted(input, "permitted_reply_and_wall", finalAction, [
+        planReplyEffect(sourceXPostId, reply.text),
+        planWallEffect(sourceXPostId, wall.body),
+      ]),
+    );
   }
 
   return deny(input, "invalid_final_judgement", finalAction);

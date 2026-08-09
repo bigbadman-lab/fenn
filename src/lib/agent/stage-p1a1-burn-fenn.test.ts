@@ -48,9 +48,10 @@ describe("Stage P1A.1 burn_fenn effect contract", () => {
   it("ordinary live judgement cannot generate burn_fenn", () => {
     assert.ok(!STAGE12_LIVE_AGENT_ACTIONS.includes("burn_fenn" as never));
     const schema = read("src/lib/agent/stage124-final-judgement-schema.ts");
-    assert.doesNotMatch(schema, /burn_fenn/);
+    assert.match(schema, /economicAction/);
+    assert.doesNotMatch(schema, /action:\s*z\.enum.*burn_fenn/);
     const policy = read("src/lib/agent/authority-policy.ts");
-    assert.doesNotMatch(policy, /burn_fenn|planBurn/);
+    assert.match(policy, /planEconomicEffects|appendEconomicEffects/);
   });
 
   it("validates fixed amount and rejects recipient/token/chain overrides", () => {

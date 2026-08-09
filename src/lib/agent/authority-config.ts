@@ -55,6 +55,18 @@ export const STAGE125_POLICY_CODES = [
    * Plans a single burn_fenn dead-address effect via operator entrypoint.
    */
   "permitted_burn_p1a",
+  /**
+   * Stage P1B: model proposed transfer_fenn and authority approved trusted recipient.
+   */
+  "permitted_transfer_p1b",
+  /**
+   * Stage P1B: model proposed burn_fenn and authority approved dead-address burn.
+   */
+  "permitted_burn_p1b",
+  /**
+   * Stage P1B: speech permitted and economic effect also planned (multi-effect).
+   */
+  "permitted_reply_and_economic",
 ] as const;
 
 export type Stage125PolicyCode = (typeof STAGE125_POLICY_CODES)[number];

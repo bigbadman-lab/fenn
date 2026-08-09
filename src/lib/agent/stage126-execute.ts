@@ -28,6 +28,7 @@ import {
   type BurnFennAdapterDeps,
   type TransferFennAdapterDeps,
 } from "@/lib/agent/transfer-effect-adapter";
+import { buildEconomicFollowupDraft } from "@/lib/agent/economic-followup";
 
 type AdminLike = {
   from: (table: string) => unknown;
@@ -52,6 +53,8 @@ export type ExecuteOneResult = {
   failureClass?: Stage126FailureClass;
   errorCode?: string;
   dryRunPreview?: string;
+  /** Post-confirmation trusted speech draft (P1B; not auto-posted). */
+  economicFollowupPreview?: string;
 };
 
 export type ExecuteBatchAggregate = {
@@ -198,10 +201,17 @@ async function executeClaimedEffect(
         },
         { admin: deps.admin },
       );
+      const followup = buildEconomicFollowupDraft({
+        actionType: "transfer",
+        amountFormatted: "1",
+        txHash: transferResult.txHash,
+        recipientAddress: transferResult.recipientAddress,
+      });
       return {
         ...base,
         status: "completed",
         externalResultId: transferResult.txHash,
+        economicFollowupPreview: followup.text,
       };
     }
 
@@ -239,10 +249,16 @@ async function executeClaimedEffect(
         },
         { admin: deps.admin },
       );
+      const followup = buildEconomicFollowupDraft({
+        actionType: "burn",
+        amountFormatted: "1",
+        txHash: burnResult.txHash,
+      });
       return {
         ...base,
         status: "completed",
         externalResultId: burnResult.txHash,
+        economicFollowupPreview: followup.text,
       };
     }
 

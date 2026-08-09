@@ -33,6 +33,12 @@ import {
   intentionNeedsReplyRecovery,
   type ReplyRecoveryModelCaller,
 } from "@/lib/agent/reply-recovery";
+import {
+  formatPurseEconomicStateForPrompt,
+  loadPurseEconomicState,
+} from "@/lib/agent/purse-economic-context";
+import { economicIntentToJson } from "@/lib/agent/economic-intent";
+import { resolveTrustedTransferRecipient } from "@/lib/agent/trusted-recipient";
 
 type AdminLike = {
   from: (table: string) => unknown;
@@ -66,6 +72,10 @@ type Stage124Deps = {
   retrieveKnowledge?: (query: string) => Promise<PublicAgentKnowledgeLookup>;
   runFinalJudgement?: typeof runFennPublicFinalJudgement;
   callReplyRecovery?: ReplyRecoveryModelCaller;
+  /** Stage P1B: optional overrides (e.g. harness purse state loader). */
+  loadPurseState?: typeof loadPurseEconomicState;
+  harnessBoundWallet?: string | null;
+  forcePurseTestRail?: boolean;
 };
 
 /** Filter requested caps to executable Stage 124 set (no silent personal leaf). */
@@ -215,6 +225,26 @@ async function runLiveThenJudgePath(input: {
       knowledge: knowledgeLookup,
     });
 
+    const purseLoader =
+      input.deps.loadPurseState ?? loadPurseEconomicState;
+    let purseBlock: string | null = null;
+    let trustedWalletAvailable = false;
+    try {
+      const purseState = await purseLoader({
+        forceTestRail: Boolean(input.deps.forcePurseTestRail),
+      });
+      purseBlock = formatPurseEconomicStateForPrompt(purseState);
+      const resolved = resolveTrustedTransferRecipient({
+        harnessBoundWallet: input.deps.harnessBoundWallet,
+      });
+      trustedWalletAvailable = resolved.ok;
+    } catch {
+      purseBlock = [
+        "=== TRUSTED PURSE STATE (THE PURSE) ===",
+        "Purse state unavailable. Prefer economicAction NONE.",
+      ].join("\n");
+    }
+
     const finalIntention = await (input.deps.runFinalJudgement ??
       runFennPublicFinalJudgement)({
       xPostId: input.claimed.xPostId,
@@ -228,6 +258,8 @@ async function runLiveThenJudgePath(input: {
       publicFactEvidenceBlock: factBlock,
       trustedFacts: facts,
       liveStateAnyAvailable: anyLiveAvailable,
+      trustedPurseStateBlock: purseBlock,
+      trustedWalletAvailable,
     });
 
     let finalAction = finalIntention.action;
@@ -236,6 +268,9 @@ async function runLiveThenJudgePath(input: {
     let finalReasonCode = finalIntention.reasonCode;
     let finalEngage = finalIntention.engage;
     const finalWallCandidate = finalIntention.wallCandidate ?? null;
+    const finalEconomicIntent = economicIntentToJson(
+      finalIntention.economicIntent ?? { type: "NONE" },
+    );
 
     if (
       intentionNeedsReplyRecovery({
@@ -290,6 +325,7 @@ async function runLiveThenJudgePath(input: {
         finalModel: finalIntention.model,
         finalPromptVersion: finalIntention.promptVersion,
         finalWallCandidate,
+        finalEconomicIntent,
       },
       { admin: input.deps.admin },
     );
@@ -320,6 +356,7 @@ async function runLiveThenJudgePath(input: {
         finalIdentityUnverified: input.claimed.identityUnverified,
         finalModel: "n/a",
         finalPromptVersion: "n/a",
+        finalEconomicIntent: { type: "NONE" },
       },
       { admin: input.deps.admin },
     );
@@ -492,6 +529,7 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
       finalIdentityUnverified: claimed.identityUnverified,
       finalModel: finalModelNoop,
       finalPromptVersion: finalPromptCopy,
+      finalEconomicIntent: { type: "NONE" },
     },
     { admin: deps.admin },
   );

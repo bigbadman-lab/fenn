@@ -45,10 +45,15 @@ describe("Stage P1A transfer_fenn effect contract", () => {
 
   it("ordinary live judgement cannot generate transfer_fenn", () => {
     assert.ok(!STAGE12_LIVE_AGENT_ACTIONS.includes("transfer_fenn" as never));
+    // transfer_fenn is an economic intent + effect type, not a speech action.
     const schema = read("src/lib/agent/stage124-final-judgement-schema.ts");
-    assert.doesNotMatch(schema, /transfer_fenn/);
+    assert.doesNotMatch(
+      schema,
+      /action:\s*z\.enum\(STAGE12_LIVE_AGENT_ACTIONS\).*transfer_fenn/,
+    );
+    assert.match(schema, /economicAction/);
     const policy = read("src/lib/agent/authority-policy.ts");
-    assert.doesNotMatch(policy, /transfer_fenn|planTransfer/);
+    assert.match(policy, /planEconomicEffects|appendEconomicEffects/);
   });
 
   it("validates recipient + fixed amount and rejects token/chain/calldata", () => {

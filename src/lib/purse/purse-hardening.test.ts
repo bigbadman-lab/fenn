@@ -12,12 +12,15 @@ function read(rel: string): string {
 }
 
 describe("Purse P0 architecture hardening", () => {
-  it("does not extend Stage 12.5 model planning with transfer_fenn", () => {
+  it("does not put economic effects in speech action enum", () => {
     const authority = read("src/lib/agent/authority-config.ts");
     assert.match(authority, /transfer_fenn/);
     // Live type list may include transfer_fenn for execution schema, but planning does not.
     const policy = read("src/lib/agent/authority-policy.ts");
-    assert.doesNotMatch(policy, /type:\s*["']transfer_fenn["']|planTransfer/);
+    assert.match(policy, /planEconomicEffects/);
+
+    const actions = read("src/lib/agent/actions.ts");
+    assert.doesNotMatch(actions, /transfer_fenn|burn_fenn/);
 
     const execute = read("src/lib/agent/stage126-execute.ts");
     assert.match(execute, /transfer_fenn/);

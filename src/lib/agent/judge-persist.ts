@@ -250,6 +250,8 @@ export async function finalizeXPerceptionJudgementWithLiveState(
     finalPromptVersion: string;
     /** Stage 3 optional structured Wall candidate (normalize before pass). */
     finalWallCandidate?: unknown | null;
+    /** Stage P1B economic intention (type/reason only). */
+    finalEconomicIntent?: unknown | null;
   },
   deps: { admin?: AdminLike } = {},
 ): Promise<FinalizeStage124LiveJudgementResult> {
@@ -272,6 +274,7 @@ export async function finalizeXPerceptionJudgementWithLiveState(
       p_final_model: input.finalModel,
       p_final_prompt_version: input.finalPromptVersion,
       p_final_wall_candidate: input.finalWallCandidate ?? null,
+      p_final_economic_intent: input.finalEconomicIntent ?? { type: "NONE" },
     },
   );
 

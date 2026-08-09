@@ -2,16 +2,40 @@ import { z } from "zod";
 
 import { STAGE12_LIVE_AGENT_ACTIONS } from "@/lib/agent/actions";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
-import { applyReplyGuaranteePolicy } from "@/lib/agent/reply-guarantee-policy";
+import {
+  applyReplyGuaranteePolicy,
+  isHardBlockReasonCode,
+} from "@/lib/agent/reply-guarantee-policy";
 import type { PublicFactEvidence } from "@/lib/agent/public-fact-evidence";
 import { normalizeWallCandidate } from "@/lib/agent/wall-candidate-schema";
 import type { WallCandidate } from "@/lib/agent/chronicler-types";
 import type { Stage12ResponseMode } from "@/lib/agent/response-mode";
+import {
+  normalizeModelEconomicAction,
+  type FinalEconomicIntent,
+} from "@/lib/agent/economic-intent";
 
 import {
   STAGE12_JUDGEMENT_REASON_CODES,
   STAGE12_X_REPLY_MAX_CHARS,
 } from "@/lib/agent/judge-config";
+
+/** Stage P1B — economic intent only (not speech action). */
+export const stage124EconomicActionSchema = z.union([
+  z.literal("NONE"),
+  z.object({
+    type: z.literal("NONE"),
+  }),
+  z.object({
+    type: z.literal("transfer_fenn"),
+    reason: z.string().min(1).max(280),
+    recipientSource: z.literal("trusted_profile_wallet"),
+  }),
+  z.object({
+    type: z.literal("burn_fenn"),
+    reason: z.string().min(1).max(280),
+  }),
+]);
 
 export const stage124FinalJudgementModelSchema = z.object({
   engage: z.boolean(),
@@ -25,6 +49,11 @@ export const stage124FinalJudgementModelSchema = z.object({
    * Application re-validates against trusted evidence; invalid → null.
    */
   wallCandidate: z.unknown().nullable().optional(),
+  /**
+   * Stage P1B economic intention. Speech action is separate.
+   * Never includes amount, token, chain, recipient address, or rail.
+   */
+  economicAction: stage124EconomicActionSchema.optional().default("NONE"),
 });
 
 export type Stage124FinalJudgementModelOutput = z.infer<
@@ -43,12 +72,14 @@ export type Stage124FinalJudgementIntention = {
   model: string;
   promptVersion: string;
   wallCandidate: WallCandidate | null;
+  economicIntent: FinalEconomicIntent;
 };
 
 /**
  * Final judgement normaliser: visible-reply guarantee after live state.
  * Soft silence and empty action are elevated to reply when drafts exist.
  * Never wall-only. No deferred live silence (this is the final stage).
+ * Economic intent is wiped on hard blocks; malformed economic → NONE.
  */
 export function normalizeStage124FinalJudgementIntention(input: {
   raw: Stage124FinalJudgementModelOutput;
@@ -101,6 +132,20 @@ export function normalizeStage124FinalJudgementIntention(input: {
     wallCandidate = null;
   }
 
+  let economicIntent: FinalEconomicIntent = { type: "NONE" };
+  try {
+    economicIntent = normalizeModelEconomicAction(
+      input.raw.economicAction ?? "NONE",
+    );
+  } catch {
+    economicIntent = { type: "NONE" };
+  }
+
+  // Never plan spend on hard silence / injection.
+  if (isHardBlockReasonCode(guaranteed.reasonCode)) {
+    economicIntent = { type: "NONE" };
+  }
+
   return {
     engage: guaranteed.engage,
     action,
@@ -113,5 +158,6 @@ export function normalizeStage124FinalJudgementIntention(input: {
     model: input.model,
     promptVersion: input.promptVersion,
     wallCandidate,
+    economicIntent,
   };
 }

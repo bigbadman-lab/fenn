@@ -292,10 +292,10 @@ function hardBlock(
 }
 
 /**
- * Planned-effect invariant for eligible (non-blocked) authorisations.
- * - exactly 1 reply_on_x
- * - 0 or 1 write_to_wall
- * - wall count never exceeds reply count
+ * Planned-effect invariant for authorisations.
+ * Speech path: exactly 1 reply_on_x, 0–1 write_to_wall.
+ * Economic-only path: 0 speech + 1 transfer_fenn or burn_fenn (P1B).
+ * Combined path: speech rules + 0–1 economic effect.
  */
 export function assertEligibleEffectsInvariant(
   effects: ReadonlyArray<{ type: Stage125EffectType | string }>,
@@ -307,9 +307,36 @@ export function assertEligibleEffectsInvariant(
 } {
   let replyCount = 0;
   let wallCount = 0;
+  let transferCount = 0;
+  let burnCount = 0;
   for (const e of effects) {
     if (e.type === "reply_on_x") replyCount += 1;
     else if (e.type === "write_to_wall") wallCount += 1;
+    else if (e.type === "transfer_fenn") transferCount += 1;
+    else if (e.type === "burn_fenn") burnCount += 1;
+  }
+
+  const economicCount = transferCount + burnCount;
+  if (economicCount > 1) {
+    return {
+      ok: false,
+      replyCount,
+      wallCount,
+      violation: `expected at most 1 economic effect, got ${economicCount}`,
+    };
+  }
+  if (transferCount > 0 && burnCount > 0) {
+    return {
+      ok: false,
+      replyCount,
+      wallCount,
+      violation: "cannot plan transfer and burn together",
+    };
+  }
+
+  // Economic-only (rare): allowed without X reply.
+  if (replyCount === 0 && wallCount === 0 && economicCount === 1) {
+    return { ok: true, replyCount, wallCount, violation: null };
   }
 
   if (replyCount !== 1) {

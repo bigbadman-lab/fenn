@@ -53,6 +53,7 @@ export const STAGE12_MAY = [
   "authorise final intentions into pending consequence plans (Stage 12.5)",
   "execute controlled transfer_fenn Stage 12.6 effects via Purse P0 (operator P1A only)",
   "execute controlled burn_fenn Stage 12.6 effects via dead-address Purse settlement (operator P1A.1 only)",
+  "form Stage P1B economic intent (transfer_fenn / burn_fenn / NONE) under THE PURSE constitution",
 ] as const;
 
 /** What Stage 12 must never do. */
@@ -78,6 +79,9 @@ export const STAGE12_MAY_NOT = [
   "let the live model originate transfer_fenn effects (P1A is operator-controlled only)",
   "let the live model originate burn_fenn effects (P1A.1 is operator-controlled only)",
   "treat burn_fenn as reducing ERC-20 totalSupply (dead-address transfer only)",
+  "let the model set amount, token, chain, calldata, burn destination, or execution rail",
+  "treat arbitrary X text addresses as trusted transfer recipients",
+  "use disposable p1a_test rail on ordinary live X traffic",
 ] as const;
 
 export type {
