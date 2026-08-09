@@ -367,6 +367,7 @@ describe("Stage P1B economic judgement", () => {
   it("CLI script exists for economic judgement harness", () => {
     const script = read("scripts/agent-test-economic-judgement.ts");
     assert.match(script, /runP1bEconomicJudgementTest/);
+    assert.match(script, /force-intent|forceIntent/);
     assert.doesNotMatch(script, /FENN_PURSE_PRIVATE_KEY/);
   });
 });

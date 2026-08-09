@@ -433,6 +433,11 @@ export async function finalizeOneXPerceptionJudgementWithLiveState(
   }
 
   // Pure copy-forward path — no executable live caps after inference.
+  // P1B.1 limitation: this path does NOT call runFennPublicFinalJudgement.
+  // Speech is guarantee-policy + optional recovery; economy is hard-set NONE.
+  // Economic calibration harness always uses the real final-judge path instead.
+  // Classes that can bypass economic re-judgement today: Stage 12.3 drafts
+  // with empty (or body-inferred-null) live caps that copy-forward finalize.
   const guaranteed = applyReplyGuaranteePolicy({
     engage: claimed.initialEngage,
     action: claimed.initialAction,

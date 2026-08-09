@@ -116,6 +116,8 @@ export async function runFennPublicFinalJudgement(input: {
   trustedFacts?: import("@/lib/agent/public-fact-evidence").PublicFactEvidence[] | null;
   trustedPurseStateBlock?: string | null;
   trustedWalletAvailable?: boolean;
+  /** P1B.1: operator/application economic attestation prompt block. */
+  trustedEconomicAttestationBlock?: string | null;
   callModel?: Stage124FinalJudgeModelCaller;
 }): Promise<Stage124FinalJudgementIntention> {
   const callModel = input.callModel ?? defaultStage124FinalJudgeModelCaller;
@@ -132,6 +134,8 @@ export async function runFennPublicFinalJudgement(input: {
     publicFactEvidenceBlock: input.publicFactEvidenceBlock ?? null,
     trustedPurseStateBlock: input.trustedPurseStateBlock ?? null,
     trustedWalletAvailable: input.trustedWalletAvailable ?? false,
+    trustedEconomicAttestationBlock:
+      input.trustedEconomicAttestationBlock ?? null,
   });
 
   let raw: Stage124FinalJudgementModelOutput;
