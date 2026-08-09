@@ -26,6 +26,7 @@
     "agent:test-wall": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-wall.ts",
     "agent:test-purse-effect": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-purse-effect.ts",
     "agent:test-purse-burn": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-purse-burn.ts",
+    "agent:test-self-knowledge": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-self-knowledge.ts",
     "agent:test-economic-judgement": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-economic-judgement.ts",
     "agent:test-wallet-collection": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-wallet-collection.ts",
     "agent:test-economic-completion": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-economic-completion.ts",
