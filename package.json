@@ -29,6 +29,7 @@
     "agent:test-economic-judgement": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-economic-judgement.ts",
     "agent:test-wallet-collection": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-wallet-collection.ts",
     "agent:test-economic-completion": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-economic-completion.ts",
+    "agent:rehearse-economic-flow": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-rehearse-economic-flow.ts",
     "chronicle:daily": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/chronicle-daily.ts",
     "market-watch:worker": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-worker.ts",
     "market-watch:replay": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-replay.ts",
