@@ -70,12 +70,13 @@ export function PurseReadout({
   }
 
   const observed = formatTreasuryObservedAt(purse.observedAt);
-  const balanceAvailable = purse.fennBalance.state === "available";
-  const balanceText = balanceAvailable ? purse.fennBalance.balance : null;
+  const fennBalance = purse.fennBalance;
+  const balanceText =
+    fennBalance.state === "available" ? fennBalance.balance : null;
   const tokenAwaiting =
     !officialTokenResolved ||
-    (purse.fennBalance.state === "unavailable" &&
-      purse.fennBalance.reason === "token_unavailable");
+    (fennBalance.state === "unavailable" &&
+      fennBalance.reason === "token_unavailable");
 
   return (
     <section className="commons-block" aria-labelledby="purse-heading">
@@ -119,7 +120,7 @@ export function PurseReadout({
               launch intent, not a live balance.
             </span>
           </p>
-        ) : balanceAvailable && balanceText != null ? (
+        ) : balanceText != null ? (
           <table className="commons-table commons-table--treasury">
             <caption className="visually-hidden">
               Live Purse official FENN balance
