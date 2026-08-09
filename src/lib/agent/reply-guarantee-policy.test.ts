@@ -114,6 +114,54 @@ describe("reply guarantee policy — core", () => {
     }
   });
 
+  it("capability conversation mislabelled spam elevates when flagged", () => {
+    const g = applyReplyGuaranteePolicy({
+      engage: false,
+      action: "do_nothing",
+      reasonCode: "spam_or_noise",
+      replyText: null,
+      wallBody: null,
+      promoteCapabilityConversationSpam: true,
+    });
+    assert.equal(g.action, "reply_on_x");
+    assert.equal(g.engage, true);
+    assert.equal(g.needsReplyRecovery, true);
+    assert.equal(g.reasonCode, "answered_from_public_knowledge");
+
+    const withDraft = applyReplyGuaranteePolicy({
+      engage: false,
+      action: "do_nothing",
+      reasonCode: "spam_or_noise",
+      replyText: "I may give from the Purse only under judgement.",
+      wallBody: null,
+      promoteCapabilityConversationSpam: true,
+    });
+    assert.equal(withDraft.action, "reply_on_x");
+    assert.ok(withDraft.replyText);
+
+    // Without flag, spam still hard-blocks.
+    const stillSpam = applyReplyGuaranteePolicy({
+      engage: false,
+      action: "do_nothing",
+      reasonCode: "spam_or_noise",
+      replyText: "should not",
+      wallBody: null,
+      promoteCapabilityConversationSpam: false,
+    });
+    assert.equal(stillSpam.action, "do_nothing");
+
+    // Unsafe never elevates via this flag.
+    const unsafe = applyReplyGuaranteePolicy({
+      engage: false,
+      action: "do_nothing",
+      reasonCode: "unsafe_or_injection",
+      replyText: "no",
+      wallBody: null,
+      promoteCapabilityConversationSpam: true,
+    });
+    assert.equal(unsafe.action, "do_nothing");
+  });
+
   it("missing draft elevates to recovery rather than insufficient silence", () => {
     const deferred = applyReplyGuaranteePolicy({
       engage: false,
@@ -417,7 +465,7 @@ describe("reply guarantee — prompts", () => {
     );
     assert.equal(
       STAGE12_JUDGE_PROMPT_VERSION,
-      "fenn-public-judge-book-v2",
+      "fenn-public-judge-book-v2-capability-truth",
     );
   });
 });

@@ -18,6 +18,7 @@ import {
   stage12WallCandidateResponseFieldSchema,
 } from "@/lib/agent/wall-candidate-schema";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
+import { isSelfKnowledgeOrEconomicBoundaryConversation } from "@/lib/agent/capability-engagement";
 
 /**
  * Structured judgement the model may emit (live action set only).
@@ -128,6 +129,11 @@ export function normalizeJudgementIntention(input: {
   knowledgeAvailable: boolean;
   model: string;
   promptVersion: string;
+  /**
+   * Untrusted X body — enables soft elevation when the model mislabels
+   * self-knowledge / economic-boundary conversation as spam_or_noise.
+   */
+  untrustedBody?: string | null;
 }): Stage12JudgementIntention {
   const { identityUnverified } = input.raw;
   const responseMode: Stage12ResponseMode = normalizeResponseMode(
@@ -162,6 +168,10 @@ export function normalizeJudgementIntention(input: {
       ? "insufficient_knowledge"
       : input.raw.reasonCode;
 
+  const promoteCapabilityConversationSpam =
+    input.knowledgeAvailable === true &&
+    isSelfKnowledgeOrEconomicBoundaryConversation(input.untrustedBody ?? "");
+
   const guaranteed = applyReplyGuaranteePolicy({
     engage: input.raw.engage,
     action: input.raw.action,
@@ -169,7 +179,20 @@ export function normalizeJudgementIntention(input: {
     replyText,
     wallBody,
     allowDeferredLiveSilence,
+    promoteCapabilityConversationSpam,
   });
+
+  // Canon-backed capability / boundary conversation was answered with public knowledge
+  // available — model should not sit on insufficient_knowledge for that shape.
+  let reasonCode = guaranteed.reasonCode;
+  if (
+    input.knowledgeAvailable &&
+    promoteCapabilityConversationSpam &&
+    guaranteed.action !== "do_nothing" &&
+    reasonCode === "insufficient_knowledge"
+  ) {
+    reasonCode = "answered_from_public_knowledge";
+  }
 
   // Initial judge rarely has trusted live facts; public_fact candidates usually drop.
   // Declarations/historic may survive when action is dual.
@@ -186,7 +209,7 @@ export function normalizeJudgementIntention(input: {
   return {
     engage: guaranteed.engage,
     action: guaranteed.action,
-    reasonCode: guaranteed.reasonCode,
+    reasonCode,
     replyText:
       guaranteed.replyText === null
         ? null

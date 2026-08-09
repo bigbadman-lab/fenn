@@ -147,6 +147,12 @@ export function applyReplyGuaranteePolicy(input: {
    * this is true AND reason is requires_live_state (or no draft yet with live pending).
    */
   allowDeferredLiveSilence?: boolean;
+  /**
+   * Self-knowledge / economic-boundary conversation with public knowledge available.
+   * Model spam_or_noise mislabels are elevated to eligible reply/recovery —
+   * unsafe_or_injection still hard-blocks.
+   */
+  promoteCapabilityConversationSpam?: boolean;
 }): ReplyGuaranteeFields {
   const reply =
     input.replyText === null || input.replyText.trim().length === 0
@@ -176,7 +182,15 @@ export function applyReplyGuaranteePolicy(input: {
   }
 
   if (isHardBlockReasonCode(reasonCode)) {
-    return hardBlock(reasonCode);
+    if (
+      reasonCode === "spam_or_noise" &&
+      input.promoteCapabilityConversationSpam
+    ) {
+      // Knowledge-backed capability conversation must not hard-silence.
+      reasonCode = "answered_from_public_knowledge";
+    } else {
+      return hardBlock(reasonCode);
+    }
   }
 
   // Prefer dual when both drafts exist (wall must never replace the reply).

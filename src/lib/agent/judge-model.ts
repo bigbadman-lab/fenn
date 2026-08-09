@@ -168,5 +168,6 @@ export async function runFennPublicJudgement(input: {
     knowledgeAvailable: input.knowledgeAvailable,
     model: STAGE12_JUDGE_OPENAI_MODEL,
     promptVersion: STAGE12_JUDGE_PROMPT_VERSION,
+    untrustedBody: input.body,
   });
 }
