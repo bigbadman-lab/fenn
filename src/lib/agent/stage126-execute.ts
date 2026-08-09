@@ -29,6 +29,7 @@ import {
   type TransferFennAdapterDeps,
 } from "@/lib/agent/transfer-effect-adapter";
 import { buildEconomicFollowupDraft } from "@/lib/agent/economic-followup";
+import { planEconomicCompletionFollowup } from "@/lib/agent/economic-completion-plan";
 
 type AdminLike = {
   from: (table: string) => unknown;
@@ -236,17 +237,39 @@ async function executeClaimedEffect(
           // non-fatal
         }
       }
-      const followup = buildEconomicFollowupDraft({
-        actionType: "transfer",
-        amountFormatted: transferResult.amountFormatted,
-        txHash: transferResult.txHash,
-        recipientAddress: transferResult.recipientAddress,
-      });
+
+      // P1E: confirmed settlement only → Book of Speech completion + reply_on_x effect.
+      let economicFollowupPreview: string | undefined;
+      try {
+        const follow = await planEconomicCompletionFollowup({
+          actionType: "transfer",
+          amountFormatted: transferResult.amountFormatted,
+          txHash: transferResult.txHash,
+          confirmedAt: transferResult.confirmedAt,
+          isTest: transferResult.isTest,
+          economicEffectId: claimed.effectId,
+          sourceXPostId: claimed.xPostId,
+          authorizationId: claimed.authorizationId,
+          perceptionEventId: claimed.perceptionEventId,
+          recipientAddress: transferResult.recipientAddress,
+          economicInteractionId: interactionId || null,
+          admin: deps.admin as never,
+        });
+        economicFollowupPreview = follow.speech?.replyText;
+      } catch {
+        const followup = buildEconomicFollowupDraft({
+          actionType: "transfer",
+          amountFormatted: transferResult.amountFormatted,
+          txHash: transferResult.txHash,
+          recipientAddress: transferResult.recipientAddress,
+        });
+        economicFollowupPreview = followup.text;
+      }
       return {
         ...base,
         status: "completed",
         externalResultId: transferResult.txHash,
-        economicFollowupPreview: followup.text,
+        economicFollowupPreview,
       };
     }
 
@@ -284,16 +307,36 @@ async function executeClaimedEffect(
         },
         { admin: deps.admin },
       );
-      const followup = buildEconomicFollowupDraft({
-        actionType: "burn",
-        amountFormatted: burnResult.amountFormatted,
-        txHash: burnResult.txHash,
-      });
+
+      let economicFollowupPreview: string | undefined;
+      try {
+        const follow = await planEconomicCompletionFollowup({
+          actionType: "burn",
+          amountFormatted: burnResult.amountFormatted,
+          txHash: burnResult.txHash,
+          confirmedAt: burnResult.confirmedAt,
+          isTest: burnResult.isTest,
+          economicEffectId: claimed.effectId,
+          sourceXPostId: claimed.xPostId,
+          authorizationId: claimed.authorizationId,
+          perceptionEventId: claimed.perceptionEventId,
+          recipientAddress: burnResult.recipientAddress,
+          admin: deps.admin as never,
+        });
+        economicFollowupPreview = follow.speech?.replyText;
+      } catch {
+        const followup = buildEconomicFollowupDraft({
+          actionType: "burn",
+          amountFormatted: burnResult.amountFormatted,
+          txHash: burnResult.txHash,
+        });
+        economicFollowupPreview = followup.text;
+      }
       return {
         ...base,
         status: "completed",
         externalResultId: burnResult.txHash,
-        economicFollowupPreview: followup.text,
+        economicFollowupPreview,
       };
     }
 
