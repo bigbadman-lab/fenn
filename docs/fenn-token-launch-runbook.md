@@ -8,9 +8,14 @@ Canonical law: [P2C audit](./agent-purse-p1c.md) + `src/lib/treasury/official-to
 
 ## Tonight
 
-1. **Migrations** — apply through P2A, including `61_purse_p2a_executor` and `44_official_fenn_token`.
+1. **Migrations** — apply through P2A / P2C.1 schema, including:
+   - `44_official_fenn_token` (official/public uniqueness)
+   - `61_purse_p2a_executor`
+   - `62_treasury_assets_null_contract_uidx` (ETH + dormant FENN NULL contracts coexist)
 2. **Deploy** latest Vercel site + Render (`fenn-x-agent`, `fenn-purse-executor`).
 3. **Dormant row** — run [ops/fenn-launch-prep.sql](./ops/fenn-launch-prep.sql) once in Supabase SQL editor.
+   - Must **not** modify existing ETH / native NULL-contract rows.
+   - Expected: ETH remains + one dormant official FENN (`contract_address` NULL).
 4. **Readiness**:
 
 ```bash

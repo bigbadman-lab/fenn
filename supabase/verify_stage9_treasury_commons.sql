@@ -144,15 +144,24 @@ FROM (
 ) AS expected(kind, name)
 ORDER BY status DESC, expected.kind, expected.name;
 
--- Confirm native asset (NULL contract) uniqueness semantics exist
+-- Confirm non-null contract uniqueness (NULL contracts may coexist)
 SELECT
-  'D_NATIVE_NULL_IDENTITY' AS section,
+  'D_CONTRACT_NULL_COEXISTENCE' AS section,
   indexname,
-  indexdef
+  indexdef,
+  CASE
+    WHEN indexdef ILIKE '%WHERE%contract_address IS NOT NULL%'
+      AND indexdef NOT ILIKE '%NULLS NOT DISTINCT%'
+    THEN 'OK'
+    WHEN indexdef ILIKE '%NULLS NOT DISTINCT%'
+    THEN 'STALE_NULLS_NOT_DISTINCT'
+    ELSE 'UNEXPECTED'
+  END AS status
 FROM pg_indexes
 WHERE schemaname = 'public'
   AND indexname = 'treasury_assets_chain_contract_uidx';
--- expect NULLS NOT DISTINCT (or equivalent unique on (chain_id, contract_address))
+-- expect UNIQUE ... WHERE (contract_address IS NOT NULL)
+-- multi null on same chain must be allowed; multi same non-null must not
 
 -- ---------------------------------------------------------------------------
 -- E) RLS enabled

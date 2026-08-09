@@ -318,6 +318,75 @@ describe("official FENN source safety + surfaces", () => {
     assert.match(opsBody, /official.*true/i);
   });
 
+  it("migration 62 allows multiple NULL contracts; uniqueness only for non-null", () => {
+    const migPath = join(
+      repo,
+      "supabase/migrations/20260809210000_62_treasury_assets_null_contract_uidx.sql",
+    );
+    assert.ok(existsSync(migPath));
+    const mig = readFileSync(migPath, "utf8");
+    assert.match(mig, /DROP INDEX IF EXISTS public\.treasury_assets_chain_contract_uidx/);
+    assert.match(mig, /CREATE UNIQUE INDEX treasury_assets_chain_contract_uidx/);
+    assert.match(mig, /WHERE contract_address IS NOT NULL/);
+    // Index body must not reintroduce NULLS NOT DISTINCT uniqueness
+    const createBlock = mig.slice(mig.indexOf("CREATE UNIQUE INDEX"));
+    assert.doesNotMatch(createBlock, /NULLS NOT DISTINCT/);
+    assert.doesNotMatch(
+      mig,
+      /DROP INDEX.*treasury_assets_one_official_public_4663_uidx/i,
+    );
+    assert.doesNotMatch(mig, /DELETE FROM public\.treasury_assets/i);
+    assert.doesNotMatch(mig, /UPDATE public\.treasury_assets/i);
+
+    const prep = readFileSync(
+      join(repo, "docs/ops/fenn-launch-prep.sql"),
+      "utf8",
+    );
+    assert.match(prep, /migration 62|62_treasury_assets_null_contract/i);
+    assert.match(prep, /Does NOT modify the existing ETH/i);
+    assert.match(prep, /null_contract_coexistence/);
+
+    const stage7Origin = readFileSync(
+      join(repo, "supabase/migrations/20260722180007_07_treasury_commons.sql"),
+      "utf8",
+    );
+    assert.match(stage7Origin, /NULLS NOT DISTINCT/);
+  });
+
+  it("dormant NULL FENN does not resolve alongside native ETH null candidate", () => {
+    const ethNative: OfficialTokenCandidateRow = {
+      id: "eth",
+      symbol: "ETH",
+      name: "Ether",
+      chain_id: ROBINHOOD_CHAIN_ID,
+      contract_address: null,
+      decimals: 18,
+      is_tracked: true,
+      metadata: { asset_type: "native", network: "robinhood_chain" },
+    };
+    const dormantFenn = candidate({
+      id: "fenn-dormant",
+      contract_address: null,
+    });
+    assert.equal(
+      resolveOfficialFennToken([ethNative, dormantFenn]).status,
+      "none",
+    );
+
+    const live = candidate({ id: "fenn-live" });
+    const r = resolveOfficialFennToken([ethNative, live]);
+    assert.equal(r.status, "ok");
+    if (r.status === "ok") {
+      assert.equal(r.token.contractAddress, FENN);
+    }
+  });
+
+  it("multiple official/public candidates still fail closed at resolver", () => {
+    const a = candidate({ id: "a", contract_address: FENN });
+    const b = candidate({ id: "b", contract_address: OTHER });
+    assert.equal(resolveOfficialFennToken([a, b]).status, "ambiguous");
+  });
+
   it("mobile/a11y CSS uses wrap + forced-colours CanvasText", () => {
     const css = readFileSync(join(repo, "src/app/globals.css"), "utf8");
     assert.match(css, /commons-official-token__address/);

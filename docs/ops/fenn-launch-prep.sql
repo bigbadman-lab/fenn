@@ -3,15 +3,23 @@
 -- Run ONCE tonight against production Supabase (SQL editor / psql).
 -- Does NOT insert a migration. Does NOT activate settlement.
 -- Does NOT set contract_address.
+-- Does NOT modify the existing ETH / native NULL-contract row.
 --
 -- Post-condition:
+--   ETH (or other native) NULL-contract row(s) on 4663 remain
 --   Exactly one official/public FENN row on chain 4663
 --   contract_address IS NULL
 --   Application official-token resolver still reports unavailable (dormant)
 --
--- Requires: migration 44 unique index
---           treasury_assets_one_official_public_4663_uidx
-
+-- Requires:
+--   migration 44  treasury_assets_one_official_public_4663_uidx
+--   migration 62  treasury_assets_chain_contract_uidx
+--                 (NULL contracts coexist; non-null unique per chain)
+--
+-- Preflight (read-only): existing null-contract assets on 4663
+-- SELECT symbol, contract_address, metadata
+-- FROM public.treasury_assets
+-- WHERE chain_id = 4663 AND contract_address IS NULL;
 BEGIN;
 
 -- ---------------------------------------------------------------------------
@@ -151,8 +159,21 @@ SELECT
   is_tracked,
   metadata->>'official' AS official,
   metadata->>'public_contract' AS public_contract,
+  metadata->>'asset_type' AS asset_type,
   'dormant_official_prepared' AS prep_status
 FROM public.treasury_assets
 WHERE chain_id = 4663
   AND (metadata->>'official') = 'true'
   AND (metadata->>'public_contract') = 'true';
+
+-- Coexistence proof: native/null rows must still be present (ETH expected)
+SELECT
+  symbol,
+  chain_id,
+  contract_address,
+  metadata->>'asset_type' AS asset_type,
+  'null_contract_coexistence' AS coexistence_status
+FROM public.treasury_assets
+WHERE chain_id = 4663
+  AND contract_address IS NULL
+ORDER BY symbol;
