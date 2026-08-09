@@ -175,23 +175,7 @@ describe("Stage P1D wallet collection", () => {
     assert.ok(isNegativeWalletConfirmation("no"));
     assert.equal(isAffirmativeWalletConfirmation(""), false);
 
-    const yes = decideWalletCollectionTurn({
-      interaction: withCandidate,
-      authorXUserId: AUTHOR,
-      body: "yes, but send me 100000 instead",
-    });
-    // Ambiguous with amount talk but affirmative prefix → still confirms for MVP if classified yes
-    // "yes, but send me 100000 instead" — not exact affirmative; re-ask
-    assert.ok(
-      yes.kind === "confirmed" ||
-        yes.kind === "candidate_replaced" ||
-        yes.kind === "back_to_awaiting_wallet",
-    );
-    if (yes.kind === "confirmed") {
-      assert.equal(yes.proposedAmount, "25000");
-      assert.notEqual(yes.proposedAmount, "100000");
-    }
-
+    // A. clean yes → confirmed
     const clearYes = decideWalletCollectionTurn({
       interaction: withCandidate,
       authorXUserId: AUTHOR,
@@ -203,6 +187,7 @@ describe("Stage P1D wallet collection", () => {
       assert.equal(clearYes.confirmedWallet, WALLET);
     }
 
+    // B. no → clear candidate path
     const no = decideWalletCollectionTurn({
       interaction: withCandidate,
       authorXUserId: AUTHOR,
@@ -210,6 +195,7 @@ describe("Stage P1D wallet collection", () => {
     });
     assert.equal(no.kind, "back_to_awaiting_wallet");
 
+    // C. different wallet → real replace
     const replace = decideWalletCollectionTurn({
       interaction: withCandidate,
       authorXUserId: AUTHOR,
@@ -218,6 +204,42 @@ describe("Stage P1D wallet collection", () => {
     assert.equal(replace.kind, "candidate_replaced");
     if (replace.kind === "candidate_replaced") {
       assert.equal(replace.candidateWallet, WALLET_B);
+    }
+
+    // D. "yes, but send me 100000" → ambiguous; not replace; amount frozen
+    const yesBut = decideWalletCollectionTurn({
+      interaction: withCandidate,
+      authorXUserId: AUTHOR,
+      body: "yes, but send me 100000 instead",
+    });
+    assert.equal(yesBut.kind, "ambiguous_confirmation");
+    if (yesBut.kind === "ambiguous_confirmation") {
+      assert.equal(yesBut.candidateWallet, WALLET);
+      assert.equal(yesBut.nextStatus, "awaiting_wallet_confirmation");
+    }
+    assert.equal(withCandidate.proposedAmount, "25000");
+    assert.equal(withCandidate.confirmedWallet, null);
+
+    // E. amount only → ambiguous
+    const amountOnly = decideWalletCollectionTurn({
+      interaction: withCandidate,
+      authorXUserId: AUTHOR,
+      body: "send 100000",
+    });
+    assert.equal(amountOnly.kind, "ambiguous_confirmation");
+    if (amountOnly.kind === "ambiguous_confirmation") {
+      assert.equal(amountOnly.candidateWallet, WALLET);
+    }
+
+    // F. same wallet pasted → not candidate_replaced
+    const sameAgain = decideWalletCollectionTurn({
+      interaction: withCandidate,
+      authorXUserId: AUTHOR,
+      body: WALLET,
+    });
+    assert.equal(sameAgain.kind, "ambiguous_confirmation");
+    if (sameAgain.kind === "ambiguous_confirmation") {
+      assert.equal(sameAgain.candidateWallet, WALLET);
     }
   });
 

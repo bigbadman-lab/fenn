@@ -3,6 +3,13 @@
  * No I/O. Identity checks are the caller's responsibility (same author_x_user_id).
  *
  * Produces deterministic speechFacts; live expression is Book of Speech (P1D.1).
+ *
+ * Confirmation classification (awaiting_wallet_confirmation):
+ * - clean affirmative → confirm stored candidate
+ * - explicit negative → clear candidate
+ * - exactly one NEW valid EVM address → candidate_replaced
+ * - same address again / no address / amount talk / ambiguous → re-ask confirmation
+ *   (candidate_replaced ONLY when address is new and different)
  */
 
 import type { EconomicInteractionRow } from "@/lib/agent/economic-interaction";
@@ -48,6 +55,17 @@ export type WalletTurnDecision =
       speechFacts: WalletSpeechFacts;
     }
   | {
+      /**
+       * No new wallet; not a clean yes/no.
+       * Candidate unchanged; confirmation still required.
+       */
+      kind: "ambiguous_confirmation";
+      nextStatus: "awaiting_wallet_confirmation";
+      candidateWallet: string;
+      speechFacts: WalletSpeechFacts;
+      reason: string;
+    }
+  | {
       kind: "back_to_awaiting_wallet";
       nextStatus: "awaiting_wallet";
       clearCandidate: true;
@@ -72,6 +90,19 @@ function isExpired(
   now: Date,
 ): boolean {
   return new Date(interaction.expiresAt).getTime() <= now.getTime();
+}
+
+function reaskConfirmation(
+  candidateWallet: string,
+  reason: string,
+): WalletTurnDecision {
+  return {
+    kind: "ambiguous_confirmation",
+    nextStatus: "awaiting_wallet_confirmation",
+    candidateWallet,
+    speechFacts: speechFactsDestinationConfirmation(candidateWallet),
+    reason,
+  };
 }
 
 /**
@@ -131,21 +162,19 @@ export function decideWalletCollectionTurn(input: {
   }
 
   if (interaction.status === "awaiting_wallet_confirmation") {
+    const stored = interaction.candidateWallet;
+
+    // Exactly one valid EVM address in this message.
     if (extracted.ok) {
-      if (
-        interaction.candidateWallet &&
-        extracted.walletAddress === interaction.candidateWallet
-      ) {
+      // Same stored candidate again — confirm only on clean affirmative;
+      // never label as candidate_replaced.
+      if (stored && extracted.walletAddress === stored) {
         if (isAffirmativeWalletConfirmation(body)) {
           return confirm(interaction, extracted.walletAddress);
         }
-        return {
-          kind: "candidate_replaced",
-          nextStatus: "awaiting_wallet_confirmation",
-          candidateWallet: extracted.walletAddress,
-          speechFacts: speechFactsDestinationConfirmation(extracted.walletAddress),
-        };
+        return reaskConfirmation(stored, "same_candidate_resubmitted");
       }
+      // New / different valid address → real replacement.
       return {
         kind: "candidate_replaced",
         nextStatus: "awaiting_wallet_confirmation",
@@ -154,6 +183,7 @@ export function decideWalletCollectionTurn(input: {
       };
     }
 
+    // Explicit negative (no address) → clear candidate.
     if (isNegativeWalletConfirmation(body)) {
       return {
         kind: "back_to_awaiting_wallet",
@@ -163,22 +193,14 @@ export function decideWalletCollectionTurn(input: {
       };
     }
 
-    if (
-      isAffirmativeWalletConfirmation(body) &&
-      interaction.candidateWallet
-    ) {
-      return confirm(interaction, interaction.candidateWallet);
+    // Clean affirmative only (not "yes, but send 100000") → confirm.
+    if (isAffirmativeWalletConfirmation(body) && stored) {
+      return confirm(interaction, stored);
     }
 
-    if (interaction.candidateWallet) {
-      return {
-        kind: "candidate_replaced",
-        nextStatus: "awaiting_wallet_confirmation",
-        candidateWallet: interaction.candidateWallet,
-        speechFacts: speechFactsDestinationConfirmation(
-          interaction.candidateWallet,
-        ),
-      };
+    // Ambiguous: amount chat, partial yes, empty junk — no wallet, no clean confirm.
+    if (stored) {
+      return reaskConfirmation(stored, "ambiguous_confirmation");
     }
 
     return {

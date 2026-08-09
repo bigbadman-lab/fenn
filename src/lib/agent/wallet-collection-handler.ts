@@ -141,6 +141,20 @@ export async function processAuthorWalletCollectionTurn(input: {
     };
   }
 
+  // No DB mutation — candidate unchanged; re-ask confirmation in FENN voice.
+  if (decision.kind === "ambiguous_confirmation") {
+    const rendered = await speak(decision.speechFacts);
+    return {
+      handled: true,
+      interaction,
+      replyText: rendered.replyText,
+      speechFacts: decision.speechFacts,
+      speechRender: rendered,
+      ...empty,
+      kind: decision.kind,
+    };
+  }
+
   if (
     decision.kind === "candidate_set" ||
     decision.kind === "candidate_replaced"

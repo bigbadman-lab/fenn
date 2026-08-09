@@ -248,8 +248,11 @@ export function runP1dWalletCollectionHarness(input: {
           confirmationSourceXPostId: xPostId,
           walletConfirmedAt: nowIso,
         });
-      } else if (decision.kind === "remain_awaiting_wallet") {
-        // status unchanged
+      } else if (
+        decision.kind === "remain_awaiting_wallet" ||
+        decision.kind === "ambiguous_confirmation"
+      ) {
+        // status / candidate unchanged
       }
 
       let plannedTransferAmount: string | null = null;
