@@ -4,6 +4,10 @@
 
 import { replyClaimsCompletedEconomicAction } from "@/lib/agent/economic-followup";
 import {
+  textHasForeignSpeechAmount,
+  textPresentsLockedAmount,
+} from "@/lib/agent/speech-amount-match";
+import {
   walletSpeechMomentRequiresAmount,
   walletSpeechMomentRequiresShortWallet,
   type WalletSpeechFacts,
@@ -14,25 +18,8 @@ export type WalletSpeechValidation = {
   reasons: string[];
 };
 
-/**
- * Whether prose presents the locked amount as a number token.
- * Accepts the frozen decimal string and common thousand-separator forms of the
- * *same* digits (e.g. 10000 ↔ 10,000). Does not accept a different magnitude.
- */
-export function textPresentsLockedAmount(
-  text: string,
-  lockedAmount: string,
-): boolean {
-  const locked = lockedAmount.replace(/,/g, "").trim().replace(/\.0+$/, "");
-  if (!locked) return false;
-  const nums =
-    text.match(/\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b|\b\d+(?:\.\d+)?\b/g) ?? [];
-  for (const n of nums) {
-    const norm = n.replace(/,/g, "").replace(/\.0+$/, "");
-    if (norm === locked) return true;
-  }
-  return false;
-}
+// Re-export for callers that already import from this module.
+export { textPresentsLockedAmount } from "@/lib/agent/speech-amount-match";
 
 /**
  * Deterministic checks after model expression.
@@ -89,13 +76,13 @@ export function validateWalletSpeechAgainstFacts(
     if (/\bi will send\b|\bi'll send\b|\bwill send you\b/i.test(t)) {
       reasons.push("promise_payment");
     }
-    if (amount && extractForeignAmount(t, amount)) {
+    if (amount && textHasForeignSpeechAmount(t, amount)) {
       reasons.push("foreign_amount");
     }
   }
 
   // Never invent a different amount when a locked amount exists.
-  if (amount && extractForeignAmount(t, amount)) {
+  if (amount && textHasForeignSpeechAmount(t, amount)) {
     reasons.push("foreign_amount");
   }
 
@@ -114,23 +101,4 @@ export function validateWalletSpeechAgainstFacts(
   }
 
   return { ok: reasons.length === 0, reasons };
-}
-
-/** Detect another positive integer-like amount token that is not the locked amount. */
-function extractForeignAmount(text: string, locked: string): boolean {
-  const lockedNorm = locked.replace(/,/g, "").trim().replace(/\.0+$/, "");
-  const nums =
-    text.match(/\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b|\b\d+(?:\.\d+)?\b/g) ?? [];
-  for (const n of nums) {
-    const norm = n.replace(/,/g, "").replace(/\.0+$/, "");
-    if (norm === lockedNorm) continue;
-    // Allow tiny counts in prose (1, 2) unless they equal multi-digit locked
-    if (norm.length <= 2 && lockedNorm.length > 2) continue;
-    if (norm !== lockedNorm && Number(norm) > 0) {
-      if (norm.length >= 3 || Number(norm) >= 100) {
-        return true;
-      }
-    }
-  }
-  return false;
 }

@@ -9,6 +9,10 @@ import { explorerTxUrl } from "@/lib/greenwood/hollow/explorer";
 import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
 import { STAGE12_X_REPLY_MAX_CHARS } from "@/lib/agent/judge-config";
 import {
+  textHasForeignSpeechAmount,
+  textPresentsLockedAmount,
+} from "@/lib/agent/speech-amount-match";
+import {
   isNormalizedEvmAddress,
   normalizeEvmAddress,
 } from "@/lib/wallet/evm";
@@ -221,9 +225,14 @@ export function validateEconomicCompletionSpeech(
   if (t.length > STAGE12_X_REPLY_MAX_CHARS) {
     reasons.push("too_long");
   }
-  if (!t.includes(facts.amountFormatted)) {
+
+  const amount = facts.amountFormatted.trim();
+  if (!amount) {
+    reasons.push("missing_trusted_amount_in_facts");
+  } else if (!textPresentsLockedAmount(t, amount)) {
     reasons.push("missing_amount");
   }
+
   if (!t.includes(facts.explorerUrl) && !t.includes(facts.txHash)) {
     reasons.push("missing_proof");
   }
@@ -255,15 +264,9 @@ export function validateEconomicCompletionSpeech(
     }
   }
 
-  // Foreign amounts (multi-digit tokens not equal to locked amount)
-  const locked = facts.amountFormatted.replace(/,/g, "");
-  const nums = t.match(/\b\d{1,3}(?:,\d{3})+\b|\b\d{4,}\b/g) ?? [];
-  for (const n of nums) {
-    const norm = n.replace(/,/g, "");
-    if (norm !== locked && Number(norm) >= 100) {
-      reasons.push("foreign_amount");
-      break;
-    }
+  // Foreign amounts (must be same token-magnitude law as presence check)
+  if (amount && textHasForeignSpeechAmount(t, amount)) {
+    reasons.push("foreign_amount");
   }
 
   // Foreign 64-byte hashes
@@ -294,6 +297,11 @@ export function formatEconomicCompletionFactsBlock(
     `settlementStatus: confirmed`,
     `isTest: ${facts.isTest}`,
     "privateKey: never present",
+    `REQUIRED: amount magnitude ${facts.amountFormatted} must appear (digits; same magnitude with commas is OK)`,
+    facts.shortRecipient
+      ? `REQUIRED: shortRecipient or full recipientAddress for transfers`
+      : null,
+    "REQUIRED: explorerUrl or exact txHash",
   ].filter(Boolean) as string[];
   return lines.join("\n");
 }

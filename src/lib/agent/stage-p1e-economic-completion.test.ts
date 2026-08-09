@@ -46,6 +46,134 @@ function factsTransfer(over: Partial<Parameters<typeof buildEconomicCompletionFa
 }
 
 describe("Stage P1E economic completion", () => {
+  it("amount equivalence: commas OK; different magnitude not; shared lock with P1D.1", async () => {
+    const f = factsTransfer({ amountFormatted: "10000" })!;
+    assert.equal(
+      validateEconomicCompletionSpeech(
+        `10000 FENN left the Purse for ${f.shortRecipient}. ${f.explorerUrl}`,
+        f,
+      ).ok,
+      true,
+    );
+    assert.equal(
+      validateEconomicCompletionSpeech(
+        `10,000 FENN left the Purse for ${f.shortRecipient}. ${f.explorerUrl}`,
+        f,
+      ).ok,
+      true,
+    );
+    assert.equal(
+      validateEconomicCompletionSpeech(
+        `100000 FENN left the Purse for ${f.shortRecipient}. ${f.explorerUrl}`,
+        f,
+      ).ok,
+      false,
+    );
+    assert.equal(
+      validateEconomicCompletionSpeech(
+        `1,000 FENN left the Purse for ${f.shortRecipient}. ${f.explorerUrl}`,
+        f,
+      ).ok,
+      false,
+    );
+    assert.equal(
+      validateEconomicCompletionSpeech(
+        `10001 FENN left the Purse for ${f.shortRecipient}. ${f.explorerUrl}`,
+        f,
+      ).ok,
+      false,
+    );
+
+    // Decimal form of locked decimal amount
+    const dec = factsTransfer({ amountFormatted: "10000.5" })!;
+    assert.equal(
+      validateEconomicCompletionSpeech(
+        `10,000.5 FENN left for ${dec.shortRecipient}. ${dec.explorerUrl}`,
+        dec,
+      ).ok,
+      true,
+    );
+
+    // Comma style must not cause BoS completion fallback path
+    const commaPath = await renderEconomicCompletionSpeech({
+      facts: f,
+      callModel: async () => ({
+        replyText: `10,000 FENN left the Purse for ${f.shortRecipient}. The chain keeps the receipt: ${f.explorerUrl}`,
+      }),
+    });
+    assert.equal(commaPath.usedFallback, false);
+    assert.equal(commaPath.source, "book_of_speech");
+
+    // Recipient lock unchanged
+    assert.equal(
+      validateEconomicCompletionSpeech(
+        `10,000 FENN left the Purse for 0xdead…beef. ${f.explorerUrl}`,
+        f,
+      ).ok,
+      false,
+    );
+
+    // Hash/explorer lock unchanged
+    assert.equal(
+      validateEconomicCompletionSpeech(
+        `10,000 FENN left for ${f.shortRecipient}. no-proof-here`,
+        f,
+      ).ok,
+      false,
+    );
+
+    // Burn same rule
+    const br = buildEconomicCompletionFacts({
+      actionType: "burn",
+      amountFormatted: "10000",
+      txHash: TX,
+      confirmedAt: "2026-08-09T12:00:00.000Z",
+      isTest: true,
+      economicEffectId: "eff-b-eq",
+      replyToXPostId: POST,
+    })!;
+    assert.equal(
+      validateEconomicCompletionSpeech(
+        `10,000 FENN will not return. ${br.explorerUrl}`,
+        br,
+      ).ok,
+      true,
+    );
+    assert.equal(
+      validateEconomicCompletionSpeech(
+        `100000 FENN will not return. ${br.explorerUrl}`,
+        br,
+      ).ok,
+      false,
+    );
+
+    // Trusted amount blank → missing_trusted / missing_amount path; speech falls back
+    const blank = {
+      ...f,
+      amountFormatted: "",
+    };
+    assert.equal(
+      validateEconomicCompletionSpeech(`something ${f.explorerUrl}`, blank).ok,
+      false,
+    );
+
+    // Shared helper remains the P1D.1 law source
+    const matchSrc = readFileSync(
+      join(process.cwd(), "src/lib/agent/speech-amount-match.ts"),
+      "utf8",
+    );
+    assert.match(matchSrc, /textPresentsLockedAmount/);
+    const follow = readFileSync(
+      join(process.cwd(), "src/lib/agent/economic-followup.ts"),
+      "utf8",
+    );
+    assert.match(follow, /textPresentsLockedAmount/);
+    assert.doesNotMatch(
+      follow,
+      /if \(!t\.includes\(facts\.amountFormatted\)\)/,
+    );
+  });
+
   it("1–4. confirmed transfer/burn facts + explorer", () => {
     const tr = factsTransfer();
     assert.ok(tr);
