@@ -327,6 +327,60 @@ describe("Stage P1D wallet collection", () => {
     assert.equal(expired.kind, "expired");
   });
 
+  it("harness expire-before-turn: wallet on expired awaiting_wallet", () => {
+    const r = runP1dWalletCollectionHarness({
+      label: "exp-before-1",
+      proposedAmount: "25000",
+      turns: [WALLET],
+      expireBeforeTurn: 1,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.finalInteraction?.status, "expired");
+    assert.equal(r.finalInteraction?.candidateWallet, null);
+    assert.equal(r.finalInteraction?.confirmedWallet, null);
+    assert.equal(r.finalInteraction?.proposedAmount, "25000");
+    const t1 = r.turns.find((t) => t.turn === 1);
+    assert.equal(t1?.kind, "expired");
+    assert.match(t1?.replyText ?? "", /lapsed|Nothing was sent/i);
+    assert.equal(t1?.economicEffects.length ?? 0, 0);
+    assert.equal(t1?.plannedTransferAmount, null);
+
+    // Cannot revive: further wallet message is noop terminal
+    const r2 = runP1dWalletCollectionHarness({
+      label: "exp-before-1-revive",
+      proposedAmount: "25000",
+      turns: [WALLET, WALLET],
+      expireBeforeTurn: 1,
+    });
+    assert.equal(r2.turns[1]?.kind, "expired");
+    assert.equal(r2.turns[2]?.kind, "noop_terminal");
+    assert.equal(r2.finalInteraction?.status, "expired");
+    assert.equal(r2.finalInteraction?.candidateWallet, null);
+  });
+
+  it("harness expire-before-turn: yes on expired awaiting_wallet_confirmation", () => {
+    const r = runP1dWalletCollectionHarness({
+      label: "exp-before-2",
+      proposedAmount: "25000",
+      turns: [WALLET, "yes"],
+      expireBeforeTurn: 2,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.turns.find((t) => t.turn === 1)?.kind, "candidate_set");
+    const t2 = r.turns.find((t) => t.turn === 2);
+    assert.equal(t2?.kind, "expired");
+    assert.equal(r.finalInteraction?.status, "expired");
+    assert.equal(r.finalInteraction?.confirmedWallet, null);
+    // Candidate may have been set on turn 1 before expiry; confirm never happens
+    assert.equal(r.finalInteraction?.candidateWallet, WALLET);
+    assert.equal(t2?.economicEffects.length ?? 0, 0);
+    assert.equal(t2?.plannedTransferAmount, null);
+    assert.equal(
+      r.turns.some((t) => t.kind === "confirmed"),
+      false,
+    );
+  });
+
   it("34–36. harness multi-turn happy path + wrong user + malformed", () => {
     const happy = runP1dWalletCollectionHarness({
       label: "happy",
@@ -354,6 +408,54 @@ describe("Stage P1D wallet collection", () => {
       turns: ["not a wallet"],
     });
     assert.equal(malformed.turns.at(-1)?.kind, "remain_awaiting_wallet");
+  });
+
+  it("replacement A → B → yes confirms only B at original amount", () => {
+    const r = runP1dWalletCollectionHarness({
+      label: "replace-ab-yes",
+      proposedAmount: "25000",
+      turns: [WALLET, WALLET_B, "yes"],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.finalInteraction?.proposedAmount, "25000");
+    assert.equal(r.finalInteraction?.confirmedWallet, WALLET_B);
+    assert.notEqual(r.finalInteraction?.confirmedWallet, WALLET);
+    assert.equal(r.finalInteraction?.status, "wallet_confirmed");
+
+    const set = r.turns.find((t) => t.kind === "candidate_set");
+    const replaced = r.turns.find((t) => t.kind === "candidate_replaced");
+    const third = r.turns.find((t) => t.turn === 3);
+    assert.ok(set);
+    assert.ok(replaced);
+    assert.ok(third);
+    assert.equal(set?.turn, 1);
+    assert.equal(set?.candidateWallet, WALLET);
+    assert.equal(replaced?.turn, 2);
+    assert.equal(replaced?.candidateWallet, WALLET_B);
+    assert.equal(third?.kind, "confirmed");
+    assert.equal(third?.body, "yes");
+    assert.equal(third?.confirmedWallet, WALLET_B);
+    assert.equal(
+      r.finalInteraction?.confirmationSourceXPostId,
+      third?.xPostId,
+    );
+    assert.equal(
+      r.turns.some(
+        (t) => t.kind === "confirmed" && t.confirmedWallet === WALLET,
+      ),
+      false,
+    );
+    assert.equal(third?.plannedTransferAmount, "25000");
+    assert.equal(third?.economicEffects.length, 1);
+    assert.equal(third?.economicEffects[0]?.type, "transfer_fenn");
+    assert.equal(third?.economicEffects[0]?.recipientAddress, WALLET_B);
+    assert.equal(third?.economicEffects[0]?.amountFormatted, "25000");
+    assert.equal(
+      r.turns.some((t) =>
+        t.economicEffects.some((e) => e.recipientAddress === WALLET),
+      ),
+      false,
+    );
   });
 
   it("37–39. fallback speech asks for wallet / confirmation / no completion claim", () => {

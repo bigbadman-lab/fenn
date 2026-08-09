@@ -23,6 +23,8 @@ import { createHash, randomUUID } from "node:crypto";
 export type P1dTurnReport = {
   turn: number;
   authorXUserId: string;
+  /** Synthetic X post id for this turn (null only for origin placeholder). */
+  xPostId: string | null;
   body: string;
   kind: string;
   interactionStatus: string | null;
@@ -120,9 +122,16 @@ export function runP1dWalletCollectionHarness(input: {
   turns: string[];
   turnAuthors?: Array<string | null>;
   dryRun?: boolean;
+  /** Creation clock (default: real now). Not mutated globally. */
   now?: Date;
   store?: InMemoryEconomicInteractionStore;
   ttlMs?: number;
+  /**
+   * Harness-only: for user turns with turn number >= this (1-based; origin is 0),
+   * inject a clock to just after interaction.expiresAt into the FSM.
+   * Does not change production Date.now or TTL defaults.
+   */
+  expireBeforeTurn?: number;
 }): P1dHarnessResult {
   const dryRun = input.dryRun !== false;
   const label = input.label.trim() || "p1d";
@@ -140,6 +149,12 @@ export function runP1dWalletCollectionHarness(input: {
       now.getTime() + (input.ttlMs ?? resolveEconomicInteractionTtlMs()),
     ).toISOString();
     const nowIso = now.toISOString();
+    const expireAfterMs =
+      typeof input.expireBeforeTurn === "number" &&
+      Number.isFinite(input.expireBeforeTurn) &&
+      input.expireBeforeTurn >= 1
+        ? Math.floor(input.expireBeforeTurn)
+        : null;
 
     let interaction = store.insert({
       id: randomUUID(),
@@ -170,6 +185,7 @@ export function runP1dWalletCollectionHarness(input: {
     reports.push({
       turn: 0,
       authorXUserId,
+      xPostId: originPost,
       body: "(origin: transfer intent, no wallet)",
       kind: "pending_destination",
       interactionStatus: interaction.status,
@@ -187,12 +203,19 @@ export function runP1dWalletCollectionHarness(input: {
       const body = input.turns[i] ?? "";
       const turnAuthor = input.turnAuthors?.[i]?.trim() || authorXUserId;
       const xPostId = syntheticPost(label, i + 1);
+      const turnNumber = i + 1;
+
+      // Inject post-expiry clock only inside this turn decision (no global Date patch).
+      const turnNow =
+        expireAfterMs != null && turnNumber >= expireAfterMs
+          ? new Date(new Date(interaction.expiresAt).getTime() + 1)
+          : now;
 
       const decision = decideWalletCollectionTurn({
         interaction,
         authorXUserId: turnAuthor,
         body,
-        now,
+        now: turnNow,
       });
 
       let kind = decision.kind;
@@ -205,6 +228,7 @@ export function runP1dWalletCollectionHarness(input: {
         reports.push({
           turn: i + 1,
           authorXUserId: turnAuthor,
+          xPostId,
           body,
           kind,
           interactionStatus: interaction.status,
@@ -293,6 +317,7 @@ export function runP1dWalletCollectionHarness(input: {
       reports.push({
         turn: i + 1,
         authorXUserId: turnAuthor,
+        xPostId,
         body,
         kind,
         interactionStatus: interaction.status,
