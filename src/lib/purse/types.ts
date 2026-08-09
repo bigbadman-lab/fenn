@@ -25,6 +25,8 @@ export type PurseTransferRow = {
   failureClass: PurseFailureClass | null;
   lastError: string | null;
   actorId: string | null;
+  /** Disposable-token pre-launch settlements only; never public MOVEMENTS. */
+  isTest: boolean;
   createdAt: string;
   submittedAt: string | null;
   confirmedAt: string | null;
@@ -102,6 +104,7 @@ export type ManualOneFennTransferResult =
       txHash: string;
       confirmedAt: string;
       reusedExisting: boolean;
+      isTest: boolean;
     }
   | {
       ok: false;

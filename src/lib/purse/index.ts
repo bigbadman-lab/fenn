@@ -14,8 +14,15 @@ export { PurseError } from "@/lib/purse/errors";
 export { getPurseConfig, requireEnabledPurseConfig } from "@/lib/purse/config";
 export {
   executeManualOneFennTransfer,
+  executeManualTestTransfer,
   buildManualTransferPreview,
+  buildManualTestTransferPreview,
 } from "@/lib/purse/transfer";
+export {
+  resolveArmedPurseTestToken,
+  isPurseTestModeProductionHost,
+  isPurseTestModeExplicitlyAllowed,
+} from "@/lib/purse/test-mode";
 export { getPublicPurseSnapshot } from "@/lib/purse/snapshot";
 export { listConfirmedPurseTransfers } from "@/lib/purse/transfers-query";
 export type {

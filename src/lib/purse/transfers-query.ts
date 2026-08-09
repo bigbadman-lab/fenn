@@ -43,6 +43,7 @@ export async function listConfirmedPurseTransfers(
       "id, operation_id, recipient_address, amount_formatted, token_address, chain_id, tx_hash, confirmed_at",
     )
     .eq("status", "confirmed")
+    .eq("is_test", false)
     .not("tx_hash", "is", null)
     .not("confirmed_at", "is", null)
     .order("confirmed_at", { ascending: false })

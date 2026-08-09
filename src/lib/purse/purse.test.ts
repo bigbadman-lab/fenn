@@ -3,6 +3,10 @@ import { describe, it } from "node:test";
 
 import {
   P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+  FENN_PURSE_TEST_MODE_ALLOW,
+  FENN_PURSE_TEST_MODE_ENV,
+  FENN_PURSE_TEST_TOKEN_ADDRESS_ENV,
+  FENN_PURSE_TEST_TOKEN_DECIMALS_ENV,
 } from "@/lib/purse/constants";
 import { PurseError } from "@/lib/purse/errors";
 import {
@@ -15,7 +19,15 @@ import {
   parsePurseRecipient,
   shouldReconcileExistingTx,
 } from "@/lib/purse/policy";
-import { executeManualOneFennTransfer } from "@/lib/purse/transfer";
+import {
+  executeManualOneFennTransfer,
+  executeManualTestTransfer,
+} from "@/lib/purse/transfer";
+import {
+  isPurseTestModeExplicitlyAllowed,
+  isPurseTestModeProductionHost,
+  resolveArmedPurseTestToken,
+} from "@/lib/purse/test-mode";
 import { getPublicPurseSnapshot } from "@/lib/purse/snapshot";
 import type { ManualTransferDeps } from "@/lib/purse/transfer";
 import type { PurseTransferRow } from "@/lib/purse/types";
@@ -48,6 +60,7 @@ function baseRow(over: Partial<PurseTransferRow> = {}): PurseTransferRow {
     failureClass: null,
     lastError: null,
     actorId: "ops:test",
+    isTest: false,
     createdAt: "2026-08-08T00:00:00.000Z",
     submittedAt: null,
     confirmedAt: null,
@@ -75,6 +88,7 @@ function makeDeps(over: Partial<ManualTransferDeps> = {}): ManualTransferDeps {
         tokenAddress: input.tokenAddress,
         chainId: input.chainId,
         actorId: input.actorId,
+        isTest: input.isTest,
         status: "pending",
       });
       store.set(input.operationId, row);
@@ -138,7 +152,7 @@ function makeDeps(over: Partial<ManualTransferDeps> = {}): ManualTransferDeps {
       store.set(prev.operationId, next);
       return next;
     },
-    readFennBalance: async () => ({
+    readTokenBalance: async () => ({
       raw: BigInt("5000000000000000000"),
       formatted: "5",
       decimals: 18,
@@ -154,7 +168,6 @@ function makeDeps(over: Partial<ManualTransferDeps> = {}): ManualTransferDeps {
     ...over,
   };
 
-  // Keep store helpers if insert overridden fully
   return deps;
 }
 
@@ -402,7 +415,7 @@ describe("executeManualOneFennTransfer idempotency", () => {
   it("insufficient FENN balance fails safely without broadcast", async () => {
     let broadcasts = 0;
     const deps = makeDeps({
-      readFennBalance: async () => ({
+      readTokenBalance: async () => ({
         raw: BigInt(0),
         formatted: "0",
         decimals: 18,
@@ -572,5 +585,432 @@ describe("public Purse snapshot safety", () => {
       now: () => new Date(),
     });
     assert.equal(snap.state, "unconfigured");
+  });
+});
+
+const TEST_TOKEN = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+function armedTestEnv(
+  over: Record<string, string | undefined> = {},
+): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    NODE_ENV: "test",
+    VERCEL_ENV: undefined,
+    [FENN_PURSE_TEST_MODE_ENV]: FENN_PURSE_TEST_MODE_ALLOW,
+    [FENN_PURSE_TEST_TOKEN_ADDRESS_ENV]: TEST_TOKEN,
+    [FENN_PURSE_TEST_TOKEN_DECIMALS_ENV]: "18",
+    ...over,
+  } as NodeJS.ProcessEnv;
+}
+
+describe("Purse pre-launch test rail arming", () => {
+  it("requires explicit_allow only (not truthy booleans)", () => {
+    assert.equal(isPurseTestModeExplicitlyAllowed("explicit_allow"), true);
+    assert.equal(isPurseTestModeExplicitlyAllowed("true"), false);
+    assert.equal(isPurseTestModeExplicitlyAllowed("1"), false);
+    assert.equal(isPurseTestModeExplicitlyAllowed(undefined), false);
+  });
+
+  it("refuses production hosts", () => {
+    assert.equal(
+      isPurseTestModeProductionHost({ NODE_ENV: "production" }),
+      true,
+    );
+    assert.equal(
+      isPurseTestModeProductionHost({
+        NODE_ENV: "development",
+        VERCEL_ENV: "production",
+      }),
+      true,
+    );
+    assert.equal(
+      isPurseTestModeProductionHost({ NODE_ENV: "development" }),
+      false,
+    );
+  });
+
+  it("resolveArmedPurseTestToken rejects incomplete / production / bad config", () => {
+    assert.throws(
+      () =>
+        resolveArmedPurseTestToken({
+          NODE_ENV: "development",
+          [FENN_PURSE_TEST_MODE_ENV]: "true",
+          [FENN_PURSE_TEST_TOKEN_ADDRESS_ENV]: TEST_TOKEN,
+          [FENN_PURSE_TEST_TOKEN_DECIMALS_ENV]: "18",
+        } as NodeJS.ProcessEnv),
+      (e: unknown) =>
+        e instanceof PurseError && e.code === "purse_test_mode_inactive",
+    );
+    assert.throws(
+      () =>
+        resolveArmedPurseTestToken({
+          NODE_ENV: "production",
+          [FENN_PURSE_TEST_MODE_ENV]: FENN_PURSE_TEST_MODE_ALLOW,
+          [FENN_PURSE_TEST_TOKEN_ADDRESS_ENV]: TEST_TOKEN,
+          [FENN_PURSE_TEST_TOKEN_DECIMALS_ENV]: "18",
+        } as NodeJS.ProcessEnv),
+      (e: unknown) =>
+        e instanceof PurseError &&
+        e.code === "purse_test_mode_production_forbidden",
+    );
+    assert.throws(
+      () =>
+        resolveArmedPurseTestToken({
+          NODE_ENV: "development",
+          [FENN_PURSE_TEST_MODE_ENV]: FENN_PURSE_TEST_MODE_ALLOW,
+          [FENN_PURSE_TEST_TOKEN_DECIMALS_ENV]: "18",
+        } as NodeJS.ProcessEnv),
+      (e: unknown) =>
+        e instanceof PurseError && e.code === "purse_test_token_unavailable",
+    );
+    assert.throws(
+      () =>
+        resolveArmedPurseTestToken({
+          NODE_ENV: "development",
+          [FENN_PURSE_TEST_MODE_ENV]: FENN_PURSE_TEST_MODE_ALLOW,
+          [FENN_PURSE_TEST_TOKEN_ADDRESS_ENV]: "not-an-address",
+          [FENN_PURSE_TEST_TOKEN_DECIMALS_ENV]: "18",
+        } as NodeJS.ProcessEnv),
+      (e: unknown) =>
+        e instanceof PurseError && e.code === "purse_test_token_unavailable",
+    );
+    assert.throws(
+      () =>
+        resolveArmedPurseTestToken({
+          NODE_ENV: "development",
+          [FENN_PURSE_TEST_MODE_ENV]: FENN_PURSE_TEST_MODE_ALLOW,
+          [FENN_PURSE_TEST_TOKEN_ADDRESS_ENV]: TEST_TOKEN,
+          [FENN_PURSE_TEST_TOKEN_DECIMALS_ENV]: "999",
+        } as NodeJS.ProcessEnv),
+      (e: unknown) =>
+        e instanceof PurseError && e.code === "purse_test_token_unavailable",
+    );
+    const ok = resolveArmedPurseTestToken(armedTestEnv());
+    assert.equal(ok.contractAddress, TEST_TOKEN);
+    assert.equal(ok.decimals, 18);
+  });
+});
+
+describe("executeManualTestTransfer", () => {
+  it("uses configured test token only and sets is_test true", async () => {
+    let insertedIsTest: boolean | null = null;
+    let insertedToken: string | null = null;
+    const store = new Map<string, PurseTransferRow>();
+    const full = makeDeps({
+      getOfficialToken: async () => null,
+      insertPending: async (input) => {
+        insertedIsTest = input.isTest;
+        insertedToken = input.tokenAddress;
+        const row = baseRow({
+          operationId: input.operationId,
+          recipientAddress: input.recipientAddress,
+          amountRaw: input.amountRaw,
+          amountFormatted: input.amountFormatted,
+          tokenAddress: input.tokenAddress,
+          chainId: input.chainId,
+          actorId: input.actorId,
+          isTest: input.isTest,
+          status: "pending",
+        });
+        store.set(input.operationId, row);
+        return row;
+      },
+      getByOperationId: async (id) => store.get(id) ?? null,
+      markSubmitted: async (input) => {
+        const prev = [...store.values()].find((r) => r.id === input.id)!;
+        const next = {
+          ...prev,
+          status: "submitted" as const,
+          txHash: input.txHash,
+          submittedAt: input.submittedAt,
+        };
+        store.set(prev.operationId, next);
+        return next;
+      },
+      markConfirmed: async (input) => {
+        const prev = [...store.values()].find((r) => r.id === input.id)!;
+        const next = {
+          ...prev,
+          status: "confirmed" as const,
+          txHash: input.txHash,
+          confirmedAt: input.confirmedAt,
+          submittedAt: input.submittedAt ?? prev.submittedAt,
+        };
+        store.set(prev.operationId, next);
+        return next;
+      },
+    });
+
+    const result = await executeManualTestTransfer(
+      { recipientAddress: RECIPIENT, operationId: "test:op-1" },
+      full,
+      armedTestEnv(),
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.isTest, true);
+      assert.equal(result.tokenAddress, TEST_TOKEN);
+      assert.equal(result.amountFormatted, "1");
+    }
+    assert.equal(insertedIsTest, true);
+    assert.equal(insertedToken, TEST_TOKEN);
+  });
+
+  it("refuses when official FENN successfully resolves", async () => {
+    await assert.rejects(
+      () =>
+        executeManualTestTransfer(
+          { recipientAddress: RECIPIENT, operationId: "test:op-off" },
+          makeDeps({ getOfficialToken: async () => OFFICIAL }),
+          armedTestEnv(),
+        ),
+      (e: unknown) =>
+        e instanceof PurseError &&
+        e.code === "purse_test_mode_official_fenn_exists",
+    );
+  });
+
+  it("same operation-id does not double-broadcast (test rail)", async () => {
+    let broadcasts = 0;
+    const store = new Map<string, PurseTransferRow>();
+    const deps = makeDeps({
+      getOfficialToken: async () => null,
+      getByOperationId: async (id) => store.get(id) ?? null,
+      insertPending: async (input) => {
+        const row = baseRow({
+          ...input,
+          status: "pending",
+          isTest: true,
+        });
+        store.set(input.operationId, row);
+        return row;
+      },
+      markSubmitted: async (input) => {
+        const prev = [...store.values()].find((r) => r.id === input.id)!;
+        const next = {
+          ...prev,
+          status: "submitted" as const,
+          txHash: input.txHash,
+          submittedAt: input.submittedAt,
+        };
+        store.set(prev.operationId, next);
+        return next;
+      },
+      markConfirmed: async (input) => {
+        const prev = [...store.values()].find((r) => r.id === input.id)!;
+        const next = {
+          ...prev,
+          status: "confirmed" as const,
+          txHash: input.txHash,
+          confirmedAt: input.confirmedAt,
+        };
+        store.set(prev.operationId, next);
+        return next;
+      },
+      broadcast: async (input) => {
+        broadcasts += 1;
+        assert.equal(input.tokenAddress, TEST_TOKEN);
+        return {
+          kind: "submitted",
+          txHash:
+            "0x7777777777777777777777777777777777777777777777777777777777777777",
+        };
+      },
+    });
+
+    const first = await executeManualTestTransfer(
+      { recipientAddress: RECIPIENT, operationId: "test:dup" },
+      deps,
+      armedTestEnv(),
+    );
+    assert.equal(first.ok, true);
+    const second = await executeManualTestTransfer(
+      { recipientAddress: RECIPIENT, operationId: "test:dup" },
+      deps,
+      armedTestEnv(),
+    );
+    assert.equal(second.ok, true);
+    if (second.ok) assert.equal(second.reusedExisting, true);
+    assert.equal(broadcasts, 1);
+  });
+
+  it("known submitted test tx reconciles without rebroadcast", async () => {
+    let broadcasts = 0;
+    const known =
+      "0x8888888888888888888888888888888888888888888888888888888888888888";
+    let row = baseRow({
+      operationId: "test:submitted",
+      tokenAddress: TEST_TOKEN,
+      isTest: true,
+      status: "submitted",
+      txHash: known,
+      submittedAt: "2026-08-08T11:00:00.000Z",
+    });
+    const result = await executeManualTestTransfer(
+      { recipientAddress: RECIPIENT, operationId: "test:submitted" },
+      makeDeps({
+        getOfficialToken: async () => null,
+        getByOperationId: async () => row,
+        broadcast: async () => {
+          broadcasts += 1;
+          return { kind: "submitted", txHash: "0xnope" };
+        },
+        getReceipt: async () => ({ kind: "success" }),
+        markConfirmed: async (input) => {
+          row = {
+            ...row,
+            status: "confirmed",
+            txHash: input.txHash,
+            confirmedAt: input.confirmedAt,
+          };
+          return row;
+        },
+      }),
+      armedTestEnv(),
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.txHash, known);
+    assert.equal(broadcasts, 0);
+  });
+
+  it("ambiguous test broadcast is not blindly retried", async () => {
+    let broadcasts = 0;
+    const store = new Map<string, PurseTransferRow>();
+    const deps = makeDeps({
+      getOfficialToken: async () => null,
+      getByOperationId: async (id) => store.get(id) ?? null,
+      insertPending: async (input) => {
+        const row = baseRow({
+          ...input,
+          isTest: true,
+          status: "pending",
+        });
+        store.set(input.operationId, row);
+        return row;
+      },
+      markFailed: async (input) => {
+        const prev = [...store.values()].find((r) => r.id === input.id)!;
+        const next = {
+          ...prev,
+          status: (input.status ?? "failed") as PurseTransferRow["status"],
+          failureClass: input.failureClass,
+          lastError: input.lastError,
+          txHash: input.txHash ?? prev.txHash,
+        };
+        store.set(prev.operationId, next);
+        return next;
+      },
+      broadcast: async () => {
+        broadcasts += 1;
+        return { kind: "ambiguous", error: "timeout" };
+      },
+    });
+    const first = await executeManualTestTransfer(
+      { recipientAddress: RECIPIENT, operationId: "test:amb" },
+      deps,
+      armedTestEnv(),
+    );
+    assert.equal(first.ok, false);
+    const second = await executeManualTestTransfer(
+      { recipientAddress: RECIPIENT, operationId: "test:amb" },
+      deps,
+      armedTestEnv(),
+    );
+    assert.equal(second.ok, false);
+    assert.equal(broadcasts, 1);
+  });
+
+  it("normal mode never reads test env and fails closed without official FENN", async () => {
+    await assert.rejects(
+      () =>
+        executeManualOneFennTransfer(
+          { recipientAddress: RECIPIENT, operationId: "normal-no-fenn" },
+          makeDeps({ getOfficialToken: async () => null }),
+        ),
+      (e: unknown) =>
+        e instanceof PurseError &&
+        e.code === "purse_official_token_unavailable",
+    );
+
+    // Even with armed test env, normal path uses official only.
+    const prevMode = process.env[FENN_PURSE_TEST_MODE_ENV];
+    const prevAddr = process.env[FENN_PURSE_TEST_TOKEN_ADDRESS_ENV];
+    const prevDec = process.env[FENN_PURSE_TEST_TOKEN_DECIMALS_ENV];
+    try {
+      process.env[FENN_PURSE_TEST_MODE_ENV] = FENN_PURSE_TEST_MODE_ALLOW;
+      process.env[FENN_PURSE_TEST_TOKEN_ADDRESS_ENV] = TEST_TOKEN;
+      process.env[FENN_PURSE_TEST_TOKEN_DECIMALS_ENV] = "18";
+
+      let usedToken: string | null = null;
+      const store = new Map<string, PurseTransferRow>();
+      const result = await executeManualOneFennTransfer(
+        { recipientAddress: RECIPIENT, operationId: "normal-official-only" },
+        makeDeps({
+          getOfficialToken: async () => OFFICIAL,
+          getByOperationId: async (id) => store.get(id) ?? null,
+          insertPending: async (input) => {
+            usedToken = input.tokenAddress;
+            assert.equal(input.isTest, false);
+            const row = baseRow({
+              ...input,
+              isTest: false,
+              status: "pending",
+            });
+            store.set(input.operationId, row);
+            return row;
+          },
+          markSubmitted: async (input) => {
+            const prev = [...store.values()].find((r) => r.id === input.id)!;
+            const next = {
+              ...prev,
+              status: "submitted" as const,
+              txHash: input.txHash,
+              submittedAt: input.submittedAt,
+            };
+            store.set(prev.operationId, next);
+            return next;
+          },
+          markConfirmed: async (input) => {
+            const prev = [...store.values()].find((r) => r.id === input.id)!;
+            const next = {
+              ...prev,
+              status: "confirmed" as const,
+              txHash: input.txHash,
+              confirmedAt: input.confirmedAt,
+            };
+            store.set(prev.operationId, next);
+            return next;
+          },
+          broadcast: async (input) => {
+            assert.equal(input.tokenAddress, OFFICIAL.contractAddress);
+            return {
+              kind: "submitted",
+              txHash:
+                "0x9999999999999999999999999999999999999999999999999999999999999999",
+            };
+          },
+        }),
+      );
+      assert.equal(result.ok, true);
+      assert.equal(usedToken, OFFICIAL.contractAddress);
+      if (result.ok) {
+        assert.equal(result.isTest, false);
+        assert.equal(result.tokenAddress, OFFICIAL.contractAddress);
+      }
+    } finally {
+      if (prevMode === undefined) delete process.env[FENN_PURSE_TEST_MODE_ENV];
+      else process.env[FENN_PURSE_TEST_MODE_ENV] = prevMode;
+      if (prevAddr === undefined) {
+        delete process.env[FENN_PURSE_TEST_TOKEN_ADDRESS_ENV];
+      } else {
+        process.env[FENN_PURSE_TEST_TOKEN_ADDRESS_ENV] = prevAddr;
+      }
+      if (prevDec === undefined) {
+        delete process.env[FENN_PURSE_TEST_TOKEN_DECIMALS_ENV];
+      } else {
+        process.env[FENN_PURSE_TEST_TOKEN_DECIMALS_ENV] = prevDec;
+      }
+    }
   });
 });

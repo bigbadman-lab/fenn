@@ -28,7 +28,8 @@
     "market-watch:worker": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-worker.ts",
     "market-watch:replay": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-replay.ts",
     "market-watch:verify": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-verify.ts",
-    "purse:transfer-one": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/purse-transfer-one.ts"
+    "purse:transfer-one": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/purse-transfer-one.ts",
+    "purse:transfer-one-test": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/purse-transfer-one-test.ts"
   },
   "dependencies": {
     "@privy-io/node": "^0.27.0",

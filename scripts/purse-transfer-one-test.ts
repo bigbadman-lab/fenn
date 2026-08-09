@@ -1,19 +1,22 @@
 /**
- * Operator CLI: transfer exactly 1 official FENN from THE PURSE.
+ * Operator CLI: transfer exactly 1 disposable ERC-20 from THE PURSE (pre-launch).
  *
- * NEVER a public endpoint. NO autonomous agent behaviour.
+ * NEVER a public endpoint. NO autonomous agent behaviour. NOT official FENN.
  *
  * Usage:
- *   npm run purse:transfer-one -- --to 0xRecipient... --operation-id p0-test-001
+ *   npm run purse:transfer-one-test -- --to 0xRecipient... --operation-id test:p0-manual-001
  *
+ * Requires local env arming (FENN_PURSE_TEST_MODE=explicit_allow + token).
+ * Refuses production hosts and refuses once official FENN resolves.
  * Safe preview is always printed first. Private key is never logged.
  */
 
 import {
-  buildManualTransferPreview,
-  executeManualOneFennTransfer,
+  buildManualTestTransferPreview,
+  executeManualTestTransfer,
 } from "@/lib/purse/transfer";
 import { PurseError } from "@/lib/purse/errors";
+import { P0_MANUAL_TEST_ACTOR_ID } from "@/lib/purse/constants";
 
 function parseArgs(argv: string[]): {
   to: string | null;
@@ -43,9 +46,10 @@ async function main() {
     console.error(
       [
         "Usage:",
-        "  npm run purse:transfer-one -- --to 0xRecipient --operation-id unique-op-id",
+        "  npm run purse:transfer-one-test -- --to 0xRecipient --operation-id test:unique-op-id",
         "",
-        "Amount is fixed to 1 official FENN. Amount cannot be overridden.",
+        "Amount is fixed to 1 disposable test token. Amount cannot be overridden.",
+        "NOT OFFICIAL FENN. Requires FENN_PURSE_TEST_MODE=explicit_allow.",
         "Private key is never printed.",
       ].join("\n"),
     );
@@ -53,9 +57,9 @@ async function main() {
     return;
   }
 
-  let preview: Awaited<ReturnType<typeof buildManualTransferPreview>>;
+  let preview: Awaited<ReturnType<typeof buildManualTestTransferPreview>>;
   try {
-    preview = await buildManualTransferPreview({
+    preview = await buildManualTestTransferPreview({
       recipientAddress: to,
       operationId,
     });
@@ -75,7 +79,7 @@ async function main() {
       );
     } else {
       console.error(
-        "[purse:transfer-one] preview failed",
+        "[purse:transfer-one-test] preview failed",
         error instanceof Error ? error.message : error,
       );
     }
@@ -96,17 +100,18 @@ async function main() {
         chainId: preview.chainId,
         chainName: preview.chainName,
         operationId: preview.operationId,
-        note: "Executing transfer next — confirmation wait will begin on-chain.",
+        warning: preview.warning,
+        note: "Executing TEST transfer next — confirmation wait will begin on-chain.",
       },
       null,
       2,
     ),
   );
 
-  const result = await executeManualOneFennTransfer({
+  const result = await executeManualTestTransfer({
     recipientAddress: to,
     operationId,
-    actorId: "ops:purse-transfer-one-cli",
+    actorId: P0_MANUAL_TEST_ACTOR_ID,
   });
 
   if (result.ok) {
@@ -114,6 +119,7 @@ async function main() {
       JSON.stringify(
         {
           ok: true,
+          mode: "TEST",
           status: result.status,
           operationId: result.operationId,
           transferId: result.transferId,
@@ -125,6 +131,8 @@ async function main() {
           txHash: result.txHash,
           confirmedAt: result.confirmedAt,
           reusedExisting: result.reusedExisting,
+          isTest: result.isTest,
+          warning: "NOT OFFICIAL FENN",
         },
         null,
         2,
@@ -137,6 +145,7 @@ async function main() {
     JSON.stringify(
       {
         ok: false,
+        mode: "TEST",
         code: result.code,
         message: result.message,
         operationId: result.operationId,
@@ -153,7 +162,7 @@ async function main() {
 
 main().catch((error) => {
   console.error(
-    "[purse:transfer-one] failed",
+    "[purse:transfer-one-test] failed",
     error instanceof Error ? error.message : error,
   );
   process.exitCode = 1;

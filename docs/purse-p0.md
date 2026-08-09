@@ -153,6 +153,110 @@ Meaning:
 - Native transfers forbidden by module policy.
 - One transfer at a time (Postgres advisory lock).
 - X agent, authority, effects, and Stage 11 knowledge are unmodified.
+- Pre-launch **disposable test token is isolated** from official FENN resolution (see below).
+
+---
+
+## PRE-LAUNCH DISPOSABLE TOKEN TEST
+
+Use this **only** before official `$FENN` exists, on a **local/operator** machine.
+
+### Required test env vars
+
+| Variable | Value | Notes |
+|----------|--------|--------|
+| `FENN_PURSE_TEST_MODE` | **must be exactly** `explicit_allow` | Not `true` / `1` / boolean-ish |
+| `FENN_PURSE_TEST_TOKEN_ADDRESS` | disposable ERC-20 on chain **4663** | Normalized `0x`… address |
+| `FENN_PURSE_TEST_TOKEN_DECIMALS` | integer `0`–`255` | Used to convert amount `"1"` → raw units |
+
+Also needed (shared with production P0):
+
+- `FENN_PURSE_PRIVATE_KEY`
+- `ROBINHOOD_CHAIN_RPC_URL`
+- `purse_config` wallet matching the key
+- gas on the Purse wallet + balance of the **disposable** ERC-20
+
+### Hard rules
+
+- **Local / operator-only.** Refuses when `NODE_ENV=production` or `VERCEL_ENV=production`.
+- **Not used by** `npm run purse:transfer-one` — that path never reads `FENN_PURSE_TEST_*`.
+- Disposable token must **never** be marked `metadata.official` / `public_contract` in `treasury_assets`.
+- Once official FENN successfully resolves, **`purse:transfer-one-test` refuses permanently** (no override).
+- Confirmed test rows set `is_test = true` and are **excluded** from public RLS and `/commons` MOVEMENTS.
+- Amount fixed at **1** test token (same as P0 unit size).
+
+### Run a test transfer
+
+```bash
+npm run purse:transfer-one-test -- \
+  --to 0xYOUR_TEST_RECIPIENT_LOWERCASE \
+  --operation-id test:p0-manual-001
+```
+
+Preview prints:
+
+- `mode: "TEST"`
+- `amount: "1"`
+- disposable `tokenAddress`
+- `chainId: 4663`
+- purse + recipient
+- `warning: "NOT OFFICIAL FENN"`
+
+Private key is never printed.
+
+### Verify
+
+1. CLI JSON: `ok: true`, `txHash`, `confirmedAt`, `isTest: true`.
+2. Robinhood explorer for the `txHash`.
+3. Ops SQL (service role / admin — not public client):
+
+```sql
+SELECT operation_id, status, is_test, token_address, amount_formatted, tx_hash, confirmed_at, actor_id
+FROM public.purse_transfers
+WHERE is_test = true
+ORDER BY created_at DESC
+LIMIT 20;
+```
+
+4. `/commons` must **not** show the row under THE PURSE OF FENN movements.
+
+### Idempotency
+
+Re-run the **same** `--operation-id`:
+
+- Already confirmed → reuse `txHash`, no second send.
+- Known `tx_hash` → reconcile only.
+- Ambiguous without safe reconcile → fail closed; do not invent a new op-id for the same intent until inspected.
+
+### Launch cleanup (when official $FENN is ready)
+
+1. **Remove** from every host/env:
+
+   - `FENN_PURSE_TEST_MODE`
+   - `FENN_PURSE_TEST_TOKEN_ADDRESS`
+   - `FENN_PURSE_TEST_TOKEN_DECIMALS`
+
+2. Configure **real** official FENN via existing `treasury_assets` official + `public_contract` mechanism (not the disposable token).
+
+3. Fund the **same** Purse wallet with real FENN + gas.
+
+4. Verify normal path:
+
+   ```bash
+   npm run purse:transfer-one -- --to 0x… --operation-id p0-live-001
+   ```
+
+   resolves official FENN.
+
+5. Verify test rail **refuses** because official FENN exists:
+
+   ```bash
+   npm run purse:transfer-one-test -- --to 0x… --operation-id test:should-fail
+   ```
+
+   expect `purse_test_mode_official_fenn_exists` (or inactive if envs already removed).
+
+6. Leave historical `is_test = true` rows in the DB for ops audit; never expose them publicly.
 
 ---
 
@@ -163,3 +267,4 @@ Meaning:
 - Multi-turn wallet collection on X
 - Greenwood contribution of knowledge
 - Arbitrary amounts / tokens / chains
+- Treating disposable test token as official FENN

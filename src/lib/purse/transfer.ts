@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   P0_MANUAL_ACTOR_ID,
+  P0_MANUAL_TEST_ACTOR_ID,
   P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
 } from "@/lib/purse/constants";
 import { requireEnabledPurseConfig } from "@/lib/purse/config";
@@ -26,6 +27,7 @@ import {
   resetPurseTransferForRetry,
   tryAcquirePurseTransferLock,
 } from "@/lib/purse/settlement";
+import { resolveArmedPurseTestToken } from "@/lib/purse/test-mode";
 import type {
   ManualOneFennTransferInput,
   ManualOneFennTransferResult,
@@ -47,6 +49,13 @@ import { getOfficialFennTokenAsset } from "@/lib/treasury/official-token";
 import type { OfficialFennTokenAsset } from "@/lib/treasury/types";
 import type { TreasuryAmount } from "@/lib/treasury/types";
 
+/** Settlement token — either official FENN or armed disposable test ERC-20. */
+export type PurseUnitTransferToken = {
+  contractAddress: string;
+  decimals: number;
+  chainId: number;
+};
+
 export type ManualTransferDeps = {
   getPurse: () => Promise<{ walletAddress: string }>;
   getOfficialToken: () => Promise<OfficialFennTokenAsset | null>;
@@ -61,6 +70,7 @@ export type ManualTransferDeps = {
     tokenAddress: string;
     chainId: number;
     actorId: string;
+    isTest: boolean;
   }) => Promise<PurseTransferRow>;
   markSubmitted: (input: {
     id: string;
@@ -81,7 +91,7 @@ export type ManualTransferDeps = {
     status?: "failed" | "ambiguous";
   }) => Promise<PurseTransferRow>;
   resetForRetry: (id: string) => Promise<PurseTransferRow>;
-  readFennBalance: (input: {
+  readTokenBalance: (input: {
     tokenAddress: string;
     holder: string;
     decimals: number;
@@ -108,6 +118,11 @@ export type ManualTransferDeps = {
     | { kind: "unknown"; error: string }
   >;
   now: () => Date;
+  /**
+   * @deprecated Prefer readTokenBalance. Kept so older tests that set
+   * `readFennBalance` continue to work when fully replacing deps via makeDeps.
+   */
+  readFennBalance?: ManualTransferDeps["readTokenBalance"];
 };
 
 function defaultDeps(): ManualTransferDeps {
@@ -122,7 +137,7 @@ function defaultDeps(): ManualTransferDeps {
     markConfirmed: (input) => markPurseTransferConfirmed(input),
     markFailed: (input) => markPurseTransferFailed(input),
     resetForRetry: (id) => resetPurseTransferForRetry(id),
-    readFennBalance: async ({ tokenAddress, holder, decimals }) => {
+    readTokenBalance: async ({ tokenAddress, holder, decimals }) => {
       const client = createRobinhoodPublicClient();
       return readErc20Balance({
         tokenAddress,
@@ -147,6 +162,16 @@ function defaultDeps(): ManualTransferDeps {
     },
     now: () => new Date(),
   };
+}
+
+function mergeDeps(overrides?: Partial<ManualTransferDeps>): ManualTransferDeps {
+  const base = defaultDeps();
+  const merged = { ...base, ...overrides };
+  // Back-compat: tests historically injected readFennBalance.
+  if (overrides?.readFennBalance && !overrides.readTokenBalance) {
+    merged.readTokenBalance = overrides.readFennBalance;
+  }
+  return merged;
 }
 
 function confirmedResult(
@@ -176,6 +201,7 @@ function confirmedResult(
     txHash: row.txHash,
     confirmedAt: row.confirmedAt,
     reusedExisting,
+    isTest: row.isTest,
   };
 }
 
@@ -284,33 +310,36 @@ async function reconcileKnownTx(
   );
 }
 
+type UnitTransferContext = {
+  token: PurseUnitTransferToken;
+  isTest: boolean;
+  insufficientCode: "purse_insufficient_fenn" | "purse_insufficient_test_token";
+  insufficientMessage: (balanceFormatted: string) => string;
+};
+
 /**
- * Operator-only P0 path: transfer exactly 1 official FENN from the Purse.
- *
- * - Fixed amount "1" (no amount parameter accepted by the public API)
- * - Official FENN ERC-20 only
- * - Robinhood Chain only
- * - Idempotent on operationId
- * - Never rebroadcasts ambiguous / known-tx operations
- * - Completes only after chain confirmation
+ * Shared P0 unit-transfer lifecycle (one ERC-20 unit, fixed "1").
+ * Used by official FENN path and disposable test path — never by agents.
  */
-export async function executeManualOneFennTransfer(
+async function executeManualUnitTransfer(
   input: ManualOneFennTransferInput,
+  context: UnitTransferContext,
   overrides?: Partial<ManualTransferDeps>,
 ): Promise<ManualOneFennTransferResult> {
-  // Hard policy: P0 never transfers native or arbitrary tokens.
+  // Hard policy: P0 never transfers native.
   assertNotNativeTransfer("erc20");
   assertP0ManualAmount(P0_MANUAL_TRANSFER_AMOUNT_FORMATTED);
+  assertRobinhoodChainId(context.token.chainId);
 
   const operationId = parseOperationId(input.operationId);
   const recipientAddress = parsePurseRecipient(input.recipientAddress);
-  const actorId = input.actorId?.trim() || P0_MANUAL_ACTOR_ID;
+  const actorId =
+    input.actorId?.trim() ||
+    (context.isTest ? P0_MANUAL_TEST_ACTOR_ID : P0_MANUAL_ACTOR_ID);
 
-  const deps: ManualTransferDeps = { ...defaultDeps(), ...overrides };
+  const deps = mergeDeps(overrides);
 
   const purse = await deps.getPurse();
-  const official = assertOfficialFennTokenOnly(await deps.getOfficialToken());
-  assertRobinhoodChainId(official.chainId);
 
   if (recipientAddress === purse.walletAddress) {
     throw new PurseError(
@@ -322,9 +351,10 @@ export async function executeManualOneFennTransfer(
 
   const amountRaw = parseTokenAmountToRaw(
     P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
-    official.decimals,
+    context.token.decimals,
   );
   const amountRawStr = amountRaw.toString();
+  const tokenAddress = context.token.contractAddress;
 
   const locked = await deps.acquireLock();
   if (!locked) {
@@ -346,9 +376,10 @@ export async function executeManualOneFennTransfer(
         recipientAddress,
         amountRaw: amountRawStr,
         amountFormatted: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
-        tokenAddress: official.contractAddress,
+        tokenAddress,
         chainId: ROBINHOOD_CHAIN_ID,
         actorId,
+        isTest: context.isTest,
       });
     }
 
@@ -356,8 +387,9 @@ export async function executeManualOneFennTransfer(
     if (
       row.recipientAddress !== recipientAddress ||
       row.amountFormatted !== P0_MANUAL_TRANSFER_AMOUNT_FORMATTED ||
-      row.tokenAddress !== official.contractAddress ||
-      row.chainId !== ROBINHOOD_CHAIN_ID
+      row.tokenAddress !== tokenAddress ||
+      row.chainId !== ROBINHOOD_CHAIN_ID ||
+      row.isTest !== context.isTest
     ) {
       return failResult(
         row,
@@ -407,28 +439,30 @@ export async function executeManualOneFennTransfer(
     }
 
     // Balance preflight (insufficient balances fail before broadcast).
-    const balance = await deps.readFennBalance({
-      tokenAddress: official.contractAddress,
+    const balance = await deps.readTokenBalance({
+      tokenAddress,
       holder: purse.walletAddress,
-      decimals: official.decimals,
+      decimals: context.token.decimals,
     });
     if (balance.raw < amountRaw) {
       const failed = await deps.markFailed({
         id: row.id,
         failureClass: "pre_broadcast",
-        lastError: "insufficient_fenn_balance",
+        lastError: context.isTest
+          ? "insufficient_test_token_balance"
+          : "insufficient_fenn_balance",
         status: "failed",
       });
       return failResult(
         failed,
-        "purse_insufficient_fenn",
-        `Purse FENN balance ${balance.formatted} is less than 1`,
+        context.insufficientCode,
+        context.insufficientMessage(balance.formatted),
       );
     }
 
     const broadcast = await deps.broadcast({
       purseAddress: purse.walletAddress,
-      tokenAddress: official.contractAddress,
+      tokenAddress,
       recipientAddress,
       amountRaw,
     });
@@ -478,12 +512,108 @@ export async function executeManualOneFennTransfer(
 }
 
 /**
+ * Operator-only P0 path: transfer exactly 1 official FENN from the Purse.
+ *
+ * - Fixed amount "1" (no amount parameter accepted by the public API)
+ * - Official FENN ERC-20 only (never reads FENN_PURSE_TEST_*)
+ * - Robinhood Chain only
+ * - Idempotent on operationId
+ * - Never rebroadcasts ambiguous / known-tx operations
+ * - Completes only after chain confirmation
+ */
+export async function executeManualOneFennTransfer(
+  input: ManualOneFennTransferInput,
+  overrides?: Partial<ManualTransferDeps>,
+): Promise<ManualOneFennTransferResult> {
+  const deps = mergeDeps(overrides);
+  const official = assertOfficialFennTokenOnly(await deps.getOfficialToken());
+
+  return executeManualUnitTransfer(
+    input,
+    {
+      token: {
+        contractAddress: official.contractAddress,
+        decimals: official.decimals,
+        chainId: official.chainId,
+      },
+      isTest: false,
+      insufficientCode: "purse_insufficient_fenn",
+      insufficientMessage: (balanceFormatted) =>
+        `Purse FENN balance ${balanceFormatted} is less than 1`,
+    },
+    overrides,
+  );
+}
+
+/**
+ * True when official FENN can successfully resolve for production transfers.
+ * Incomplete/invalid candidates do not close the test rail.
+ */
+export function officialFennSuccessfullyResolves(
+  official: OfficialFennTokenAsset | null,
+): boolean {
+  if (!official) return false;
+  try {
+    assertOfficialFennTokenOnly(official);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function refuseTestRailIfOfficialFennLive(
+  official: OfficialFennTokenAsset | null,
+): void {
+  if (officialFennSuccessfullyResolves(official)) {
+    throw new PurseError(
+      "purse_test_mode_official_fenn_exists",
+      "Official FENN is configured — disposable Purse test rail is permanently closed",
+      403,
+    );
+  }
+}
+
+/**
+ * Operator-only pre-launch test path: transfer exactly 1 disposable ERC-20.
+ *
+ * Never used in production hosts. Never runs once official FENN resolves.
+ * Never reads as official FENN. Persists is_test = true.
+ */
+export async function executeManualTestTransfer(
+  input: ManualOneFennTransferInput,
+  overrides?: Partial<ManualTransferDeps>,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<ManualOneFennTransferResult> {
+  const testToken = resolveArmedPurseTestToken(env);
+
+  const deps = mergeDeps(overrides);
+  refuseTestRailIfOfficialFennLive(await deps.getOfficialToken());
+
+  return executeManualUnitTransfer(
+    input,
+    {
+      token: {
+        contractAddress: testToken.contractAddress,
+        decimals: testToken.decimals,
+        chainId: testToken.chainId,
+      },
+      isTest: true,
+      insufficientCode: "purse_insufficient_test_token",
+      insufficientMessage: (balanceFormatted) =>
+        `Purse test-token balance ${balanceFormatted} is less than 1`,
+    },
+    overrides,
+  );
+}
+
+/**
  * Safe preview fields for operator CLI (never includes the private key).
  */
 export async function buildManualTransferPreview(input: {
   recipientAddress: string;
   operationId: string;
 }): Promise<{
+  mode: "OFFICIAL";
   purseAddress: string;
   recipient: string;
   amount: "1";
@@ -492,12 +622,14 @@ export async function buildManualTransferPreview(input: {
   chainId: number;
   chainName: "Robinhood Chain";
   operationId: string;
+  warning: null;
 }> {
   const operationId = parseOperationId(input.operationId);
   const recipient = parsePurseRecipient(input.recipientAddress);
   const purse = await requireEnabledPurseConfig();
   const official = assertOfficialFennTokenOnly(await getOfficialFennTokenAsset());
   return {
+    mode: "OFFICIAL",
     purseAddress: purse.walletAddress,
     recipient,
     amount: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
@@ -506,5 +638,50 @@ export async function buildManualTransferPreview(input: {
     chainId: ROBINHOOD_CHAIN_ID,
     chainName: "Robinhood Chain",
     operationId,
+    warning: null,
+  };
+}
+
+/**
+ * Safe preview for disposable-token test CLI. Never prints the private key.
+ */
+export async function buildManualTestTransferPreview(
+  input: {
+    recipientAddress: string;
+    operationId: string;
+  },
+  env: NodeJS.ProcessEnv = process.env,
+  getOfficialToken: () => Promise<OfficialFennTokenAsset | null> = () =>
+    getOfficialFennTokenAsset(),
+): Promise<{
+  mode: "TEST";
+  purseAddress: string;
+  recipient: string;
+  amount: "1";
+  asset: "TEST";
+  tokenAddress: string;
+  chainId: number;
+  chainName: "Robinhood Chain";
+  operationId: string;
+  warning: "NOT OFFICIAL FENN";
+}> {
+  const testToken = resolveArmedPurseTestToken(env);
+  refuseTestRailIfOfficialFennLive(await getOfficialToken());
+
+  const operationId = parseOperationId(input.operationId);
+  const recipient = parsePurseRecipient(input.recipientAddress);
+  const purse = await requireEnabledPurseConfig();
+
+  return {
+    mode: "TEST",
+    purseAddress: purse.walletAddress,
+    recipient,
+    amount: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+    asset: "TEST",
+    tokenAddress: testToken.contractAddress,
+    chainId: ROBINHOOD_CHAIN_ID,
+    chainName: "Robinhood Chain",
+    operationId,
+    warning: "NOT OFFICIAL FENN",
   };
 }

@@ -14,6 +14,9 @@ async function defaultAdmin(): Promise<SupabaseClient> {
   return createAdminClient();
 }
 
+const TRANSFER_SELECT =
+  "id, operation_id, recipient_address, amount_raw, amount_formatted, token_address, chain_id, tx_hash, status, failure_class, last_error, actor_id, is_test, created_at, submitted_at, confirmed_at";
+
 type TransferDbRow = {
   id: string;
   operation_id: string;
@@ -27,6 +30,7 @@ type TransferDbRow = {
   failure_class: string | null;
   last_error: string | null;
   actor_id: string | null;
+  is_test?: boolean | null;
   created_at: string;
   submitted_at: string | null;
   confirmed_at: string | null;
@@ -49,6 +53,7 @@ function mapRow(row: TransferDbRow): PurseTransferRow {
         : (row.failure_class as PurseFailureClass),
     lastError: row.last_error == null ? null : String(row.last_error),
     actorId: row.actor_id == null ? null : String(row.actor_id),
+    isTest: Boolean(row.is_test),
     createdAt: String(row.created_at),
     submittedAt: row.submitted_at == null ? null : String(row.submitted_at),
     confirmedAt: row.confirmed_at == null ? null : String(row.confirmed_at),
@@ -62,9 +67,7 @@ export async function getPurseTransferByOperationId(
   const db = admin ?? (await defaultAdmin());
   const { data, error } = await db
     .from("purse_transfers")
-    .select(
-      "id, operation_id, recipient_address, amount_raw, amount_formatted, token_address, chain_id, tx_hash, status, failure_class, last_error, actor_id, created_at, submitted_at, confirmed_at",
-    )
+    .select(TRANSFER_SELECT)
     .eq("operation_id", operationId)
     .maybeSingle();
 
@@ -88,6 +91,7 @@ export async function insertPendingPurseTransfer(
     tokenAddress: string;
     chainId: number;
     actorId: string;
+    isTest?: boolean;
   },
   admin?: SupabaseClient,
 ): Promise<PurseTransferRow> {
@@ -103,10 +107,9 @@ export async function insertPendingPurseTransfer(
       chain_id: input.chainId,
       status: "pending",
       actor_id: input.actorId,
+      is_test: Boolean(input.isTest),
     })
-    .select(
-      "id, operation_id, recipient_address, amount_raw, amount_formatted, token_address, chain_id, tx_hash, status, failure_class, last_error, actor_id, created_at, submitted_at, confirmed_at",
-    )
+    .select(TRANSFER_SELECT)
     .single();
 
   if (error) {
@@ -151,9 +154,7 @@ export async function markPurseTransferSubmitted(
       last_error: null,
     })
     .eq("id", input.id)
-    .select(
-      "id, operation_id, recipient_address, amount_raw, amount_formatted, token_address, chain_id, tx_hash, status, failure_class, last_error, actor_id, created_at, submitted_at, confirmed_at",
-    )
+    .select(TRANSFER_SELECT)
     .single();
 
   if (error) {
@@ -191,9 +192,7 @@ export async function markPurseTransferConfirmed(
     .from("purse_transfers")
     .update(patch)
     .eq("id", input.id)
-    .select(
-      "id, operation_id, recipient_address, amount_raw, amount_formatted, token_address, chain_id, tx_hash, status, failure_class, last_error, actor_id, created_at, submitted_at, confirmed_at",
-    )
+    .select(TRANSFER_SELECT)
     .single();
 
   if (error) {
@@ -235,9 +234,7 @@ export async function markPurseTransferFailed(
     .from("purse_transfers")
     .update(patch)
     .eq("id", input.id)
-    .select(
-      "id, operation_id, recipient_address, amount_raw, amount_formatted, token_address, chain_id, tx_hash, status, failure_class, last_error, actor_id, created_at, submitted_at, confirmed_at",
-    )
+    .select(TRANSFER_SELECT)
     .single();
 
   if (error) {
@@ -269,9 +266,7 @@ export async function resetPurseTransferForRetry(
       confirmed_at: null,
     })
     .eq("id", id)
-    .select(
-      "id, operation_id, recipient_address, amount_raw, amount_formatted, token_address, chain_id, tx_hash, status, failure_class, last_error, actor_id, created_at, submitted_at, confirmed_at",
-    )
+    .select(TRANSFER_SELECT)
     .single();
 
   if (error) {

@@ -20,7 +20,12 @@ export type PurseErrorCode =
   | "purse_ambiguous"
   | "purse_terminal_failed"
   | "purse_broadcast_failed"
-  | "purse_read_failed";
+  | "purse_read_failed"
+  | "purse_test_mode_inactive"
+  | "purse_test_mode_production_forbidden"
+  | "purse_test_mode_official_fenn_exists"
+  | "purse_test_token_unavailable"
+  | "purse_insufficient_test_token";
 
 export class PurseError extends Error {
   code: PurseErrorCode;

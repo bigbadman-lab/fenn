@@ -30,5 +30,15 @@ export const PUBLIC_PURSE_TRANSFER_HISTORY_LIMIT = 25;
 /** Env var holding the server-only private key (never logged, never DB). */
 export const FENN_PURSE_PRIVATE_KEY_ENV = "FENN_PURSE_PRIVATE_KEY";
 
-/** Default actor label for the P0 CLI. */
+/** Strict enable string for pre-launch disposable-token test rail. */
+export const FENN_PURSE_TEST_MODE_ENV = "FENN_PURSE_TEST_MODE";
+export const FENN_PURSE_TEST_MODE_ALLOW = "explicit_allow" as const;
+export const FENN_PURSE_TEST_TOKEN_ADDRESS_ENV = "FENN_PURSE_TEST_TOKEN_ADDRESS";
+export const FENN_PURSE_TEST_TOKEN_DECIMALS_ENV =
+  "FENN_PURSE_TEST_TOKEN_DECIMALS";
+
+/** Default actor label for the P0 official-FENN CLI. */
 export const P0_MANUAL_ACTOR_ID = "ops:purse-transfer-one";
+
+/** Default actor label for the P0 disposable-token test CLI. */
+export const P0_MANUAL_TEST_ACTOR_ID = "ops:purse-transfer-one-test-cli";

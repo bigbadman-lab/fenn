@@ -60,19 +60,63 @@ describe("Purse P0 architecture hardening", () => {
     assert.doesNotMatch(sql, /private_key|mnemonic/i);
   });
 
-  it("operator CLI exists and is not a public API route", () => {
+  it("test-mode migration excludes is_test from public RLS", () => {
+    const sql = read("supabase/migrations/20260809120000_54_purse_p0_test_mode.sql");
+    assert.match(sql, /is_test boolean NOT NULL DEFAULT false/);
+    assert.match(sql, /status = 'confirmed' AND is_test = false/);
+    assert.doesNotMatch(sql, /private_key|mnemonic/i);
+  });
+
+  it("public listConfirmed filters is_test = false in application layer", () => {
+    const query = read("src/lib/purse/transfers-query.ts");
+    assert.match(query, /\.eq\("is_test", false\)/);
+    assert.match(query, /\.eq\("status", "confirmed"\)/);
+  });
+
+  it("operator CLIs exist and are not a public API route", () => {
     const script = read("scripts/purse-transfer-one.ts");
     assert.match(script, /executeManualOneFennTransfer/);
     assert.match(script, /buildManualTransferPreview/);
     assert.doesNotMatch(script, /FENN_PURSE_PRIVATE_KEY/);
+    assert.doesNotMatch(script, /executeManualTestTransfer|FENN_PURSE_TEST_/);
+
+    const testScript = read("scripts/purse-transfer-one-test.ts");
+    assert.match(testScript, /executeManualTestTransfer/);
+    assert.match(testScript, /buildManualTestTransferPreview/);
+    assert.match(testScript, /NOT OFFICIAL FENN/);
+    assert.doesNotMatch(testScript, /FENN_PURSE_PRIVATE_KEY/);
+
     // No public Next route for transfer
     assert.throws(() => read("src/app/api/purse/transfer/route.ts"));
+  });
+
+  it("normal transfer path ignores FENN_PURSE_TEST_MODE envs", () => {
+    const transfer = read("src/lib/purse/transfer.ts");
+    // Official execute path must not call resolveArmedPurseTestToken
+    assert.match(transfer, /export async function executeManualOneFennTransfer/);
+    assert.match(transfer, /export async function executeManualTestTransfer/);
+    assert.match(transfer, /assertOfficialFennTokenOnly/);
+    // Official path never imports resolve inside OneFenn body via wrong call
+    const oneFennSlice = transfer.slice(
+      transfer.indexOf("export async function executeManualOneFennTransfer"),
+      transfer.indexOf("export async function executeManualTestTransfer"),
+    );
+    assert.doesNotMatch(oneFennSlice, /resolveArmedPurseTestToken/);
+    assert.doesNotMatch(oneFennSlice, /FENN_PURSE_TEST_/);
+  });
+
+  it("Commons purse UI never labels disposable test as FENN movements", () => {
+    const readout = read("src/components/commons/purse-readout.tsx");
+    assert.match(readout, /THE PURSE OF FENN/);
+    assert.doesNotMatch(readout, /is_test|TEST token|disposable/i);
   });
 
   it("env example documents FENN_PURSE_PRIVATE_KEY without a sample key", () => {
     const env = read(".env.example");
     assert.match(env, /FENN_PURSE_PRIVATE_KEY=/);
     assert.match(env, /purse_config/);
+    assert.match(env, /FENN_PURSE_TEST_MODE/);
+    assert.match(env, /explicit_allow/);
     assert.doesNotMatch(env, /0x[a-fA-F0-9]{64}/);
   });
 });
