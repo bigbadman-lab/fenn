@@ -15,7 +15,8 @@ import {
   planTransferFromConfirmedInteraction,
 } from "@/lib/agent/wallet-collection-handler";
 import { decideWalletCollectionTurn } from "@/lib/agent/wallet-collection-turn";
-import { buildAskForWalletReply } from "@/lib/agent/wallet-collection";
+import { buildWalletSpeechFallback } from "@/lib/agent/wallet-speech-facts";
+import { speechFactsDestinationRequired } from "@/lib/agent/wallet-speech-facts";
 import type { FinalEconomicIntent } from "@/lib/agent/economic-intent";
 import { createHash, randomUUID } from "node:crypto";
 
@@ -174,7 +175,9 @@ export function runP1dWalletCollectionHarness(input: {
       interactionStatus: interaction.status,
       candidateWallet: null,
       confirmedWallet: null,
-      replyText: buildAskForWalletReply({ proposedAmount }),
+      replyText: buildWalletSpeechFallback(
+        speechFactsDestinationRequired(proposedAmount),
+      ),
       plannedTransferAmount: null,
       authoritySkippedReason: "pending_destination",
       economicEffects: [],
@@ -194,7 +197,9 @@ export function runP1dWalletCollectionHarness(input: {
 
       let kind = decision.kind;
       let replyText: string | null =
-        "speech" in decision ? decision.speech : null;
+        decision.speechFacts != null
+          ? buildWalletSpeechFallback(decision.speechFacts)
+          : null;
 
       if (decision.kind === "ignored_wrong_user") {
         reports.push({

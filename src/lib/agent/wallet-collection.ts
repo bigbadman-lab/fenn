@@ -4,6 +4,9 @@
  * X text may supply a CANDIDATE address only when FENN explicitly asked
  * (awaiting_wallet). Candidate ≠ spend trust until confirmed on the same turn
  * of the same immutable X user for the same interaction.
+ *
+ * Public speech for live X is owned by Book of Speech (P1D.1).
+ * build*Reply helpers are deterministic FALLBACK copy only.
  */
 
 import {
@@ -11,6 +14,15 @@ import {
   normalizeEvmAddress,
   parseEvmAddress,
 } from "@/lib/wallet/evm";
+import {
+  buildWalletSpeechFallback,
+  shortWalletForSpeech,
+  speechFactsDestinationConfirmation,
+  speechFactsDestinationConfirmedPending,
+  speechFactsDestinationInvalid,
+  speechFactsDestinationRejected,
+  speechFactsDestinationRequired,
+} from "@/lib/agent/wallet-speech-facts";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -79,7 +91,6 @@ export function isAffirmativeWalletConfirmation(body: string): boolean {
     .trim();
   if (!t) return false;
 
-  // Single-word / short affirmatives.
   const exact = new Set([
     "yes",
     "y",
@@ -103,7 +114,6 @@ export function isAffirmativeWalletConfirmation(body: string): boolean {
   ]);
   if (exact.has(t)) return true;
 
-  // Allow short phrases that clearly affirm the candidate without nominating amounts.
   if (/^(yes|yep|yeah|yup)[, ]+(please|go ahead|send it|use it|correct|confirmed)\.?$/.test(t)) {
     return true;
   }
@@ -143,53 +153,45 @@ export function isNegativeWalletConfirmation(body: string): boolean {
  * Shortened display form for confirmation speech (repo convention).
  */
 export function shortWalletForConfirmation(walletAddress: string): string {
-  const n = normalizeEvmAddress(walletAddress);
-  if (!isNormalizedEvmAddress(n)) return walletAddress;
-  return `${n.slice(0, 6)}…${n.slice(-4)}`;
+  return shortWalletForSpeech(walletAddress);
 }
 
-/** Reply templates — deterministic; Book of Speech can wrap later. */
+/**
+ * Deterministic fallback replies (NOT the normal live-X path).
+ * Live X uses Book of Speech via renderWalletCollectionSpeech.
+ */
 export function buildAskForWalletReply(input: {
   proposedAmount: string;
 }): string {
-  const amount = input.proposedAmount.trim();
-  return `I intend to send ${amount} FENN. Reply with the destination wallet address (0x…). Settlement is not done yet.`.slice(
-    0,
-    280,
+  return buildWalletSpeechFallback(
+    speechFactsDestinationRequired(input.proposedAmount),
   );
 }
 
 export function buildAskWalletConfirmationReply(input: {
   candidateWallet: string;
 }): string {
-  const short = shortWalletForConfirmation(input.candidateWallet);
-  return `Use ${short}? Reply yes to confirm, or send a different 0x address. Nothing has been sent.`.slice(
-    0,
-    280,
+  return buildWalletSpeechFallback(
+    speechFactsDestinationConfirmation(input.candidateWallet),
   );
 }
 
 export function buildWalletAskAgainReply(): string {
-  return "I still need a single valid destination wallet (0x…). Nothing has been sent.".slice(
-    0,
-    280,
-  );
+  return buildWalletSpeechFallback(speechFactsDestinationInvalid());
 }
 
 export function buildWalletRejectedReply(): string {
-  return "Understood — send a different destination wallet when you have one. Nothing has been sent.".slice(
-    0,
-    280,
-  );
+  return buildWalletSpeechFallback(speechFactsDestinationRejected());
 }
 
 export function buildWalletConfirmedProceedingReply(input: {
   proposedAmount: string;
   confirmedWallet: string;
 }): string {
-  const short = shortWalletForConfirmation(input.confirmedWallet);
-  return `Confirmed ${short}. I will send ${input.proposedAmount.trim()} FENN there if the Purse still allows it. Settlement is not complete until the chain confirms.`.slice(
-    0,
-    280,
+  return buildWalletSpeechFallback(
+    speechFactsDestinationConfirmedPending({
+      proposedAmount: input.proposedAmount,
+      confirmedWallet: input.confirmedWallet,
+    }),
   );
 }

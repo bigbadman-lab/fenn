@@ -13,9 +13,12 @@ import {
   isAffirmativeWalletConfirmation,
   isNegativeWalletConfirmation,
   shortWalletForConfirmation,
-  buildAskForWalletReply,
-  buildAskWalletConfirmationReply,
 } from "@/lib/agent/wallet-collection";
+import {
+  speechFactsDestinationConfirmation,
+  speechFactsDestinationRequired,
+  buildWalletSpeechFallback,
+} from "@/lib/agent/wallet-speech-facts";
 import { decideWalletCollectionTurn } from "@/lib/agent/wallet-collection-turn";
 import {
   InMemoryEconomicInteractionStore,
@@ -331,13 +334,26 @@ describe("Stage P1D wallet collection", () => {
     assert.equal(malformed.turns.at(-1)?.kind, "remain_awaiting_wallet");
   });
 
-  it("37–39. speech asks for wallet / confirmation / no completion claim", () => {
-    const ask = buildAskForWalletReply({ proposedAmount: "25000" });
+  it("37–39. fallback speech asks for wallet / confirmation / no completion claim", () => {
+    const ask = buildWalletSpeechFallback(speechFactsDestinationRequired("25000"));
     assert.match(ask, /25000 FENN/i);
-    assert.doesNotMatch(ask, /sent|confirmed on.?chain/i);
-    const conf = buildAskWalletConfirmationReply({ candidateWallet: WALLET });
+    assert.doesNotMatch(ask, /I have sent|confirmed on.?chain/i);
+    const conf = buildWalletSpeechFallback(
+      speechFactsDestinationConfirmation(WALLET),
+    );
     assert.match(conf, new RegExp(shortWalletForConfirmation(WALLET).replace("…", ".+")));
     assert.doesNotMatch(conf, /tokens were sent|transfer is complete/i);
+
+    // FSM still emits facts not bare prose as the primary product.
+    const d = decideWalletCollectionTurn({
+      interaction: baseInteraction(),
+      authorXUserId: AUTHOR,
+      body: WALLET,
+    });
+    assert.equal(d.kind, "candidate_set");
+    if (d.kind === "candidate_set") {
+      assert.equal(d.speechFacts.moment, "destination_confirmation");
+    }
   });
 
   it("40–45. P1C amount path + user demand without intent stays none", () => {

@@ -1,64 +1,70 @@
 /**
  * Stage P1D — pure wallet-collection state machine over an interaction + turn text.
  * No I/O. Identity checks are the caller's responsibility (same author_x_user_id).
+ *
+ * Produces deterministic speechFacts; live expression is Book of Speech (P1D.1).
  */
 
 import type { EconomicInteractionRow } from "@/lib/agent/economic-interaction";
 import {
-  buildAskWalletConfirmationReply,
-  buildWalletAskAgainReply,
-  buildWalletConfirmedProceedingReply,
-  buildWalletRejectedReply,
   extractCandidateWalletFromText,
   isAffirmativeWalletConfirmation,
   isNegativeWalletConfirmation,
 } from "@/lib/agent/wallet-collection";
+import {
+  speechFactsDestinationConfirmation,
+  speechFactsDestinationConfirmedPending,
+  speechFactsDestinationExpired,
+  speechFactsDestinationInvalid,
+  speechFactsDestinationRejected,
+  type WalletSpeechFacts,
+} from "@/lib/agent/wallet-speech-facts";
 
 export type WalletTurnDecision =
   | {
       kind: "ignored_wrong_user";
-      speech: null;
+      speechFacts: null;
     }
   | {
       kind: "expired";
       nextStatus: "expired";
-      speech: string;
+      speechFacts: WalletSpeechFacts;
     }
   | {
       kind: "remain_awaiting_wallet";
-      speech: string;
+      speechFacts: WalletSpeechFacts;
       reason: string;
     }
   | {
       kind: "candidate_set";
       nextStatus: "awaiting_wallet_confirmation";
       candidateWallet: string;
-      speech: string;
+      speechFacts: WalletSpeechFacts;
     }
   | {
       kind: "candidate_replaced";
       nextStatus: "awaiting_wallet_confirmation";
       candidateWallet: string;
-      speech: string;
+      speechFacts: WalletSpeechFacts;
     }
   | {
       kind: "back_to_awaiting_wallet";
       nextStatus: "awaiting_wallet";
       clearCandidate: true;
-      speech: string;
+      speechFacts: WalletSpeechFacts;
     }
   | {
       kind: "confirmed";
       nextStatus: "wallet_confirmed";
       confirmedWallet: string;
-      speech: string;
+      speechFacts: WalletSpeechFacts;
       /** Frozen original amount — never taken from user text. */
       proposedAmount: string;
       economicReason: string;
     }
   | {
       kind: "noop_terminal";
-      speech: null;
+      speechFacts: null;
     };
 
 function isExpired(
@@ -84,7 +90,7 @@ export function decideWalletCollectionTurn(input: {
   const author = input.authorXUserId.trim();
 
   if (author !== interaction.authorXUserId.trim()) {
-    return { kind: "ignored_wrong_user", speech: null };
+    return { kind: "ignored_wrong_user", speechFacts: null };
   }
 
   if (
@@ -94,15 +100,14 @@ export function decideWalletCollectionTurn(input: {
     interaction.status === "expired" ||
     interaction.status === "executing"
   ) {
-    return { kind: "noop_terminal", speech: null };
+    return { kind: "noop_terminal", speechFacts: null };
   }
 
   if (isExpired(interaction, now)) {
     return {
       kind: "expired",
       nextStatus: "expired",
-      speech:
-        "That pending transfer lapsed before a destination was confirmed. Nothing was sent.",
+      speechFacts: speechFactsDestinationExpired(),
     };
   }
 
@@ -115,27 +120,22 @@ export function decideWalletCollectionTurn(input: {
         kind: "candidate_set",
         nextStatus: "awaiting_wallet_confirmation",
         candidateWallet: extracted.walletAddress,
-        speech: buildAskWalletConfirmationReply({
-          candidateWallet: extracted.walletAddress,
-        }),
+        speechFacts: speechFactsDestinationConfirmation(extracted.walletAddress),
       };
     }
     return {
       kind: "remain_awaiting_wallet",
-      speech: buildWalletAskAgainReply(),
+      speechFacts: speechFactsDestinationInvalid(),
       reason: extracted.reason,
     };
   }
 
   if (interaction.status === "awaiting_wallet_confirmation") {
-    // Replacement address takes priority over bare yes/no.
     if (extracted.ok) {
       if (
         interaction.candidateWallet &&
         extracted.walletAddress === interaction.candidateWallet
       ) {
-        // Same address again — treat as confirmation if also affirmative,
-        // otherwise re-ask confirm.
         if (isAffirmativeWalletConfirmation(body)) {
           return confirm(interaction, extracted.walletAddress);
         }
@@ -143,18 +143,14 @@ export function decideWalletCollectionTurn(input: {
           kind: "candidate_replaced",
           nextStatus: "awaiting_wallet_confirmation",
           candidateWallet: extracted.walletAddress,
-          speech: buildAskWalletConfirmationReply({
-            candidateWallet: extracted.walletAddress,
-          }),
+          speechFacts: speechFactsDestinationConfirmation(extracted.walletAddress),
         };
       }
       return {
         kind: "candidate_replaced",
         nextStatus: "awaiting_wallet_confirmation",
         candidateWallet: extracted.walletAddress,
-        speech: buildAskWalletConfirmationReply({
-          candidateWallet: extracted.walletAddress,
-        }),
+        speechFacts: speechFactsDestinationConfirmation(extracted.walletAddress),
       };
     }
 
@@ -163,7 +159,7 @@ export function decideWalletCollectionTurn(input: {
         kind: "back_to_awaiting_wallet",
         nextStatus: "awaiting_wallet",
         clearCandidate: true,
-        speech: buildWalletRejectedReply(),
+        speechFacts: speechFactsDestinationRejected(),
       };
     }
 
@@ -174,15 +170,14 @@ export function decideWalletCollectionTurn(input: {
       return confirm(interaction, interaction.candidateWallet);
     }
 
-    // Ambiguous (e.g. amount-only or unclear) — re-ask confirmation.
     if (interaction.candidateWallet) {
       return {
         kind: "candidate_replaced",
         nextStatus: "awaiting_wallet_confirmation",
         candidateWallet: interaction.candidateWallet,
-        speech: buildAskWalletConfirmationReply({
-          candidateWallet: interaction.candidateWallet,
-        }),
+        speechFacts: speechFactsDestinationConfirmation(
+          interaction.candidateWallet,
+        ),
       };
     }
 
@@ -190,12 +185,11 @@ export function decideWalletCollectionTurn(input: {
       kind: "back_to_awaiting_wallet",
       nextStatus: "awaiting_wallet",
       clearCandidate: true,
-      speech: buildWalletAskAgainReply(),
+      speechFacts: speechFactsDestinationInvalid(),
     };
   }
 
-  // wallet_confirmed awaiting re-entry elsewhere
-  return { kind: "noop_terminal", speech: null };
+  return { kind: "noop_terminal", speechFacts: null };
 }
 
 function confirm(
@@ -208,7 +202,7 @@ function confirm(
     confirmedWallet: wallet,
     proposedAmount: interaction.proposedAmount,
     economicReason: interaction.economicReason,
-    speech: buildWalletConfirmedProceedingReply({
+    speechFacts: speechFactsDestinationConfirmedPending({
       proposedAmount: interaction.proposedAmount,
       confirmedWallet: wallet,
     }),

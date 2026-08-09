@@ -1,6 +1,8 @@
 /**
  * Stage P1D — apply wallet-collection turn + re-enter transfer planning.
  * Used by judge intercept and the controlled harness.
+ *
+ * P1D.1: speechFacts → Book of Speech writer → fact validation → reply text.
  */
 
 import "server-only";
@@ -17,12 +19,21 @@ import { planEconomicEffects } from "@/lib/agent/economic-authority";
 import type { PurseEconomicState } from "@/lib/agent/purse-economic-context";
 import { decideWalletCollectionTurn } from "@/lib/agent/wallet-collection-turn";
 import type { AuthorityEffectPlan } from "@/lib/agent/authority-policy";
+import type { WalletSpeechFacts } from "@/lib/agent/wallet-speech-facts";
+import {
+  renderWalletCollectionSpeech,
+  type WalletSpeechModelCaller,
+  type WalletSpeechRenderResult,
+} from "@/lib/agent/wallet-speech";
+import { WALLET_SPEECH_PROMPT_VERSION } from "@/lib/agent/wallet-speech-prompt";
 
 export type WalletCollectionTurnResult = {
   handled: boolean;
   interaction: EconomicInteractionRow | null;
-  /** Deterministic speech for this turn (no completion claim). */
+  /** Fact-locked (or fallback) speech for this turn. */
   replyText: string | null;
+  speechFacts: WalletSpeechFacts | null;
+  speechRender: WalletSpeechRenderResult | null;
   /**
    * When set, authorize should plan transfer_fenn with this frozen intent
    * + confirmed wallet (amount never from user text).
@@ -45,6 +56,8 @@ export async function processAuthorWalletCollectionTurn(input: {
   body: string;
   now?: Date;
   admin?: SupabaseClient;
+  callWalletSpeechModel?: WalletSpeechModelCaller;
+  forceSpeechFallback?: boolean;
 }): Promise<WalletCollectionTurnResult> {
   const interaction = await findWalletTurnEconomicInteraction({
     authorXUserId: input.authorXUserId,
@@ -56,6 +69,8 @@ export async function processAuthorWalletCollectionTurn(input: {
       handled: false,
       interaction: null,
       replyText: null,
+      speechFacts: null,
+      speechRender: null,
       reenterTransfer: null,
       kind: "no_active",
     };
@@ -68,14 +83,31 @@ export async function processAuthorWalletCollectionTurn(input: {
     now: input.now,
   });
 
+  const empty = {
+    reenterTransfer: null as null,
+  };
+
   if (decision.kind === "ignored_wrong_user" || decision.kind === "noop_terminal") {
     return {
       handled: decision.kind !== "ignored_wrong_user",
       interaction,
       replyText: null,
-      reenterTransfer: null,
+      speechFacts: null,
+      speechRender: null,
+      ...empty,
       kind: decision.kind,
     };
+  }
+
+  async function speak(
+    facts: WalletSpeechFacts,
+  ): Promise<WalletSpeechRenderResult> {
+    return renderWalletCollectionSpeech({
+      facts,
+      untrustedUserBody: input.body,
+      callModel: input.callWalletSpeechModel,
+      forceFallback: input.forceSpeechFallback,
+    });
   }
 
   if (decision.kind === "expired") {
@@ -84,21 +116,27 @@ export async function processAuthorWalletCollectionTurn(input: {
       patch: { status: "expired", lastError: "expired" },
       admin: input.admin,
     });
+    const rendered = await speak(decision.speechFacts);
     return {
       handled: true,
       interaction: updated,
-      replyText: decision.speech,
-      reenterTransfer: null,
+      replyText: rendered.replyText,
+      speechFacts: decision.speechFacts,
+      speechRender: rendered,
+      ...empty,
       kind: decision.kind,
     };
   }
 
   if (decision.kind === "remain_awaiting_wallet") {
+    const rendered = await speak(decision.speechFacts);
     return {
       handled: true,
       interaction,
-      replyText: decision.speech,
-      reenterTransfer: null,
+      replyText: rendered.replyText,
+      speechFacts: decision.speechFacts,
+      speechRender: rendered,
+      ...empty,
       kind: decision.kind,
     };
   }
@@ -119,11 +157,14 @@ export async function processAuthorWalletCollectionTurn(input: {
       },
       admin: input.admin,
     });
+    const rendered = await speak(decision.speechFacts);
     return {
       handled: true,
       interaction: updated,
-      replyText: decision.speech,
-      reenterTransfer: null,
+      replyText: rendered.replyText,
+      speechFacts: decision.speechFacts,
+      speechRender: rendered,
+      ...empty,
       kind: decision.kind,
     };
   }
@@ -138,11 +179,14 @@ export async function processAuthorWalletCollectionTurn(input: {
       },
       admin: input.admin,
     });
+    const rendered = await speak(decision.speechFacts);
     return {
       handled: true,
       interaction: updated,
-      replyText: decision.speech,
-      reenterTransfer: null,
+      replyText: rendered.replyText,
+      speechFacts: decision.speechFacts,
+      speechRender: rendered,
+      ...empty,
       kind: decision.kind,
     };
   }
@@ -160,10 +204,13 @@ export async function processAuthorWalletCollectionTurn(input: {
       },
       admin: input.admin,
     });
+    const rendered = await speak(decision.speechFacts);
     return {
       handled: true,
       interaction: updated,
-      replyText: decision.speech,
+      replyText: rendered.replyText,
+      speechFacts: decision.speechFacts,
+      speechRender: rendered,
       reenterTransfer: {
         interactionId: updated.id,
         proposedAmount: decision.proposedAmount,
@@ -178,7 +225,9 @@ export async function processAuthorWalletCollectionTurn(input: {
     handled: true,
     interaction,
     replyText: null,
-    reenterTransfer: null,
+    speechFacts: null,
+    speechRender: null,
+    ...empty,
     kind: "unknown",
   };
 }
@@ -262,4 +311,4 @@ export async function refuseConfirmedInteraction(input: {
   });
 }
 
-export { tryLinkTransferEffect };
+export { tryLinkTransferEffect, WALLET_SPEECH_PROMPT_VERSION };

@@ -94,6 +94,8 @@ type Stage125Deps = {
   loadTrustedFacts?: typeof loadTrustedFactsForChronicler;
   isRemembered?: typeof isWallFactFingerprintRemembered;
   tryReserve?: typeof tryReserveWallFactMemory;
+  callWalletSpeechModel?: import("@/lib/agent/wallet-speech").WalletSpeechModelCaller;
+  forceWalletSpeechFallback?: boolean;
 };
 
 function clampBatchLimit(limit: number | undefined): number {
@@ -185,10 +187,46 @@ export async function authorizeOneXPerception(
       wallCandidate: claimed.finalWallCandidate,
     });
 
+    // P1D.1: when an economic interaction is in-flight for this author, do not let
+    // unconstrained quality recovery rewrite fact-locked wallet speech.
+    let skipQualityRecovery = false;
+    try {
+      const { findActiveEconomicInteractionForAuthor } = await import(
+        "@/lib/agent/economic-interaction-persist"
+      );
+      const activeWalletIx = await findActiveEconomicInteractionForAuthor({
+        authorXUserId: claimed.authorXUserId,
+        admin: deps.admin as never,
+      });
+      if (
+        activeWalletIx &&
+        (activeWalletIx.status === "awaiting_wallet" ||
+          activeWalletIx.status === "awaiting_wallet_confirmation" ||
+          activeWalletIx.status === "wallet_confirmed" ||
+          activeWalletIx.status === "executing")
+      ) {
+        skipQualityRecovery = true;
+      }
+    } catch {
+      // non-fatal
+    }
+
     if (
       finalAction === "reply_on_x" ||
       finalAction === "reply_and_write_to_wall"
     ) {
+      if (skipQualityRecovery) {
+        finalReplyText =
+          finalReplyText?.trim() && finalReplyText.trim().length > 0
+            ? finalReplyText.trim().slice(0, 280)
+            : finalReplyText;
+        replyRecovery = "skipped";
+        speechQuality = {
+          violations: [],
+          wallSuppressed: false,
+          wallSuppressReasons: [],
+        };
+      } else {
       const knowledgeBoundary =
         !claimed.liveStateAvailable && claimed.needsLiveState.length > 0
           ? "Trusted live state was unavailable. Answer honestly that you cannot establish the current figure; do not invent numbers."
@@ -243,6 +281,7 @@ export async function authorizeOneXPerception(
         }
       } else {
         finalWallBody = quality.wallBody;
+      }
       }
     }
 
@@ -337,7 +376,7 @@ export async function authorizeOneXPerception(
       economicContext: economicBundle.context,
     });
 
-    // P1D: pending destination → create durable interaction; ensure wallet-ask reply.
+    // P1D: pending destination → create durable interaction; Book-of-Speech wallet ask.
     let finalDecision = decision;
     if (decision.pendingDestination === true) {
       finalDecision = await applyPendingDestinationSideEffects({
@@ -345,6 +384,34 @@ export async function authorizeOneXPerception(
         decision,
         finalReplyText,
         admin: deps.admin,
+        callWalletSpeechModel: deps.callWalletSpeechModel,
+        forceWalletSpeechFallback: deps.forceWalletSpeechFallback,
+      });
+    }
+
+    // P1D.1: confirmed wallet re-entry refused → fail interaction + refuse speech.
+    if (
+      economicBundle.overrideEconomicIntent &&
+      economicBundle.context.economicInteractionId &&
+      !finalDecision.effects.some((e) => e.type === "transfer_fenn") &&
+      finalDecision.economicSkippedReason &&
+      finalDecision.economicSkippedReason !== "pending_destination"
+    ) {
+      finalDecision = await applyEconomicRefusalAfterConfirm({
+        claimed,
+        decision: finalDecision,
+        interactionId: economicBundle.context.economicInteractionId,
+        confirmedWallet: economicBundle.context.interactionConfirmedWallet,
+        amountFormatted:
+          typeof (
+            economicBundle.overrideEconomicIntent as { proposedAmount?: string }
+          ).proposedAmount === "string"
+            ? (economicBundle.overrideEconomicIntent as { proposedAmount: string })
+                .proposedAmount
+            : undefined,
+        admin: deps.admin,
+        callWalletSpeechModel: deps.callWalletSpeechModel,
+        forceWalletSpeechFallback: deps.forceWalletSpeechFallback,
       });
     }
 
@@ -673,19 +740,24 @@ async function applyPendingDestinationSideEffects(input: {
   decision: import("@/lib/agent/authority-policy").AuthorityDecision;
   finalReplyText: string | null;
   admin?: AdminLike;
+  callWalletSpeechModel?: import("@/lib/agent/wallet-speech").WalletSpeechModelCaller;
+  forceWalletSpeechFallback?: boolean;
 }): Promise<import("@/lib/agent/authority-policy").AuthorityDecision> {
   const { claimed, decision } = input;
   const { economicIntentFromJson } = await import(
     "@/lib/agent/economic-intent"
-  );
-  const { buildAskForWalletReply } = await import(
-    "@/lib/agent/wallet-collection"
   );
   const { createAwaitingWalletInteraction } = await import(
     "@/lib/agent/economic-interaction-persist"
   );
   const { stage12ReplyIdempotencyKey } = await import(
     "@/lib/agent/authority-config"
+  );
+  const { speechFactsDestinationRequired } = await import(
+    "@/lib/agent/wallet-speech-facts"
+  );
+  const { renderWalletCollectionSpeech } = await import(
+    "@/lib/agent/wallet-speech"
   );
 
   const intent = economicIntentFromJson(claimed.finalEconomicIntent);
@@ -703,23 +775,25 @@ async function applyPendingDestinationSideEffects(input: {
     admin: input.admin as never,
   });
 
-  const ask = buildAskForWalletReply({ proposedAmount: intent.proposedAmount });
+  // P1D.1: fact-locked Book of Speech (not raw template overwrite).
+  const facts = speechFactsDestinationRequired(intent.proposedAmount);
+  const rendered = await renderWalletCollectionSpeech({
+    facts,
+    untrustedUserBody: claimed.body,
+    callModel: input.callWalletSpeechModel,
+    forceFallback: input.forceWalletSpeechFallback,
+  });
+  const ask = rendered.replyText;
+
   const effects = [...decision.effects];
   const replyIdx = effects.findIndex((e) => e.type === "reply_on_x");
   if (replyIdx >= 0) {
     const prev = effects[replyIdx]!;
-    const prevText =
-      typeof prev.payload.text === "string" ? prev.payload.text : "";
-    // Prefer existing model speech if it already asks; otherwise replace with ask.
-    const text =
-      /0x|wallet/i.test(prevText) && prevText.trim().length > 0
-        ? prevText
-        : ask;
     effects[replyIdx] = {
       ...prev,
       payload: {
         ...prev.payload,
-        text,
+        text: ask,
         replyToXPostId: claimed.xPostId,
       },
     };
@@ -733,7 +807,6 @@ async function applyPendingDestinationSideEffects(input: {
       },
     });
   } else {
-    // Elevate no_action speech into permitted wallet request
     effects.push({
       type: "reply_on_x",
       idempotencyKey: stage12ReplyIdempotencyKey(claimed.xPostId),
@@ -761,6 +834,88 @@ async function applyPendingDestinationSideEffects(input: {
     effects,
     pendingDestination: true,
     economicSkippedReason: "pending_destination",
+  };
+}
+
+async function applyEconomicRefusalAfterConfirm(input: {
+  claimed: ClaimedAuthorityJudgement;
+  decision: import("@/lib/agent/authority-policy").AuthorityDecision;
+  interactionId: string;
+  confirmedWallet?: string | null;
+  amountFormatted?: string;
+  admin?: AdminLike;
+  callWalletSpeechModel?: import("@/lib/agent/wallet-speech").WalletSpeechModelCaller;
+  forceWalletSpeechFallback?: boolean;
+}): Promise<import("@/lib/agent/authority-policy").AuthorityDecision> {
+  const {
+    mapAuthoritySkippedToRefusalCategory,
+    shortWalletForSpeech,
+    speechFactsEconomicRefused,
+  } = await import("@/lib/agent/wallet-speech-facts");
+  const { renderWalletCollectionSpeech } = await import(
+    "@/lib/agent/wallet-speech"
+  );
+  const { markEconomicInteractionFailed } = await import(
+    "@/lib/agent/economic-interaction-persist"
+  );
+  const { stage12ReplyIdempotencyKey } = await import(
+    "@/lib/agent/authority-config"
+  );
+
+  const reason = input.decision.economicSkippedReason ?? "execution_not_permitted";
+  try {
+    await markEconomicInteractionFailed({
+      interactionId: input.interactionId,
+      reason,
+      admin: input.admin as never,
+    });
+  } catch {
+    // non-fatal
+  }
+
+  const facts = speechFactsEconomicRefused({
+    proposedAmount: input.amountFormatted,
+    shortWallet: input.confirmedWallet
+      ? shortWalletForSpeech(input.confirmedWallet)
+      : undefined,
+    refusalReason: mapAuthoritySkippedToRefusalCategory(reason),
+  });
+  const rendered = await renderWalletCollectionSpeech({
+    facts,
+    untrustedUserBody: input.claimed.body,
+    callModel: input.callWalletSpeechModel,
+    forceFallback: input.forceWalletSpeechFallback,
+  });
+
+  const effects = [...input.decision.effects];
+  const replyIdx = effects.findIndex((e) => e.type === "reply_on_x");
+  if (replyIdx >= 0) {
+    const prev = effects[replyIdx]!;
+    effects[replyIdx] = {
+      ...prev,
+      payload: {
+        ...prev.payload,
+        text: rendered.replyText,
+        replyToXPostId: input.claimed.xPostId,
+      },
+    };
+  } else {
+    effects.push({
+      type: "reply_on_x",
+      idempotencyKey: stage12ReplyIdempotencyKey(input.claimed.xPostId),
+      payload: {
+        replyToXPostId: input.claimed.xPostId,
+        text: rendered.replyText,
+      },
+    });
+  }
+
+  return {
+    ...input.decision,
+    outcome: "permitted",
+    finalAction: "reply_on_x",
+    effects,
+    policyOutcome: "reply_only",
   };
 }
 
@@ -806,7 +961,6 @@ async function maybeLinkEconomicInteractionTransfer(input: {
       .maybeSingle();
 
     if (error || !effectRow?.id) {
-      // Fallback: mark executing without uuid link so retries still see active interaction.
       const { updateEconomicInteraction } = await import(
         "@/lib/agent/economic-interaction-persist"
       );

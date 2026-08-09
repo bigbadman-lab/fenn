@@ -19,6 +19,7 @@ import {
 } from "@/lib/agent/judge-persist";
 import type { Stage12JudgementIntention } from "@/lib/agent/judge-schema";
 import { processAuthorWalletCollectionTurn } from "@/lib/agent/wallet-collection-handler";
+import type { WalletSpeechModelCaller } from "@/lib/agent/wallet-speech";
 
 export type JudgeOneResult = {
   status: "judged" | "already_judged" | "failed" | "empty";
@@ -31,6 +32,7 @@ export type JudgeOneResult = {
   identityUnverified?: boolean;
   /** P1D observability */
   walletCollection?: string;
+  walletSpeechSource?: "book_of_speech" | "fallback";
   error?: string;
 };
 
@@ -48,6 +50,8 @@ type JudgeDeps = {
   admin?: any;
   callModel?: JudgeModelCaller;
   retrieveKnowledge?: (query: string) => Promise<PublicAgentKnowledgeLookup>;
+  callWalletSpeechModel?: WalletSpeechModelCaller;
+  forceWalletSpeechFallback?: boolean;
 };
 
 /**
@@ -86,6 +90,8 @@ export async function judgeOneXPerception(
       xPostId: claimed.xPostId,
       body: claimed.body,
       admin: deps.admin,
+      callWalletSpeechModel: deps.callWalletSpeechModel,
+      forceSpeechFallback: deps.forceWalletSpeechFallback,
     });
 
     if (walletTurn.handled && walletTurn.replyText) {
@@ -100,8 +106,9 @@ export async function judgeOneXPerception(
         responseMode: "canon",
         wallCandidate: null,
         knowledgeAvailable: true,
-        model: "p1d-wallet-collection",
-        promptVersion: "p1d-v1",
+        model: walletTurn.speechRender?.model ?? "p1d-wallet-speech",
+        promptVersion:
+          walletTurn.speechRender?.promptVersion ?? "fenn-wallet-speech-book-v2-p1d1",
       };
       const finalized = await finalizeXPerceptionJudgement(
         {
@@ -120,6 +127,7 @@ export async function judgeOneXPerception(
         needsLiveState: [],
         identityUnverified: false,
         walletCollection: walletTurn.kind,
+        walletSpeechSource: walletTurn.speechRender?.source,
       };
     }
 
