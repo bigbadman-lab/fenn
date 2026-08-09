@@ -117,7 +117,7 @@ npm run agent:test-economic-judgement -- \
   --dry-run
 ```
 
-**C — verified contribution + wallet available (transfer_fenn legitimate option)**
+**C — verified contribution + wallet available (transfer_fenn natural/legitimate, not forced)**
 
 ```bash
 npm run agent:test-economic-judgement -- \

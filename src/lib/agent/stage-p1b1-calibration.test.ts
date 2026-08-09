@@ -468,14 +468,16 @@ describe("Stage P1B.1 calibration harness", () => {
     assert.equal(fromText.verified, true);
   });
 
-  it("constitution v1.1 balances NONE with legitimate Purse use; scenarios present", () => {
-    assert.equal(ECONOMIC_CONSTITUTION_VERSION, "purse-economic-constitution-v1.1");
+  it("constitution v1.2 balances NONE with legitimate Purse use; scenarios present", () => {
+    assert.equal(ECONOMIC_CONSTITUTION_VERSION, "purse-economic-constitution-v1.2");
     const block = buildEconomicJudgementInstructionBlock();
     assert.match(block, /not merely preserved/);
+    assert.match(block, /not merely a defensive reserve/i);
     assert.doesNotMatch(block, /NONE common and preferred/i);
     assert.doesNotMatch(block, /refuse more often than spend/i);
     assert.match(block, /send me tokens/i);
-    assert.match(block, /transfer_fenn is a legitimate option/i);
+    assert.match(block, /natural and legitimate choice/i);
+    assert.match(block, /does not need to be requested/i);
   });
 
   it("CLI defaults to model judgement; force-intent is explicit", () => {

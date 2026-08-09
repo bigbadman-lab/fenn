@@ -102,7 +102,7 @@ describe("THE BOOK OF SPEECH v2", () => {
     );
     assert.equal(
       STAGE124_FINAL_PROMPT_VERSION,
-      "fenn-public-final-judge-book-v2-purse-p1b1",
+      "fenn-public-final-judge-book-v2-purse-p1b1-cal",
     );
     assert.match(system, new RegExp(STAGE124_FINAL_PROMPT_VERSION));
     assert.match(system, /BEGIN_PURSE_ECONOMIC_CONSTITUTION|THE PURSE/);

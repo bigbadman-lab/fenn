@@ -13,7 +13,10 @@ import {
   type Stage12ResponseMode,
 } from "@/lib/agent/response-mode";
 import type { WallCandidate } from "@/lib/agent/chronicler-types";
-import { normalizeWallCandidate } from "@/lib/agent/wall-candidate-schema";
+import {
+  normalizeWallCandidate,
+  stage12WallCandidateResponseFieldSchema,
+} from "@/lib/agent/wall-candidate-schema";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
 
 /**
@@ -39,10 +42,12 @@ export const stage12JudgementModelSchema = z.object({
    */
   responseMode: z.enum(STAGE12_RESPONSE_MODES),
   /**
-   * Optional structured Wall proposal (Stage 3). Prefer setting at final judge
-   * once trusted facts exist. Invalid candidates degrade safely.
+   * Structured Wall proposal (Stage 3) or null.
+   * Prefer dual action + candidate at final judge once trusted facts exist.
+   * Invalid candidates degrade via normalizeWallCandidate.
+   * Shared typed field with Stage 12.4 for OpenAI strict structured outputs.
    */
-  wallCandidate: z.unknown().nullable().optional(),
+  wallCandidate: stage12WallCandidateResponseFieldSchema,
 });
 
 export type Stage12JudgementModelOutput = z.infer<

@@ -17,7 +17,11 @@ import {
 } from "@/lib/agent/chronicler-significance";
 import type { Stage12ResponseMode } from "@/lib/agent/response-mode";
 
-const wallCandidateModelSchema = z.discriminatedUnion("kind", [
+/**
+ * Explicit model Wall-candidate shapes (Stage 3).
+ * Must stay OpenAI strict structured-output compatible — no z.unknown()/z.any().
+ */
+export const wallCandidateModelSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("public_fact"),
     factKey: z.enum(CHRONICLER_FACT_KEYS),
@@ -38,6 +42,14 @@ const wallCandidateModelSchema = z.discriminatedUnion("kind", [
     reason: z.enum(CHRONICLER_REASONS),
   }),
 ]);
+
+/**
+ * Stage 12.3 / 12.4 response field: candidate or null (no wall).
+ * Required+null preserves "optional wall" without empty JSON Schema from z.unknown().
+ * Zod default null only applies client-side parse (fixtures); OpenAI still sees typed branches.
+ */
+export const stage12WallCandidateResponseFieldSchema =
+  wallCandidateModelSchema.nullable().default(null);
 
 const FORBIDDEN_CANDIDATE_SUBSTRINGS = [
   "select ",
@@ -143,4 +155,3 @@ export function normalizeWallCandidate(input: {
   };
 }
 
-export { wallCandidateModelSchema };

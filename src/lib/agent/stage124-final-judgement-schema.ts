@@ -7,7 +7,10 @@ import {
   isHardBlockReasonCode,
 } from "@/lib/agent/reply-guarantee-policy";
 import type { PublicFactEvidence } from "@/lib/agent/public-fact-evidence";
-import { normalizeWallCandidate } from "@/lib/agent/wall-candidate-schema";
+import {
+  normalizeWallCandidate,
+  stage12WallCandidateResponseFieldSchema,
+} from "@/lib/agent/wall-candidate-schema";
 import type { WallCandidate } from "@/lib/agent/chronicler-types";
 import type { Stage12ResponseMode } from "@/lib/agent/response-mode";
 import {
@@ -22,17 +25,29 @@ import {
 
 /** Stage P1B — economic intent only (not speech action). */
 export const stage124EconomicActionSchema = z.union([
-  z.literal("NONE"),
+  z
+    .literal("NONE")
+    .describe(
+      "No economic act; appropriate when evidence is insufficient or action would not add meaning",
+    ),
   z.object({
     type: z.literal("NONE"),
   }),
   z.object({
-    type: z.literal("transfer_fenn"),
+    type: z
+      .literal("transfer_fenn")
+      .describe(
+        "FENN chooses to recognise a verified contribution using its finite Purse — not a formula payment",
+      ),
     reason: z.string().min(1).max(280),
     recipientSource: z.literal("trusted_profile_wallet"),
   }),
   z.object({
-    type: z.literal("burn_fenn"),
+    type: z
+      .literal("burn_fenn")
+      .describe(
+        "FENN chooses to permanently remove one unit from practical circulation for its own coherent reason",
+      ),
     reason: z.string().min(1).max(280),
   }),
 ]);
@@ -45,10 +60,11 @@ export const stage124FinalJudgementModelSchema = z.object({
   wallBody: z.string().min(1).max(WALL_BODY_MAX_CHARS).nullable(),
   identityUnverified: z.boolean(),
   /**
-   * Optional structured Wall proposal (Stage 3).
-   * Application re-validates against trusted evidence; invalid → null.
+   * Structured Wall proposal (Stage 3) or null.
+   * Application re-validates via normalizeWallCandidate; invalid → null.
+   * Typed for OpenAI strict structured outputs (never z.unknown()).
    */
-  wallCandidate: z.unknown().nullable().optional(),
+  wallCandidate: stage12WallCandidateResponseFieldSchema,
   /**
    * Stage P1B economic intention. Speech action is separate.
    * Never includes amount, token, chain, recipient address, or rail.

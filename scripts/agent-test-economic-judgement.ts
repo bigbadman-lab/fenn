@@ -242,6 +242,7 @@ async function main() {
         economicFollowupPreview: result.economicFollowupPreview ?? null,
         copyForwardNote: result.copyForwardNote ?? null,
         errorCode: result.errorCode ?? null,
+        providerFailure: result.providerFailure ?? null,
         durationMs: result.durationMs,
       },
       null,

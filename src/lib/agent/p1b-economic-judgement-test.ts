@@ -30,11 +30,19 @@ import {
   type TrustedEconomicAttestation,
 } from "@/lib/agent/economic-attestation";
 import {
+  sanitizeHarnessProviderFailure,
+  type HarnessProviderFailure,
+} from "@/lib/agent/p1b-harness-provider-error";
+import {
   formatPurseEconomicStateForPrompt,
   type PurseEconomicState,
 } from "@/lib/agent/purse-economic-context";
 import { runFennPublicFinalJudgement } from "@/lib/agent/stage124-final-judge-model";
 import type { Stage124FinalJudgeModelCaller } from "@/lib/agent/stage124-final-judge-model";
+import { stage124FinalJudgementModelSchema } from "@/lib/agent/stage124-final-judgement-schema";
+import { parseStage124FinalJudgementModelOutput } from "@/lib/agent/stage124-final-judgement-helpers";
+import { zodResponseFormat } from "openai/helpers/zod";
+import { AgentJudgeError } from "@/lib/agent/judge-errors";
 import {
   buildFennPublicFinalJudgeSystemPrompt,
   buildFennPublicFinalJudgeUserPayload,
@@ -111,6 +119,8 @@ export type P1bEconomicJudgementResult = {
   externalResultId?: string;
   economicFollowupPreview?: string;
   errorCode?: string;
+  /** Harness-only provider failure detail (never secrets / full prompts). */
+  providerFailure?: HarnessProviderFailure | null;
   durationMs: number;
   /** Production note for docs/tests. */
   copyForwardNote?: string;
@@ -136,6 +146,96 @@ export function harnessPurseState(
     observedAt: new Date().toISOString(),
     ...overrides,
   };
+}
+
+/**
+ * Controlled harness OpenAI caller for calibration.
+ * Surfaces sanitized provider schema/API errors (production path stays redacted).
+ */
+async function p1bCalibrationModelCaller(args: {
+  model: string;
+  system: string;
+  user: string;
+  maxCompletionTokens: number;
+}): Promise<
+  import("@/lib/agent/stage124-final-judgement-schema").Stage124FinalJudgementModelOutput
+> {
+  const { getOpenAIClient, OpenAIUnavailableError } = await import(
+    "@/lib/ai/openai"
+  );
+
+  let client;
+  try {
+    client = getOpenAIClient();
+  } catch (error) {
+    if (error instanceof OpenAIUnavailableError) {
+      const dig = sanitizeHarnessProviderFailure(error);
+      throw Object.assign(
+        new AgentJudgeError(
+          "judge_unavailable",
+          "FENN final judgement model is not configured",
+          503,
+        ),
+        { harnessProviderFailure: dig },
+      );
+    }
+    throw error;
+  }
+
+  try {
+    const completion = await client.chat.completions.parse({
+      model: args.model,
+      max_completion_tokens: args.maxCompletionTokens,
+      messages: [
+        { role: "system", content: args.system },
+        { role: "user", content: args.user },
+      ],
+      response_format: zodResponseFormat(
+        stage124FinalJudgementModelSchema,
+        "fenn_public_final_judgement",
+      ),
+    });
+
+    const parsed = completion.choices[0]?.message?.parsed;
+    if (!parsed) {
+      const dig: HarnessProviderFailure = {
+        stage: "openai_no_parsed",
+        status: 502,
+        code: null,
+        message: "Final judgement model returned no structured result",
+      };
+      throw Object.assign(
+        new AgentJudgeError("judge_invalid_response", dig.message, 502),
+        { harnessProviderFailure: dig },
+      );
+    }
+
+    return parseStage124FinalJudgementModelOutput(parsed);
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "harnessProviderFailure" in error
+    ) {
+      throw error;
+    }
+    if (error instanceof AgentJudgeError) throw error;
+    const dig = sanitizeHarnessProviderFailure(error);
+    if (dig.stage === "openai_timeout") {
+      throw Object.assign(
+        new AgentJudgeError("judge_timeout", dig.message, 504),
+        { harnessProviderFailure: dig },
+      );
+    }
+    throw Object.assign(
+      new AgentJudgeError(
+        "judge_invalid_response",
+        `Final judgement model failed: ${dig.message}`,
+        dig.status ?? 502,
+      ),
+      { harnessProviderFailure: dig },
+    );
+  }
 }
 
 /**
@@ -415,7 +515,8 @@ export async function runP1bEconomicJudgementTest(input: {
       trustedPurseStateBlock: purseBlock,
       trustedWalletAvailable,
       trustedEconomicAttestationBlock: attestationBlock,
-      callModel: input.callModel,
+      // Injected tests OR harness caller with diagnostics (not production redaction path).
+      callModel: input.callModel ?? p1bCalibrationModelCaller,
     });
 
     const modelEconomicAction = intention.economicIntent;
@@ -487,6 +588,18 @@ export async function runP1bEconomicJudgementTest(input: {
       copyForwardNote,
     };
   } catch (error) {
+    const providerFailure =
+      error &&
+      typeof error === "object" &&
+      "harnessProviderFailure" in error &&
+      (error as { harnessProviderFailure?: HarnessProviderFailure })
+        .harnessProviderFailure
+        ? (error as { harnessProviderFailure: HarnessProviderFailure })
+            .harnessProviderFailure
+        : error instanceof Error
+          ? sanitizeHarnessProviderFailure(error)
+          : null;
+
     return {
       ok: false,
       status: "scaffold_failed",
@@ -502,7 +615,8 @@ export async function runP1bEconomicJudgementTest(input: {
       broadcastAttempted: false,
       durationMs: Date.now() - started,
       errorCode:
-        error instanceof Error ? error.message.slice(0, 120) : "p1b_failed",
+        error instanceof Error ? error.message.slice(0, 180) : "p1b_failed",
+      providerFailure,
       copyForwardNote,
     };
   }
