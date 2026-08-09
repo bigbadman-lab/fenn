@@ -10,10 +10,16 @@
  * Suitable for Render Cron (once per minute).
  */
 
+import { loadLocalEnvIfPresent } from "@/lib/ops/load-local-env";
 import { validatePurseExecutorRuntimeEnv } from "@/lib/ops/purse-executor-env";
 
 async function main() {
-  validatePurseExecutorRuntimeEnv();
+  // Local: fill missing keys from .env.local. Render: no-op (process.env wins).
+  // Also present via package.json --import; keep in-script for path clarity.
+  loadLocalEnvIfPresent();
+
+  // Always validate the live process.env (never a reconstructed empty map).
+  validatePurseExecutorRuntimeEnv(process.env);
 
   const { runPurseExecutorCycle } = await import(
     "@/lib/ops/purse-executor-runtime"

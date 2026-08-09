@@ -19,6 +19,7 @@ import {
 } from "@/lib/agent/economic-amount";
 import {
   loadEconomicAuthorityLimits,
+  EconomicAuthorityLimitsError,
   type EconomicAuthorityLimits,
 } from "@/lib/agent/economic-authority-limits";
 import type { FinalEconomicIntent } from "@/lib/agent/economic-intent";
@@ -203,7 +204,15 @@ export function planEconomicEffects(
     return refuse("missing_event");
   }
 
-  const limits = ctx.limits ?? loadEconomicAuthorityLimits();
+  let limits: EconomicAuthorityLimits;
+  try {
+    limits = ctx.limits ?? loadEconomicAuthorityLimits();
+  } catch (error) {
+    if (error instanceof EconomicAuthorityLimitsError) {
+      return refuse("authority_limits_invalid");
+    }
+    return refuse("authority_limits_invalid");
+  }
   const decimals = ctx.purseState.tokenDecimals ?? 18;
   const eventKeyBase = eventKey;
 

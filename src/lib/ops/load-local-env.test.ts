@@ -43,6 +43,30 @@ describe("load-local-env", () => {
     }
   });
 
+  it("never injects blank file values or overwrites non-blank process values", () => {
+    const dir = mkdtempSync(join(tmpdir(), "fenn-env-blank-"));
+    try {
+      writeFileSync(
+        join(dir, ".env.local"),
+        ["KEEP=from-process-stay", "BLANK_ONLY=", "FILL_ME=from-file"].join(
+          "\n",
+        ),
+        "utf8",
+      );
+      const env = {
+        KEEP: "from-process-stay",
+        BLANK_ONLY: undefined,
+      } as NodeJS.ProcessEnv;
+      const result = loadLocalEnvIfPresent({ cwd: dir, env });
+      assert.equal(result.keysSet, 1);
+      assert.equal(env.KEEP, "from-process-stay");
+      assert.equal(env.BLANK_ONLY, undefined);
+      assert.equal(env.FILL_ME, "from-file");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("no-ops when .env.local is absent", () => {
     const dir = mkdtempSync(join(tmpdir(), "fenn-env-missing-"));
     try {

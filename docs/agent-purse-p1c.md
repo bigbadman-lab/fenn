@@ -50,23 +50,23 @@ Scale markers (orientation — **not** reward tiers):
 
 ~10,000 FENN is rough orientation for “economically noticeable” — **not** a hard minimum.
 
-## Authority envelope (catastrophe protection only)
+## Authority envelope (P2B production launch ceilings)
 
-Three controls (env-overridable):
+Three controls (catastrophe protection only — not reward tiers):
 
-| Control | Env | TEST default |
-|---------|-----|--------------|
-| Max single transfer | `FENN_PURSE_MAX_SINGLE_TRANSFER` | `2000000` |
-| Max single burn | `FENN_PURSE_MAX_SINGLE_BURN` | `500000` |
-| Max rolling 24h outflow | `FENN_PURSE_MAX_ROLLING_24H_OUTFLOW` | `5000000` |
+| Control | Env | Production hard max / default |
+|---------|-----|-------------------------------|
+| Max single transfer | `FENN_PURSE_MAX_SINGLE_TRANSFER` | `100000` |
+| Max single burn | `FENN_PURSE_MAX_SINGLE_BURN` | `50000` |
+| Max rolling 24h outflow | `FENN_PURSE_MAX_ROLLING_24H_OUTFLOW` | `500000` |
 
-**Recommended production region** (manual decision; not auto-applied):
+**Env may only tighten** (value ≤ hard max). Values above hard max, zero, negative, NaN, exponent forms, or malformed decimals **fail closed** (never open a wider envelope).
 
-| Control | Suggested |
-|---------|-----------|
-| Max single transfer | `100000` (1% of original 10M Purse) |
-| Max single burn | `50000` (0.5%) |
-| Max rolling 24h | `500000` (5%) |
+| Optional | Env | Value |
+|----------|-----|-------|
+| Wider harness envelope | `FENN_PURSE_AUTHORITY_LIMITS_PROFILE` | `test` only (explicit isolation) |
+
+Test profile hard maxes (`2000000` / `500000` / `5000000`) apply **only** when profile is explicitly `test`. Production settlement always re-checks launch ceilings on the official rail.
 
 On limit breach: refuse with `amount_exceeds_transfer_limit` / `amount_exceeds_burn_limit` / `amount_exceeds_rolling_24h_limit`. **Never execute a smaller amount.**
 
@@ -76,33 +76,21 @@ Untrusted. Never parse X text into transaction amounts. The final judge is taugh
 
 ## Constitution
 
-`purse-economic-constitution-v1.4` — finite Purse, magnitude has meaning, transfer = recognition, burn = permanent surrender (stronger reason), requested amounts do not set action. Destination availability is execution readiness — not merit; missing wallet must not force NONE.
+`purse-economic-constitution-v1.5` — finite Purse, magnitude has meaning, transfer = recognition, burn = permanent surrender (stronger reason), requested amounts do not set action. Destination availability is execution readiness — not merit; missing wallet must not force NONE.
 
 ## Settlement
 
 Stage 12.6 → Purse passes **exact** validated `amountFormatted`.  
 `purse_transfers` stores `amount_raw` + `amount_formatted`.  
-Idempotency: same operation id + different amount → fail closed.
+Idempotency: same operation id + different amount → fail closed.  
+Official adapter re-validates single-transfer/burn against production launch ceilings before broadcast (P2B defence-in-depth).
 
 ## Calibration (dry-run)
 
 ```bash
 npm run agent:test-economic-judgement -- \
-  --text "…" --operation-label p1c-A --dry-run
+  --text="Send 10000 FENN as recognition" \
+  --dry-run
 ```
 
-Dry-run JSON exposes:
-
-- `modelEconomicAction` (type, proposedAmount, reason)
-- `authorityEconomicSkippedReason`
-- `authorityPlannedEffects` / `plannedEconomicAmount`
-
-Default remains no broadcast. `--execute-model-intent` is P1B.2 disposable-rail only.
-
-## Migration
-
-`supabase/migrations/20260809160000_58_stage_p1c_economic_magnitude.sql` — comment update only.
-
-## Out of scope
-
-Conversational wallet collection, X↔Outlaw linking, dynamic budgets, reward tables, replenishment, multi-asset, Turnkey, Treasury.
+Use `FENN_PURSE_AUTHORITY_LIMITS_PROFILE=test` only for harnesses that intentionally need the wider test envelope.

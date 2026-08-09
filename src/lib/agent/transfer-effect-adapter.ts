@@ -22,6 +22,7 @@ import {
   executeManualTestTransfer,
 } from "@/lib/purse/transfer";
 import type { ManualOneFennTransferResult } from "@/lib/purse/types";
+import { assertOfficialSettlementAmountWithinLimits } from "@/lib/agent/economic-authority-limits";
 
 export type TransferFennExecuteSuccess = {
   ok: true;
@@ -84,7 +85,11 @@ export function mapPurseOutcomeToFailureClass(
     code === "purse_test_mode_official_fenn_exists" ||
     code === "purse_test_token_unavailable" ||
     code === "purse_disabled" ||
-    code === "purse_unconfigured"
+    code === "purse_unconfigured" ||
+    code === "amount_exceeds_transfer_limit" ||
+    code === "amount_exceeds_burn_limit" ||
+    code === "amount_exceeds_rolling_24h_limit" ||
+    code.startsWith("authority_limit_")
   ) {
     return "terminal";
   }
@@ -171,6 +176,21 @@ export async function executeTransferFennViaPurse(
       return fromPurseResult(result, operationId);
     }
 
+    // P2B defence: official rail re-checks production launch ceilings (no clamp).
+    const ceiling = assertOfficialSettlementAmountWithinLimits({
+      action: "transfer",
+      amountFormatted: input.payload.amountFormatted,
+    });
+    if (!ceiling.ok) {
+      return {
+        ok: false,
+        code: ceiling.code,
+        message: ceiling.message,
+        failureClass: "terminal",
+        operationId,
+      };
+    }
+
     const executeOfficial = deps.executeOfficial ?? executeManualOneFennTransfer;
     const result = await executeOfficial({
       recipientAddress: input.payload.recipientAddress,
@@ -232,6 +252,21 @@ export async function executeBurnFennViaPurse(
         amountFormatted: input.payload.amountFormatted,
       });
       return fromPurseResult(result, operationId);
+    }
+
+    // P2B defence: official rail re-checks production launch ceilings (no clamp).
+    const ceiling = assertOfficialSettlementAmountWithinLimits({
+      action: "burn",
+      amountFormatted: input.payload.amountFormatted,
+    });
+    if (!ceiling.ok) {
+      return {
+        ok: false,
+        code: ceiling.code,
+        message: ceiling.message,
+        failureClass: "terminal",
+        operationId,
+      };
     }
 
     const executeOfficial = deps.executeOfficial ?? executeManualOneFennBurn;

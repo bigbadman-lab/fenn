@@ -14,8 +14,9 @@ import {
 } from "@/lib/agent/economic-amount";
 import {
   loadEconomicAuthorityLimits,
+  PRODUCTION_HARD_MAX_SINGLE_BURN_FORMATTED,
+  PRODUCTION_HARD_MAX_SINGLE_TRANSFER_FORMATTED,
   RECOMMENDED_PRODUCTION_AUTHORITY_LIMITS,
-  TEST_DEFAULT_MAX_SINGLE_BURN_FORMATTED,
   TEST_DEFAULT_MAX_SINGLE_TRANSFER_FORMATTED,
 } from "@/lib/agent/economic-authority-limits";
 import { planEconomicEffects } from "@/lib/agent/economic-authority";
@@ -566,7 +567,7 @@ describe("Stage P1C economic magnitude", () => {
       assert.equal(r.skippedReason, "none");
     });
 
-    it("32–36. action types, commons string amounts, constitution scale, test limits labeled", () => {
+    it("32–36. action types, commons string amounts, constitution scale, production limits", () => {
       assert.equal(
         ECONOMIC_CONSTITUTION_VERSION,
         "purse-economic-constitution-v1.5",
@@ -582,14 +583,26 @@ describe("Stage P1C economic magnitude", () => {
       assert.match(prompt, /0\.1% of original/);
       assert.match(prompt, /TEST RAIL/);
 
+      // P2B: production defaults = launch hard ceilings
+      assert.equal(
+        PRODUCTION_HARD_MAX_SINGLE_TRANSFER_FORMATTED,
+        loadEconomicAuthorityLimits({}).maxSingleTransferFormatted,
+      );
+      assert.equal(
+        loadEconomicAuthorityLimits({}).maxSingleBurnFormatted,
+        PRODUCTION_HARD_MAX_SINGLE_BURN_FORMATTED,
+      );
+      // Explicit test profile keeps wider harness envelope
       assert.equal(
         TEST_DEFAULT_MAX_SINGLE_TRANSFER_FORMATTED,
-        loadEconomicAuthorityLimits({}).maxSingleTransferFormatted,
+        loadEconomicAuthorityLimits({
+          FENN_PURSE_AUTHORITY_LIMITS_PROFILE: "test",
+        }).maxSingleTransferFormatted,
       );
       assert.ok(
         compareEconomicAmountFormatted(
-          TEST_DEFAULT_MAX_SINGLE_BURN_FORMATTED,
-          TEST_DEFAULT_MAX_SINGLE_TRANSFER_FORMATTED,
+          PRODUCTION_HARD_MAX_SINGLE_BURN_FORMATTED,
+          PRODUCTION_HARD_MAX_SINGLE_TRANSFER_FORMATTED,
         ) < 0,
       );
       assert.equal(

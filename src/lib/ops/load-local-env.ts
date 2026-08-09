@@ -2,6 +2,12 @@
  * Optional local env bootstrap for ops CLIs.
  * Loads `.env.local` when present; never overwrites existing process.env
  * (Render / CI / shell exports win). Never logs secret values.
+ *
+ * Laws:
+ * - Valid (non-blank) process.env values always win over file values.
+ * - File may only fill keys that are missing or blank.
+ * - File must never write blank values into process.env.
+ * - Absent `.env.local` is a pure no-op (Render does not need a file).
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -12,6 +18,10 @@ export type LoadLocalEnvResult = {
   path: string | null;
   keysSet: number;
 };
+
+function isEnvValuePresent(value: string | undefined): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
 
 /**
  * Parse a single dotenv-style line. Supports optional single/double quotes.
@@ -41,7 +51,7 @@ export function parseEnvLine(
 }
 
 /**
- * If `.env.local` exists under cwd, apply unset keys into process.env.
+ * If `.env.local` exists under cwd, apply unset/blank keys into process.env.
  * Safe to call multiple times. No-op when the file is absent (Render).
  */
 export function loadLocalEnvIfPresent(options?: {
@@ -51,6 +61,7 @@ export function loadLocalEnvIfPresent(options?: {
 }): LoadLocalEnvResult {
   const cwd = options?.cwd ?? process.cwd();
   const filename = options?.filename ?? ".env.local";
+  // Always mutate the live process env for the default path — never a fresh {}.
   const env = options?.env ?? process.env;
   const path = join(cwd, filename);
 
@@ -64,7 +75,10 @@ export function loadLocalEnvIfPresent(options?: {
   for (const line of content.split(/\n/)) {
     const parsed = parseEnvLine(line);
     if (!parsed) continue;
-    if (env[parsed.key] !== undefined) continue;
+    // Process wins: non-blank existing values are never replaced by the file.
+    if (isEnvValuePresent(env[parsed.key])) continue;
+    // Never inject blanks (would mark required keys present-as-empty incorrectly).
+    if (!isEnvValuePresent(parsed.value)) continue;
     env[parsed.key] = parsed.value;
     keysSet += 1;
   }
