@@ -1,11 +1,13 @@
 "use client";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
+import { shouldShowCampLeafReadout } from "@/lib/camp/leaf-readout-visibility";
 import { formatOutlawNumber } from "@/lib/profiles/types";
 
 /**
  * Terminal LEAF readout from FennAuth profile cache only.
  * No ledger fetch, no mutation, no invented balance.
+ * Hidden for guests and while Privy auth is unresolved.
  */
 export function CampLeafReadout() {
   const {
@@ -18,14 +20,8 @@ export function CampLeafReadout() {
     profile,
   } = useFennAuth();
 
-  if (!privyReady || !authenticated) {
-    return (
-      <div className="camp-readout" aria-live="polite">
-        <p className="camp-readout__line">
-          LEAF: <span className="muted">—</span>
-        </p>
-      </div>
-    );
+  if (!shouldShowCampLeafReadout({ privyReady, authenticated })) {
+    return null;
   }
 
   if (loading || profileLoading || !profileResolved) {
