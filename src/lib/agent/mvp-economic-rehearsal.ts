@@ -240,7 +240,7 @@ async function defaultRehearsalJudgeCaller(args: {
     if (error instanceof OpenAIUnavailableError) {
       throw Object.assign(
         new AgentJudgeError(
-          "judge_model_unavailable",
+          "judge_unavailable",
           "Final judgement model is not configured",
           503,
         ),
