@@ -169,6 +169,10 @@ async function executeClaimedEffect(
 
     if (claimed.effectType === "transfer_fenn") {
       const payload = validateTransferFennEffectPayload(claimed.payload);
+      const interactionId =
+        typeof claimed.payload.economicInteractionId === "string"
+          ? claimed.payload.economicInteractionId.trim()
+          : "";
       const transferResult = await executeTransferFennViaPurse(
         {
           effectId: claimed.effectId,
@@ -186,6 +190,20 @@ async function executeClaimedEffect(
           },
           { admin: deps.admin },
         );
+        if (interactionId) {
+          try {
+            const { markEconomicInteractionFailed } = await import(
+              "@/lib/agent/economic-interaction-persist"
+            );
+            await markEconomicInteractionFailed({
+              interactionId,
+              reason: `${transferResult.code}:${transferResult.message}`,
+              admin: deps.admin as never,
+            });
+          } catch {
+            // non-fatal
+          }
+        }
         return {
           ...base,
           status: "failed",
@@ -201,6 +219,23 @@ async function executeClaimedEffect(
         },
         { admin: deps.admin },
       );
+      if (interactionId) {
+        try {
+          const { markEconomicInteractionCompleted, tryLinkTransferEffect } =
+            await import("@/lib/agent/economic-interaction-persist");
+          await tryLinkTransferEffect({
+            interactionId,
+            effectId: claimed.effectId,
+            admin: deps.admin as never,
+          });
+          await markEconomicInteractionCompleted({
+            interactionId,
+            admin: deps.admin as never,
+          });
+        } catch {
+          // non-fatal
+        }
+      }
       const followup = buildEconomicFollowupDraft({
         actionType: "transfer",
         amountFormatted: transferResult.amountFormatted,

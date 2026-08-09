@@ -36,6 +36,16 @@ export type EconomicAuthorityContext = {
   perceptionEventId: string;
   /** Operator/harness bound wallet. */
   harnessBoundWallet?: string | null;
+  /**
+   * Stage P1D: wallet confirmed for a specific economic_interaction only.
+   * Never a permanent X→wallet profile binding.
+   */
+  interactionConfirmedWallet?: string | null;
+  /**
+   * Stage P1D interaction id for deterministic transfer effect idempotency.
+   * When set, transfer keys use ei:<id> rather than perception alone.
+   */
+  economicInteractionId?: string | null;
   purseState: Pick<
     PurseEconomicState,
     | "isEnabled"
@@ -67,10 +77,23 @@ export type EconomicPlanResult = {
   /** Informative: why economic effect was skipped (not a denial of speech). */
   skippedReason: string | null;
   policyHint: Stage125PolicyCode | null;
+  /**
+   * P1D: transfer intent is valid but destination is missing.
+   * Not ordinary NONE — original amount/reason must be preserved.
+   */
+  pendingDestination?: boolean;
 };
 
-function refuse(reason: string): EconomicPlanResult {
-  return { effects: [], skippedReason: reason, policyHint: null };
+function refuse(
+  reason: string,
+  extra?: { pendingDestination?: boolean; policyHint?: Stage125PolicyCode | null },
+): EconomicPlanResult {
+  return {
+    effects: [],
+    skippedReason: reason,
+    policyHint: extra?.policyHint ?? null,
+    pendingDestination: extra?.pendingDestination === true,
+  };
 }
 
 function proposedAmountOrRefuse(
@@ -182,6 +205,7 @@ export function planEconomicEffects(
 
   const limits = ctx.limits ?? loadEconomicAuthorityLimits();
   const decimals = ctx.purseState.tokenDecimals ?? 18;
+  const eventKeyBase = eventKey;
 
   if (intent.type === "transfer_fenn") {
     if (intent.recipientSource !== "trusted_profile_wallet") {
@@ -213,27 +237,38 @@ export function planEconomicEffects(
 
     const resolved = resolveTrustedTransferRecipient({
       harnessBoundWallet: ctx.harnessBoundWallet,
+      interactionConfirmedWallet: ctx.interactionConfirmedWallet,
     });
     if (!resolved.ok) {
-      return refuse(`no_trusted_wallet:${resolved.reason}`);
+      // Intent + magnitude already checked. Missing destination is P1D pending.
+      return refuse("pending_destination", {
+        pendingDestination: true,
+        policyHint: "pending_destination",
+      });
     }
+
+    const eventKey = ctx.economicInteractionId?.trim()
+      ? `ei:${ctx.economicInteractionId.trim()}`
+      : `p1b:${eventKeyBase}`;
 
     return {
       effects: [
         {
           type: "transfer_fenn",
-          // One transfer intent per perception/judgement event.
-          idempotencyKey: stage12TransferFennEffectIdempotencyKey(
-            `p1b:${eventKey}`,
-          ),
+          idempotencyKey: stage12TransferFennEffectIdempotencyKey(eventKey),
           payload: {
             recipientAddress: resolved.walletAddress,
-            // Exact model-proposed amount after validation — never rewritten.
             amountFormatted: amount,
             executionRail: ctx.executionRail,
-            // Audit only — not used for settlement.
             economicReason: intent.reason,
             recipientSource: intent.recipientSource,
+            ...(ctx.economicInteractionId
+              ? { economicInteractionId: ctx.economicInteractionId }
+              : {}),
+            recipientTrust:
+              resolved.source === "economic_interaction"
+                ? "economic_interaction"
+                : resolved.source,
           },
         },
       ],

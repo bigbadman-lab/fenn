@@ -1,9 +1,10 @@
 /**
- * Trusted economic recipient resolution (Stage P1B).
+ * Trusted economic recipient resolution (Stage P1B / P1D).
  *
- * Does NOT parse 0x from X text.
- * Live X → profile wallet mapping is not available in product tables yet.
- * P1B harness may inject an explicit pre-bound trusted wallet.
+ * - Model never supplies address as trusted spend destination unsolicited.
+ * - Live permanent X → profile wallet mapping is not available for MVP.
+ * - P1B harness may inject an explicit pre-bound trusted wallet.
+ * - P1D may inject a wallet confirmed for a specific economic_interaction only.
  */
 
 import { parseEvmAddress } from "@/lib/wallet/evm";
@@ -12,7 +13,10 @@ export type TrustedRecipientResolution =
   | {
       ok: true;
       walletAddress: string;
-      source: "p1b_harness_bound" | "trusted_profile_wallet";
+      source:
+        | "p1b_harness_bound"
+        | "trusted_profile_wallet"
+        | "economic_interaction";
     }
   | {
       ok: false;
@@ -33,15 +37,33 @@ export function liveXAuthorHasTrustedWalletMapping(): boolean {
 
 /**
  * Resolve transfer recipient for authority.
- * Model never supplies address; harness may pre-bind one.
+ * Model never supplies address; harness or confirmed interaction may bind one.
  */
 export function resolveTrustedTransferRecipient(input: {
   /** Operator/harness explicit bind only. */
   harnessBoundWallet?: string | null;
-  /** Never used as trust source — retained for audit/deny. */
+  /**
+   * P1D: wallet confirmed for one economic_interaction.
+   * Not permanent identity.
+   */
+  interactionConfirmedWallet?: string | null;
+  /** Never used as trust source for unsolicited spend — retained for audit. */
   xBody?: string | null;
   authorXUserId?: string | null;
 }): TrustedRecipientResolution {
+  if (input.interactionConfirmedWallet?.trim()) {
+    try {
+      const walletAddress = parseEvmAddress(input.interactionConfirmedWallet);
+      return {
+        ok: true,
+        walletAddress,
+        source: "economic_interaction",
+      };
+    } catch {
+      return { ok: false, reason: "invalid_wallet" };
+    }
+  }
+
   if (input.harnessBoundWallet?.trim()) {
     try {
       const walletAddress = parseEvmAddress(input.harnessBoundWallet);
@@ -55,12 +77,13 @@ export function resolveTrustedTransferRecipient(input: {
     }
   }
 
-  // Live product path: no X identity → verified wallet mapping exists.
+  // Live product path: no permanent X identity → verified wallet mapping.
   return { ok: false, reason: "not_available_live" };
 }
 
 /**
- * Prefer parsing addresses from X text is always fail-closed (not trusted).
+ * Prefer parsing addresses from X text is always fail-closed for unsolicited spend.
+ * P1D candidate extraction uses wallet-collection.ts under awaiting_wallet only.
  */
 export function extractUntrustedAddressFromText(_body: string): null {
   return null;

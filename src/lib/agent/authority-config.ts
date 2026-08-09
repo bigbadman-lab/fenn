@@ -67,6 +67,12 @@ export const STAGE125_POLICY_CODES = [
    * Stage P1B: speech permitted and economic effect also planned (multi-effect).
    */
   "permitted_reply_and_economic",
+  /**
+   * Stage P1D: transfer intent validated but destination wallet missing.
+   * Creates/continues pending economic interaction; plans reply asking for wallet.
+   * Does not execute transfer.
+   */
+  "pending_destination",
 ] as const;
 
 export type Stage125PolicyCode = (typeof STAGE125_POLICY_CODES)[number];

@@ -53,6 +53,9 @@ export type AuthorityJudgementInput = {
    */
   economicContext?: {
     harnessBoundWallet?: string | null;
+    /** P1D interaction-scoped confirmed wallet (not permanent identity). */
+    interactionConfirmedWallet?: string | null;
+    economicInteractionId?: string | null;
     executionRail: "official" | "p1a_test";
     purseState: import("@/lib/agent/purse-economic-context").PurseEconomicState | null;
     sufficientBalance?: boolean;
@@ -74,6 +77,10 @@ export type AuthorityDecision = {
   effects: AuthorityEffectPlan[];
   /** Observability label (not persisted unless callers log it). */
   policyOutcome: Stage12PolicyOutcome;
+  /** P1C/P1D economic plan skip reason (when no transfer/burn effect). */
+  economicSkippedReason?: string | null;
+  /** P1D: transfer intent valid, destination missing. */
+  pendingDestination?: boolean;
 };
 
 function isDigitSnowflake(value: string): boolean {
@@ -229,12 +236,49 @@ function appendEconomicEffects(
     reasonCode: input.finalReasonCode,
     perceptionEventId: input.perceptionEventId,
     harnessBoundWallet: input.economicContext.harnessBoundWallet,
+    interactionConfirmedWallet:
+      input.economicContext.interactionConfirmedWallet,
+    economicInteractionId: input.economicContext.economicInteractionId,
     purseState: input.economicContext.purseState,
     executionRail: input.economicContext.executionRail,
     sufficientBalance: input.economicContext.sufficientBalance,
   });
 
-  if (planned.effects.length === 0) return base;
+  // P1D: valid transfer intent without destination — keep speech; do not drop intent.
+  if (planned.pendingDestination) {
+    const hasSpeech = base.effects.some(
+      (e) => e.type === "reply_on_x" || e.type === "write_to_wall",
+    );
+    if (base.outcome === "no_action" && !hasSpeech) {
+      return {
+        ...base,
+        economicSkippedReason: planned.skippedReason,
+        pendingDestination: true,
+        policyCode: "pending_destination",
+      };
+    }
+    if (base.outcome === "permitted" || hasSpeech) {
+      return {
+        ...base,
+        outcome: "permitted",
+        policyCode: "pending_destination",
+        economicSkippedReason: planned.skippedReason,
+        pendingDestination: true,
+      };
+    }
+    return {
+      ...base,
+      economicSkippedReason: planned.skippedReason,
+      pendingDestination: true,
+    };
+  }
+
+  if (planned.effects.length === 0) {
+    return {
+      ...base,
+      economicSkippedReason: planned.skippedReason,
+    };
+  }
 
   const effects = [...base.effects, ...planned.effects];
   const hasSpeech = effects.some(
@@ -259,6 +303,8 @@ function appendEconomicEffects(
       sourceXPostId: base.sourceXPostId,
       effects,
       policyOutcome: base.policyOutcome,
+      economicSkippedReason: null,
+      pendingDestination: false,
     };
   }
 
@@ -273,6 +319,8 @@ function appendEconomicEffects(
     ...base,
     policyCode,
     effects,
+    economicSkippedReason: null,
+    pendingDestination: false,
   };
 }
 

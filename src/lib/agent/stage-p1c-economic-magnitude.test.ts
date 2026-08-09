@@ -294,7 +294,10 @@ describe("Stage P1C economic magnitude", () => {
         executionRail: "p1a_test",
         purseState: purseState(),
       });
-      assert.match(String(noWallet.skippedReason), /no_trusted_wallet/);
+      assert.equal(
+      noWallet.skippedReason,
+      "pending_destination",
+    );
 
       // Wallet present but NONE intent → no effect.
       const d = evaluateP1bEconomicAuthority({

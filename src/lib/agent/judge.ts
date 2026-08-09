@@ -18,6 +18,7 @@ import {
   type ClaimedPerception,
 } from "@/lib/agent/judge-persist";
 import type { Stage12JudgementIntention } from "@/lib/agent/judge-schema";
+import { processAuthorWalletCollectionTurn } from "@/lib/agent/wallet-collection-handler";
 
 export type JudgeOneResult = {
   status: "judged" | "already_judged" | "failed" | "empty";
@@ -28,6 +29,8 @@ export type JudgeOneResult = {
   reasonCode?: string;
   needsLiveState?: string[];
   identityUnverified?: boolean;
+  /** P1D observability */
+  walletCollection?: string;
   error?: string;
 };
 
@@ -77,6 +80,49 @@ export async function judgeOneXPerception(
   }
 
   try {
+    // Stage P1D: active wallet-collection turns intercept free economic judgement.
+    const walletTurn = await processAuthorWalletCollectionTurn({
+      authorXUserId: claimed.authorXUserId,
+      xPostId: claimed.xPostId,
+      body: claimed.body,
+      admin: deps.admin,
+    });
+
+    if (walletTurn.handled && walletTurn.replyText) {
+      const intention: Stage12JudgementIntention = {
+        engage: true,
+        action: "reply_on_x",
+        reasonCode: "answered_from_public_knowledge",
+        replyText: walletTurn.replyText.slice(0, 280),
+        wallBody: null,
+        needsLiveState: [],
+        identityUnverified: false,
+        responseMode: "canon",
+        wallCandidate: null,
+        knowledgeAvailable: true,
+        model: "p1d-wallet-collection",
+        promptVersion: "p1d-v1",
+      };
+      const finalized = await finalizeXPerceptionJudgement(
+        {
+          perceptionEventId: claimed.eventId,
+          intention,
+        },
+        { admin: deps.admin },
+      );
+      return {
+        status: "judged",
+        xPostId: claimed.xPostId,
+        eventId: claimed.eventId,
+        created: finalized.created,
+        action: finalized.action,
+        reasonCode: finalized.reasonCode,
+        needsLiveState: [],
+        identityUnverified: false,
+        walletCollection: walletTurn.kind,
+      };
+    }
+
     const knowledge = deps.retrieveKnowledge
       ? await deps.retrieveKnowledge(claimed.body)
       : await safeRetrievePublicAgentKnowledge({ query: claimed.body });

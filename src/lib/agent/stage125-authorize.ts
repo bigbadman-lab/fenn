@@ -320,6 +320,8 @@ export async function authorizeOneXPerception(
       finalWallBody = null;
     }
 
+    // P1D: wallet_confirmed interaction re-enters with frozen intent (not judgement alone).
+    const economicBundle = await buildLiveEconomicContext(claimed, deps.admin);
     const decision = evaluateAuthorityDecision({
       perceptionEventId: claimed.perceptionEventId,
       judgementId: claimed.judgementId,
@@ -330,36 +332,25 @@ export async function authorizeOneXPerception(
       finalReplyText,
       finalWallBody,
       finalReasonCode,
-      finalEconomicIntent: claimed.finalEconomicIntent,
-      economicContext: await (async () => {
-        try {
-          const { loadPurseEconomicState } = await import(
-            "@/lib/agent/purse-economic-context"
-          );
-          // Live authorize: official rail only — never inherits disposable rail.
-          const purseState = await loadPurseEconomicState({
-            forceTestRail: false,
-          });
-          return {
-            harnessBoundWallet: null,
-            executionRail: "official" as const,
-            purseState,
-            sufficientBalance: undefined,
-          };
-        } catch {
-          return {
-            harnessBoundWallet: null,
-            executionRail: "official" as const,
-            purseState: null,
-            sufficientBalance: false,
-          };
-        }
-      })(),
+      finalEconomicIntent:
+        economicBundle.overrideEconomicIntent ?? claimed.finalEconomicIntent,
+      economicContext: economicBundle.context,
     });
 
+    // P1D: pending destination → create durable interaction; ensure wallet-ask reply.
+    let finalDecision = decision;
+    if (decision.pendingDestination === true) {
+      finalDecision = await applyPendingDestinationSideEffects({
+        claimed,
+        decision,
+        finalReplyText,
+        admin: deps.admin,
+      });
+    }
+
     // Attach Chronicler memory id into wall effect payload when planned.
-    if (reservedMemoryId && decision.outcome === "permitted") {
-      for (const effect of decision.effects) {
+    if (reservedMemoryId && finalDecision.outcome === "permitted") {
+      for (const effect of finalDecision.effects) {
         if (effect.type === "write_to_wall") {
           effect.payload = {
             ...effect.payload,
@@ -370,28 +361,28 @@ export async function authorizeOneXPerception(
     }
 
     const isDeskWallOnly =
-      decision.policyCode === "permitted_wall" &&
-      decision.effects.every((e) => e.type === "write_to_wall");
+      finalDecision.policyCode === "permitted_wall" &&
+      finalDecision.effects.every((e) => e.type === "write_to_wall");
 
     const isEconomicOnly =
-      decision.outcome === "permitted" &&
-      !decision.effects.some((e) => e.type === "reply_on_x") &&
-      decision.effects.some(
+      finalDecision.outcome === "permitted" &&
+      !finalDecision.effects.some((e) => e.type === "reply_on_x") &&
+      finalDecision.effects.some(
         (e) => e.type === "transfer_fenn" || e.type === "burn_fenn",
       );
 
     if (
-      decision.outcome === "permitted" &&
+      finalDecision.outcome === "permitted" &&
       !isDeskWallOnly &&
       !isEconomicOnly &&
-      !decision.effects.some((e) => e.type === "reply_on_x")
+      !finalDecision.effects.some((e) => e.type === "reply_on_x")
     ) {
       return {
         status: "reply_generation_failed",
         xPostId: claimed.xPostId,
         perceptionEventId: claimed.perceptionEventId,
         judgementId: claimed.judgementId,
-        finalAction: decision.finalAction,
+        finalAction: finalDecision.finalAction,
         policyOutcome: "policy_invariant_violation",
         effectsCreated: 0,
         replyRecovery,
@@ -412,8 +403,9 @@ export async function authorizeOneXPerception(
     if (
       (finalAction === "reply_on_x" ||
         finalAction === "reply_and_write_to_wall") &&
-      (decision.policyCode === "missing_reply_candidate" ||
-        (decision.effects.length === 0 && decision.outcome === "denied"))
+      (finalDecision.policyCode === "missing_reply_candidate" ||
+        (finalDecision.effects.length === 0 &&
+          finalDecision.outcome === "denied"))
     ) {
       return {
         status: "reply_generation_failed",
@@ -421,7 +413,7 @@ export async function authorizeOneXPerception(
         perceptionEventId: claimed.perceptionEventId,
         judgementId: claimed.judgementId,
         finalAction,
-        policyCode: decision.policyCode,
+        policyCode: finalDecision.policyCode,
         policyOutcome: "reply_generation_failed",
         effectsCreated: 0,
         replyRecovery: replyRecovery === "not_needed" ? "failed" : replyRecovery,
@@ -434,10 +426,18 @@ export async function authorizeOneXPerception(
       {
         perceptionEventId: claimed.perceptionEventId,
         judgementId: claimed.judgementId,
-        decision,
+        decision: finalDecision,
       },
       { admin: deps.admin },
     );
+
+    // Link transfer effect to economic interaction when present (idempotent).
+    if (persisted.created) {
+      await maybeLinkEconomicInteractionTransfer({
+        decision: finalDecision,
+        admin: deps.admin,
+      });
+    }
 
     if (reservedMemoryId && persisted.created && persisted.authorizationId) {
       try {
@@ -458,10 +458,10 @@ export async function authorizeOneXPerception(
         xPostId: claimed.xPostId,
         perceptionEventId: claimed.perceptionEventId,
         judgementId: claimed.judgementId,
-        finalAction: decision.finalAction,
+        finalAction: finalDecision.finalAction,
         outcome: persisted.outcome,
         policyCode: persisted.policyCode,
-        policyOutcome: decision.policyOutcome,
+        policyOutcome: finalDecision.policyOutcome,
         effectsCreated: persisted.effectsCreated,
         replyRecovery,
         recoveryCalls,
@@ -486,7 +486,7 @@ export async function authorizeOneXPerception(
       factFingerprint: chronicler.observability.factFingerprint,
       admitted: chronicler.observability.admitted,
       alreadyRemembered: chronicler.observability.alreadyRemembered,
-      finalAction: decision.finalAction,
+      finalAction: finalDecision.finalAction,
       policyCode: persisted.policyCode,
       speechQuality,
     });
@@ -496,10 +496,10 @@ export async function authorizeOneXPerception(
       xPostId: claimed.xPostId,
       perceptionEventId: claimed.perceptionEventId,
       judgementId: claimed.judgementId,
-      finalAction: decision.finalAction,
+      finalAction: finalDecision.finalAction,
       outcome: persisted.outcome,
       policyCode: persisted.policyCode,
-      policyOutcome: decision.policyOutcome,
+      policyOutcome: finalDecision.policyOutcome,
       effectsCreated: persisted.effectsCreated,
       replyRecovery,
       recoveryCalls,
@@ -598,4 +598,235 @@ export function formatAuthorizeBatchReport(
   }
 
   return lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Stage P1D helpers (live authorize path)
+// ---------------------------------------------------------------------------
+
+async function buildLiveEconomicContext(
+  claimed: ClaimedAuthorityJudgement,
+  admin?: AdminLike,
+): Promise<{
+  context: NonNullable<
+    import("@/lib/agent/authority-policy").AuthorityJudgementInput["economicContext"]
+  >;
+  overrideEconomicIntent: unknown | null;
+}> {
+  let purseState = null;
+  try {
+    const { loadPurseEconomicState } = await import(
+      "@/lib/agent/purse-economic-context"
+    );
+    purseState = await loadPurseEconomicState({ forceTestRail: false });
+  } catch {
+    purseState = null;
+  }
+
+  let interactionConfirmedWallet: string | null = null;
+  let economicInteractionId: string | null = null;
+  let overrideEconomicIntent: unknown | null = null;
+
+  try {
+    const { findActiveEconomicInteractionForAuthor } = await import(
+      "@/lib/agent/economic-interaction-persist"
+    );
+    const active = await findActiveEconomicInteractionForAuthor({
+      authorXUserId: claimed.authorXUserId,
+      admin: admin as never,
+    });
+    if (
+      active &&
+      (active.status === "wallet_confirmed" || active.status === "executing") &&
+      active.confirmedWallet &&
+      !active.transferEffectId
+    ) {
+      interactionConfirmedWallet = active.confirmedWallet;
+      economicInteractionId = active.id;
+      // Frozen original decision — amount never from this perception's user text.
+      overrideEconomicIntent = {
+        type: "transfer_fenn",
+        proposedAmount: active.proposedAmount,
+        reason: active.economicReason,
+        recipientSource: "trusted_profile_wallet",
+      };
+    }
+  } catch {
+    // non-fatal for speech-only paths
+  }
+
+  return {
+    context: {
+      harnessBoundWallet: null,
+      interactionConfirmedWallet,
+      economicInteractionId,
+      executionRail: "official" as const,
+      purseState,
+      sufficientBalance: purseState ? undefined : false,
+    },
+    overrideEconomicIntent,
+  };
+}
+
+async function applyPendingDestinationSideEffects(input: {
+  claimed: ClaimedAuthorityJudgement;
+  decision: import("@/lib/agent/authority-policy").AuthorityDecision;
+  finalReplyText: string | null;
+  admin?: AdminLike;
+}): Promise<import("@/lib/agent/authority-policy").AuthorityDecision> {
+  const { claimed, decision } = input;
+  const { economicIntentFromJson } = await import(
+    "@/lib/agent/economic-intent"
+  );
+  const { buildAskForWalletReply } = await import(
+    "@/lib/agent/wallet-collection"
+  );
+  const { createAwaitingWalletInteraction } = await import(
+    "@/lib/agent/economic-interaction-persist"
+  );
+  const { stage12ReplyIdempotencyKey } = await import(
+    "@/lib/agent/authority-config"
+  );
+
+  const intent = economicIntentFromJson(claimed.finalEconomicIntent);
+  if (intent.type !== "transfer_fenn") {
+    return decision;
+  }
+
+  await createAwaitingWalletInteraction({
+    authorXUserId: claimed.authorXUserId,
+    sourceXPostId: claimed.xPostId,
+    originPerceptionEventId: claimed.perceptionEventId,
+    originJudgementId: claimed.judgementId,
+    proposedAmount: intent.proposedAmount,
+    economicReason: intent.reason,
+    admin: input.admin as never,
+  });
+
+  const ask = buildAskForWalletReply({ proposedAmount: intent.proposedAmount });
+  const effects = [...decision.effects];
+  const replyIdx = effects.findIndex((e) => e.type === "reply_on_x");
+  if (replyIdx >= 0) {
+    const prev = effects[replyIdx]!;
+    const prevText =
+      typeof prev.payload.text === "string" ? prev.payload.text : "";
+    // Prefer existing model speech if it already asks; otherwise replace with ask.
+    const text =
+      /0x|wallet/i.test(prevText) && prevText.trim().length > 0
+        ? prevText
+        : ask;
+    effects[replyIdx] = {
+      ...prev,
+      payload: {
+        ...prev.payload,
+        text,
+        replyToXPostId: claimed.xPostId,
+      },
+    };
+  } else if (decision.outcome === "permitted" || effects.length > 0) {
+    effects.unshift({
+      type: "reply_on_x",
+      idempotencyKey: stage12ReplyIdempotencyKey(claimed.xPostId),
+      payload: {
+        replyToXPostId: claimed.xPostId,
+        text: ask,
+      },
+    });
+  } else {
+    // Elevate no_action speech into permitted wallet request
+    effects.push({
+      type: "reply_on_x",
+      idempotencyKey: stage12ReplyIdempotencyKey(claimed.xPostId),
+      payload: {
+        replyToXPostId: claimed.xPostId,
+        text: ask,
+      },
+    });
+    return {
+      ...decision,
+      outcome: "permitted",
+      policyCode: "pending_destination",
+      finalAction: "reply_on_x",
+      effects,
+      policyOutcome: "reply_only",
+      pendingDestination: true,
+      economicSkippedReason: "pending_destination",
+    };
+  }
+
+  return {
+    ...decision,
+    outcome: "permitted",
+    policyCode: "pending_destination",
+    effects,
+    pendingDestination: true,
+    economicSkippedReason: "pending_destination",
+  };
+}
+
+async function maybeLinkEconomicInteractionTransfer(input: {
+  decision: import("@/lib/agent/authority-policy").AuthorityDecision;
+  admin?: AdminLike;
+}): Promise<void> {
+  const transfer = input.decision.effects.find((e) => e.type === "transfer_fenn");
+  if (!transfer) return;
+  const interactionId =
+    typeof transfer.payload.economicInteractionId === "string"
+      ? transfer.payload.economicInteractionId
+      : null;
+  if (!interactionId) return;
+
+  try {
+    const admin =
+      input.admin ??
+      ((await import("@/lib/supabase/admin")).createAdminClient() as unknown as AdminLike);
+    const effectsTable = admin.from("x_perception_effects") as {
+      select: (cols: string) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => {
+          eq: (
+            col2: string,
+            val2: string,
+          ) => {
+            maybeSingle: () => Promise<{
+              data: { id: string } | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      };
+    };
+
+    const { data: effectRow, error } = await effectsTable
+      .select("id")
+      .eq("idempotency_key", transfer.idempotencyKey)
+      .eq("effect_type", "transfer_fenn")
+      .maybeSingle();
+
+    if (error || !effectRow?.id) {
+      // Fallback: mark executing without uuid link so retries still see active interaction.
+      const { updateEconomicInteraction } = await import(
+        "@/lib/agent/economic-interaction-persist"
+      );
+      await updateEconomicInteraction({
+        id: interactionId,
+        patch: { status: "executing" },
+        admin: admin as never,
+      });
+      return;
+    }
+
+    const { tryLinkTransferEffect } = await import(
+      "@/lib/agent/economic-interaction-persist"
+    );
+    await tryLinkTransferEffect({
+      interactionId,
+      effectId: effectRow.id,
+      admin: admin as never,
+    });
+  } catch {
+    // non-fatal — transfer effect may still execute via Stage 12.6
+  }
 }
