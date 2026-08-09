@@ -206,9 +206,14 @@ export function classifyFennLaunchStatus(input: {
     errors.push(input.limitsError ?? "production_limits_invalid");
   }
 
-  if (!input.purse.configured) {
+  // Narrow purse before field access (configured:false has no settlement fields).
+  const purse = input.purse.configured ? input.purse : null;
+  const economicSettlementEnabled = purse?.economicSettlementEnabled ?? null;
+  const activatedAt = purse?.officialSettlementActivatedAt ?? null;
+
+  if (!purse) {
     errors.push("purse_config_unreadable");
-  } else if (input.purse.economicSettlementEnabled === null) {
+  } else if (economicSettlementEnabled === null) {
     errors.push("economic_settlement_enabled_unknown");
   }
 
@@ -251,7 +256,7 @@ export function classifyFennLaunchStatus(input: {
     };
   }
 
-  if (input.purse.configured && input.purse.economicSettlementEnabled === false) {
+  if (economicSettlementEnabled === false) {
     notes.push("economic_settlement_enabled=false emergency brake engaged");
     return {
       status: "BRAKED",
@@ -264,14 +269,13 @@ export function classifyFennLaunchStatus(input: {
   }
 
   const contractResolved = input.lookup.status === "ok";
-  const activatedAt = input.purse.officialSettlementActivatedAt;
 
   // PRE_LAUNCH_READY
   if (
     dormant &&
     !contractResolved &&
     activatedAt == null &&
-    input.purse.economicSettlementEnabled === true
+    economicSettlementEnabled === true
   ) {
     notes.push(
       "dormant official row present; resolver correctly reports official unavailable",
@@ -386,7 +390,7 @@ export function classifyFennLaunchStatus(input: {
   }
 
   if (
-    input.purse.economicSettlementEnabled === true &&
+    economicSettlementEnabled === true &&
     activatedAt &&
     (hasMovements || allocationSatisfied === true)
   ) {
