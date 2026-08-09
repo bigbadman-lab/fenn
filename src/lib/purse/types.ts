@@ -1,4 +1,8 @@
-import type { PurseFailureClass, PurseTransferStatus } from "@/lib/purse/constants";
+import type {
+  PurseActionType,
+  PurseFailureClass,
+  PurseTransferStatus,
+} from "@/lib/purse/constants";
 
 /** Public Purse wallet identity (no notes / keys / actors). */
 export type PublicPurseConfig = {
@@ -27,6 +31,11 @@ export type PurseTransferRow = {
   actorId: string | null;
   /** Disposable-token pre-launch settlements only; never public MOVEMENTS. */
   isTest: boolean;
+  /**
+   * Settlement classification (not native token burn).
+   * `burn` = canonical dead-address transfer; still uses ERC-20 transfer().
+   */
+  actionType: PurseActionType;
   createdAt: string;
   submittedAt: string | null;
   confirmedAt: string | null;
@@ -43,6 +52,8 @@ export type PublicPurseTransfer = {
   txHash: string;
   confirmedAt: string;
   explorerTxUrl: string | null;
+  /** transfer (default) or burn (dead-address send). */
+  actionType: PurseActionType;
 };
 
 export type PublicPurseFennBalance =

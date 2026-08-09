@@ -122,3 +122,86 @@ Treasury is unreachable from the transfer executor.
 ## Toward P1B
 
 P1B should add **judgement/authority** so eligible perceptions can plan `transfer_fenn` under economic constitution rules — still fixed amount initially, still official FENN only in live, still no key in Stage 12. P1A only builds the execution bridge.
+
+---
+
+# Stage P1A.1 — `burn_fenn` (dead-address unit burn)
+
+## Semantics
+
+`burn_fenn` is **not** the ERC-20 `burn()` method and does **not** reduce `totalSupply`.
+
+It is a fixed-amount **ERC-20 `transfer()` to the canonical dead address**:
+
+```
+0x000000000000000000000000000000000000dEaD
+```
+
+(normalized lowercase internally as `0x…dead`).
+
+| Property | Rule |
+|----------|------|
+| amount | exactly `"1"` |
+| destination | server-owned `FENN_DEAD_ADDRESS` only |
+| payload recipient | **forbidden** |
+| token / chain / calldata / key / burnAddress | **forbidden** |
+| settlement row | `purse_transfers.action_type = 'burn'` |
+| test rail | `is_test = true` when `executionRail = p1a_test` |
+| `/commons` | test burns hidden; official burns may appear as “burned” |
+
+## Effect contract
+
+```json
+{
+  "amountFormatted": "1",
+  "executionRail": "p1a_test"
+}
+```
+
+## Deterministic operation-id mapping
+
+```
+purse.operation_id = stage12:burn_fenn:<effect_uuid>
+```
+
+Distinct from `stage12:transfer_fenn:…` — namespaces are never shared.
+
+Effect-row uniqueness:
+
+```
+idempotency_key = p1a:burn_fenn:<operation-label>
+```
+
+## Lifecycle
+
+```
+effect pending
+  → claim (processing)
+  → validateBurnFennEffectPayload
+  → executeBurnFennViaPurse
+  → purse pending → submitted → confirmed (recipient = dead, action_type = burn)
+  → complete_x_perception_effect(external_result_id = tx_hash)
+```
+
+Retry / reconcile law matches `transfer_fenn` (same operation_id, never rebroadcast ambiguous).
+
+## Controlled CLI
+
+```bash
+npm run agent:test-purse-burn -- --operation-label p1a-burn-001
+npm run agent:test-purse-burn -- --operation-label p1a-burn-001 --dry-run
+```
+
+No `--to`. Dry-run never broadcasts.
+
+## Security boundary
+
+```
+MODEL (cannot originate)
+  → P1A.1 scaffold (permitted_burn_p1a)
+  → burn_fenn effect (no key, no recipient, amount=1)
+  → executeBurnFennViaPurse
+  → Purse ERC-20 transfer(DEAD, 1)
+```
+
+Ordinary Stage 12 judgement schema and policy planner still cannot emit burns.

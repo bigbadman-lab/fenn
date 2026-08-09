@@ -6,6 +6,16 @@
 /** Formatted human amount for the P0 operator CLI. Never free-form. */
 export const P0_MANUAL_TRANSFER_AMOUNT_FORMATTED = "1" as const;
 
+/**
+ * Canonical dead-address burn destination (ERC-20 transfer, not native burn()).
+ * Normalized lowercase form used internally — never env-overridable.
+ */
+export const FENN_DEAD_ADDRESS =
+  "0x000000000000000000000000000000000000dead" as const;
+
+export const PURSE_ACTION_TYPES = ["transfer", "burn"] as const;
+export type PurseActionType = (typeof PURSE_ACTION_TYPES)[number];
+
 export const PURSE_TRANSFER_STATUSES = [
   "pending",
   "submitted",

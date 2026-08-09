@@ -52,6 +52,7 @@ export const STAGE12_MAY = [
   "form and persist Stage 12.3 intentions without executing them",
   "authorise final intentions into pending consequence plans (Stage 12.5)",
   "execute controlled transfer_fenn Stage 12.6 effects via Purse P0 (operator P1A only)",
+  "execute controlled burn_fenn Stage 12.6 effects via dead-address Purse settlement (operator P1A.1 only)",
 ] as const;
 
 /** What Stage 12 must never do. */
@@ -75,6 +76,8 @@ export const STAGE12_MAY_NOT = [
   "let Stage 12 hold or log FENN_PURSE_PRIVATE_KEY",
   "let Stage 12 choose transfer token, chain, calldata, or amount other than 1",
   "let the live model originate transfer_fenn effects (P1A is operator-controlled only)",
+  "let the live model originate burn_fenn effects (P1A.1 is operator-controlled only)",
+  "treat burn_fenn as reducing ERC-20 totalSupply (dead-address transfer only)",
 ] as const;
 
 export type {

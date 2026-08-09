@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  type PurseActionType,
   type PurseFailureClass,
   type PurseTransferStatus,
 } from "@/lib/purse/constants";
@@ -15,7 +16,7 @@ async function defaultAdmin(): Promise<SupabaseClient> {
 }
 
 const TRANSFER_SELECT =
-  "id, operation_id, recipient_address, amount_raw, amount_formatted, token_address, chain_id, tx_hash, status, failure_class, last_error, actor_id, is_test, created_at, submitted_at, confirmed_at";
+  "id, operation_id, recipient_address, amount_raw, amount_formatted, token_address, chain_id, tx_hash, status, failure_class, last_error, actor_id, is_test, action_type, created_at, submitted_at, confirmed_at";
 
 type TransferDbRow = {
   id: string;
@@ -31,10 +32,15 @@ type TransferDbRow = {
   last_error: string | null;
   actor_id: string | null;
   is_test?: boolean | null;
+  action_type?: string | null;
   created_at: string;
   submitted_at: string | null;
   confirmed_at: string | null;
 };
+
+function mapActionType(raw: string | null | undefined): PurseActionType {
+  return raw === "burn" ? "burn" : "transfer";
+}
 
 function mapRow(row: TransferDbRow): PurseTransferRow {
   return {
@@ -54,6 +60,7 @@ function mapRow(row: TransferDbRow): PurseTransferRow {
     lastError: row.last_error == null ? null : String(row.last_error),
     actorId: row.actor_id == null ? null : String(row.actor_id),
     isTest: Boolean(row.is_test),
+    actionType: mapActionType(row.action_type),
     createdAt: String(row.created_at),
     submittedAt: row.submitted_at == null ? null : String(row.submitted_at),
     confirmedAt: row.confirmed_at == null ? null : String(row.confirmed_at),
@@ -92,10 +99,13 @@ export async function insertPendingPurseTransfer(
     chainId: number;
     actorId: string;
     isTest?: boolean;
+    actionType?: PurseActionType;
   },
   admin?: SupabaseClient,
 ): Promise<PurseTransferRow> {
   const db = admin ?? (await defaultAdmin());
+  const actionType: PurseActionType =
+    input.actionType === "burn" ? "burn" : "transfer";
   const { data, error } = await db
     .from("purse_transfers")
     .insert({
@@ -108,6 +118,7 @@ export async function insertPendingPurseTransfer(
       status: "pending",
       actor_id: input.actorId,
       is_test: Boolean(input.isTest),
+      action_type: actionType,
     })
     .select(TRANSFER_SELECT)
     .single();

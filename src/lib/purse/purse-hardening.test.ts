@@ -75,6 +75,7 @@ describe("Purse P0 architecture hardening", () => {
     const query = read("src/lib/purse/transfers-query.ts");
     assert.match(query, /\.eq\("is_test", false\)/);
     assert.match(query, /\.eq\("status", "confirmed"\)/);
+    assert.match(query, /action_type/);
   });
 
   it("operator CLIs exist and are not a public API route", () => {

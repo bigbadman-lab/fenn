@@ -1,9 +1,11 @@
 import "server-only";
 
 import {
+  FENN_DEAD_ADDRESS,
   P0_MANUAL_ACTOR_ID,
   P0_MANUAL_TEST_ACTOR_ID,
   P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+  type PurseActionType,
 } from "@/lib/purse/constants";
 import { requireEnabledPurseConfig } from "@/lib/purse/config";
 import { PurseError } from "@/lib/purse/errors";
@@ -48,6 +50,7 @@ import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
 import { getOfficialFennTokenAsset } from "@/lib/treasury/official-token";
 import type { OfficialFennTokenAsset } from "@/lib/treasury/types";
 import type { TreasuryAmount } from "@/lib/treasury/types";
+import { parseEvmAddress } from "@/lib/wallet/evm";
 
 /** Settlement token — either official FENN or armed disposable test ERC-20. */
 export type PurseUnitTransferToken = {
@@ -71,6 +74,7 @@ export type ManualTransferDeps = {
     chainId: number;
     actorId: string;
     isTest: boolean;
+    actionType: PurseActionType;
   }) => Promise<PurseTransferRow>;
   markSubmitted: (input: {
     id: string;
@@ -313,13 +317,14 @@ async function reconcileKnownTx(
 type UnitTransferContext = {
   token: PurseUnitTransferToken;
   isTest: boolean;
+  actionType: PurseActionType;
   insufficientCode: "purse_insufficient_fenn" | "purse_insufficient_test_token";
   insufficientMessage: (balanceFormatted: string) => string;
 };
 
 /**
  * Shared P0 unit-transfer lifecycle (one ERC-20 unit, fixed "1").
- * Used by official FENN path and disposable test path — never by agents.
+ * Used by official/test transfer and dead-address burn paths.
  */
 async function executeManualUnitTransfer(
   input: ManualOneFennTransferInput,
@@ -336,6 +341,17 @@ async function executeManualUnitTransfer(
   const actorId =
     input.actorId?.trim() ||
     (context.isTest ? P0_MANUAL_TEST_ACTOR_ID : P0_MANUAL_ACTOR_ID);
+
+  if (context.actionType === "burn") {
+    const dead = parseEvmAddress(FENN_DEAD_ADDRESS);
+    if (recipientAddress !== dead) {
+      throw new PurseError(
+        "purse_invalid_recipient",
+        "Burn destination must be the canonical dead address",
+        400,
+      );
+    }
+  }
 
   const deps = mergeDeps(overrides);
 
@@ -380,6 +396,7 @@ async function executeManualUnitTransfer(
         chainId: ROBINHOOD_CHAIN_ID,
         actorId,
         isTest: context.isTest,
+        actionType: context.actionType,
       });
     }
 
@@ -389,7 +406,8 @@ async function executeManualUnitTransfer(
       row.amountFormatted !== P0_MANUAL_TRANSFER_AMOUNT_FORMATTED ||
       row.tokenAddress !== tokenAddress ||
       row.chainId !== ROBINHOOD_CHAIN_ID ||
-      row.isTest !== context.isTest
+      row.isTest !== context.isTest ||
+      row.actionType !== context.actionType
     ) {
       return failResult(
         row,
@@ -537,6 +555,7 @@ export async function executeManualOneFennTransfer(
         chainId: official.chainId,
       },
       isTest: false,
+      actionType: "transfer",
       insufficientCode: "purse_insufficient_fenn",
       insufficientMessage: (balanceFormatted) =>
         `Purse FENN balance ${balanceFormatted} is less than 1`,
@@ -598,6 +617,83 @@ export async function executeManualTestTransfer(
         chainId: testToken.chainId,
       },
       isTest: true,
+      actionType: "transfer",
+      insufficientCode: "purse_insufficient_test_token",
+      insufficientMessage: (balanceFormatted) =>
+        `Purse test-token balance ${balanceFormatted} is less than 1`,
+    },
+    overrides,
+  );
+}
+
+/**
+ * Dead-address burn: ERC-20 transfer of exactly 1 unit to FENN_DEAD_ADDRESS.
+ * Does not call ERC-20 burn(); does not reduce totalSupply.
+ * Recipient is fixed in code — callers must not supply alternate destinations.
+ */
+export async function executeManualOneFennBurn(
+  input: {
+    operationId: string;
+    actorId?: string;
+  },
+  overrides?: Partial<ManualTransferDeps>,
+): Promise<ManualOneFennTransferResult> {
+  const deps = mergeDeps(overrides);
+  const official = assertOfficialFennTokenOnly(await deps.getOfficialToken());
+  const dead = parseEvmAddress(FENN_DEAD_ADDRESS);
+
+  return executeManualUnitTransfer(
+    {
+      recipientAddress: dead,
+      operationId: input.operationId,
+      actorId: input.actorId ?? "ops:purse-burn",
+    },
+    {
+      token: {
+        contractAddress: official.contractAddress,
+        decimals: official.decimals,
+        chainId: official.chainId,
+      },
+      isTest: false,
+      actionType: "burn",
+      insufficientCode: "purse_insufficient_fenn",
+      insufficientMessage: (balanceFormatted) =>
+        `Purse FENN balance ${balanceFormatted} is less than 1`,
+    },
+    overrides,
+  );
+}
+
+/**
+ * Test-rail dead-address burn (is_test = true). Same chain semantics as transfer test.
+ */
+export async function executeManualTestBurn(
+  input: {
+    operationId: string;
+    actorId?: string;
+  },
+  overrides?: Partial<ManualTransferDeps>,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<ManualOneFennTransferResult> {
+  const testToken = resolveArmedPurseTestToken(env);
+  const deps = mergeDeps(overrides);
+  refuseTestRailIfOfficialFennLive(await deps.getOfficialToken());
+  const dead = parseEvmAddress(FENN_DEAD_ADDRESS);
+
+  return executeManualUnitTransfer(
+    {
+      recipientAddress: dead,
+      operationId: input.operationId,
+      actorId: input.actorId ?? "ops:purse-burn-test",
+    },
+    {
+      token: {
+        contractAddress: testToken.contractAddress,
+        decimals: testToken.decimals,
+        chainId: testToken.chainId,
+      },
+      isTest: true,
+      actionType: "burn",
       insufficientCode: "purse_insufficient_test_token",
       insufficientMessage: (balanceFormatted) =>
         `Purse test-token balance ${balanceFormatted} is less than 1`,

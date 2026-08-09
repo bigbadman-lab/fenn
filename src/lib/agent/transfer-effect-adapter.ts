@@ -1,20 +1,24 @@
 /**
- * Stage 12.6 → Purse P0 adapter for transfer_fenn.
+ * Stage 12.6 → Purse P0 adapter for transfer_fenn and burn_fenn.
  * Stage 12 never holds purse private keys or chooses token contracts.
  */
 
 import "server-only";
 
 import {
+  stage12BurnPurseOperationId,
   stage12TransferPurseOperationId,
 } from "@/lib/agent/authority-config";
 import type { Stage126FailureClass } from "@/lib/agent/execute-config";
-import {
-  type ValidatedTransferFennPayload,
+import type {
+  ValidatedBurnFennPayload,
+  ValidatedTransferFennPayload,
 } from "@/lib/agent/effect-payload";
 import { PurseError } from "@/lib/purse/errors";
 import {
+  executeManualOneFennBurn,
   executeManualOneFennTransfer,
+  executeManualTestBurn,
   executeManualTestTransfer,
 } from "@/lib/purse/transfer";
 import type { ManualOneFennTransferResult } from "@/lib/purse/types";
@@ -47,6 +51,11 @@ export type TransferFennExecuteResult =
 export type TransferFennAdapterDeps = {
   executeOfficial?: typeof executeManualOneFennTransfer;
   executeTest?: typeof executeManualTestTransfer;
+};
+
+export type BurnFennAdapterDeps = {
+  executeOfficial?: typeof executeManualOneFennBurn;
+  executeTest?: typeof executeManualTestBurn;
 };
 
 /**
@@ -176,6 +185,62 @@ export async function executeTransferFennViaPurse(
       code: "transfer_execution_failed",
       message:
         error instanceof Error ? error.message.slice(0, 200) : "transfer failed",
+      failureClass: "terminal",
+      operationId,
+    };
+  }
+}
+
+/**
+ * Execute an already-validated burn_fenn effect via dead-address Purse settlement.
+ * operation_id namespace is distinct from transfer_fenn.
+ */
+export async function executeBurnFennViaPurse(
+  input: {
+    effectId: string;
+    payload: ValidatedBurnFennPayload;
+    actorId?: string;
+  },
+  deps: BurnFennAdapterDeps = {},
+): Promise<TransferFennExecuteResult> {
+  const operationId = stage12BurnPurseOperationId(input.effectId);
+  const actorId =
+    input.actorId?.trim() ||
+    (input.payload.executionRail === "p1a_test"
+      ? "ops:stage12-burn-fenn-p1a"
+      : "ops:stage12-burn-fenn");
+
+  try {
+    if (input.payload.executionRail === "p1a_test") {
+      const executeTest = deps.executeTest ?? executeManualTestBurn;
+      const result = await executeTest({
+        operationId,
+        actorId,
+      });
+      return fromPurseResult(result, operationId);
+    }
+
+    const executeOfficial = deps.executeOfficial ?? executeManualOneFennBurn;
+    const result = await executeOfficial({
+      operationId,
+      actorId,
+    });
+    return fromPurseResult(result, operationId);
+  } catch (error) {
+    if (error instanceof PurseError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+        failureClass: mapPurseOutcomeToFailureClass(error.code),
+        operationId,
+      };
+    }
+    return {
+      ok: false,
+      code: "burn_execution_failed",
+      message:
+        error instanceof Error ? error.message.slice(0, 200) : "burn failed",
       failureClass: "terminal",
       operationId,
     };

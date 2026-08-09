@@ -127,7 +127,9 @@ export function PurseReadout({ purse }: Props) {
                     {formatCommonsHistoryDate(row.confirmedAt)}
                   </time>
                   <p className="commons-history__delta">
-                    {row.amountFormatted} FENN → {shortTo}
+                    {row.actionType === "burn"
+                      ? `${row.amountFormatted} FENN burned`
+                      : `${row.amountFormatted} FENN → ${shortTo}`}
                   </p>
                   {row.explorerTxUrl ? (
                     <p className="commons-history__reason">

@@ -34,6 +34,14 @@ export type ValidatedTransferFennPayload = {
   executionRail: "p1a_test" | "official";
 };
 
+/**
+ * P1A.1 burn_fenn payload — no recipient (dead address is code-owned).
+ */
+export type ValidatedBurnFennPayload = {
+  amountFormatted: "1";
+  executionRail: "p1a_test" | "official";
+};
+
 /** Strict allowed value enabling disposable-token rail. */
 export const TRANSFER_FENN_P1A_TEST_RAIL = "p1a_test" as const;
 
@@ -207,6 +215,88 @@ export function validateTransferFennEffectPayload(
 
   return {
     recipientAddress,
+    amountFormatted: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+    executionRail,
+  };
+}
+
+function parseExecutionRail(
+  p: Record<string, unknown>,
+  invalidCode: string,
+): "p1a_test" | "official" {
+  const railRaw =
+    typeof p.executionRail === "string" ? p.executionRail.trim() : "";
+  if (railRaw === "" || railRaw === "official") {
+    return "official";
+  }
+  if (railRaw === TRANSFER_FENN_P1A_TEST_RAIL) {
+    return "p1a_test";
+  }
+  throw new Error(invalidCode);
+}
+
+/**
+ * Fail-closed validation for burn_fenn at the Stage 12.6 boundary.
+ * Destination is the canonical dead address in server code only — never payload.
+ */
+export function validateBurnFennEffectPayload(
+  payload: unknown,
+): ValidatedBurnFennPayload {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("invalid_burn_payload");
+  }
+  const p = payload as Record<string, unknown>;
+
+  if ("recipientAddress" in p && p.recipientAddress != null && p.recipientAddress !== "") {
+    throw new Error("burn_recipient_forbidden");
+  }
+  if ("recipient" in p && p.recipient != null && p.recipient !== "") {
+    throw new Error("burn_recipient_forbidden");
+  }
+  if ("to" in p && p.to != null && p.to !== "") {
+    throw new Error("burn_recipient_forbidden");
+  }
+  if ("burnAddress" in p && p.burnAddress != null && p.burnAddress !== "") {
+    throw new Error("burn_address_override_forbidden");
+  }
+  if ("deadAddress" in p && p.deadAddress != null && p.deadAddress !== "") {
+    throw new Error("burn_address_override_forbidden");
+  }
+  if ("tokenAddress" in p && p.tokenAddress != null && p.tokenAddress !== "") {
+    throw new Error("burn_token_forbidden");
+  }
+  if ("token" in p && p.token != null && p.token !== "") {
+    throw new Error("burn_token_forbidden");
+  }
+  if ("chainId" in p && p.chainId != null && p.chainId !== "") {
+    throw new Error("burn_chain_forbidden");
+  }
+  if ("chain" in p && p.chain != null && p.chain !== "") {
+    throw new Error("burn_chain_forbidden");
+  }
+  if ("calldata" in p && p.calldata != null && p.calldata !== "") {
+    throw new Error("burn_calldata_forbidden");
+  }
+  if ("data" in p && p.data != null && p.data !== "") {
+    throw new Error("burn_calldata_forbidden");
+  }
+  if ("privateKey" in p || "secret" in p) {
+    throw new Error("burn_secret_forbidden");
+  }
+
+  const amountRaw =
+    typeof p.amountFormatted === "string"
+      ? p.amountFormatted
+      : typeof p.amount === "string"
+        ? p.amount
+        : "";
+  if (amountRaw.trim() !== P0_MANUAL_TRANSFER_AMOUNT_FORMATTED) {
+    throw new Error("burn_amount_not_fixed");
+  }
+
+  const executionRail = parseExecutionRail(p, "burn_execution_rail_invalid");
+
+  return {
     amountFormatted: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
     executionRail,
   };

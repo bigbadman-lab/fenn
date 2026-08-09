@@ -13,6 +13,7 @@ import {
   type ClaimedEffect,
 } from "@/lib/agent/effect-persist";
 import {
+  validateBurnFennEffectPayload,
   validateReplyEffectPayload,
   validateTransferFennEffectPayload,
   validateWallEffectPayload,
@@ -22,7 +23,9 @@ import { writeFennWallEntry } from "@/lib/wall/write";
 import { WallError } from "@/lib/wall/errors";
 import { linkWallFactMemoryToEntry } from "@/lib/agent/chronicler-memory";
 import {
+  executeBurnFennViaPurse,
   executeTransferFennViaPurse,
+  type BurnFennAdapterDeps,
   type TransferFennAdapterDeps,
 } from "@/lib/agent/transfer-effect-adapter";
 
@@ -64,6 +67,7 @@ type Stage126Deps = {
   createReply?: typeof createXReplyAsFenn;
   writeWall?: typeof writeFennWallEntry;
   transferAdapter?: TransferFennAdapterDeps;
+  burnAdapter?: BurnFennAdapterDeps;
 };
 
 function clampLimit(limit: number | undefined): number {
@@ -198,6 +202,47 @@ async function executeClaimedEffect(
         ...base,
         status: "completed",
         externalResultId: transferResult.txHash,
+      };
+    }
+
+    if (claimed.effectType === "burn_fenn") {
+      const payload = validateBurnFennEffectPayload(claimed.payload);
+      const burnResult = await executeBurnFennViaPurse(
+        {
+          effectId: claimed.effectId,
+          payload,
+        },
+        deps.burnAdapter,
+      );
+
+      if (!burnResult.ok) {
+        await failXPerceptionEffect(
+          {
+            effectId: claimed.effectId,
+            failureClass: burnResult.failureClass,
+            lastError: `${burnResult.code}:${burnResult.message}`,
+          },
+          { admin: deps.admin },
+        );
+        return {
+          ...base,
+          status: "failed",
+          failureClass: burnResult.failureClass,
+          errorCode: burnResult.code,
+        };
+      }
+
+      await completeXPerceptionEffect(
+        {
+          effectId: claimed.effectId,
+          externalResultId: burnResult.txHash,
+        },
+        { admin: deps.admin },
+      );
+      return {
+        ...base,
+        status: "completed",
+        externalResultId: burnResult.txHash,
       };
     }
 

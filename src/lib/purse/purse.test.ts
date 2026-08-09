@@ -61,6 +61,7 @@ function baseRow(over: Partial<PurseTransferRow> = {}): PurseTransferRow {
     lastError: null,
     actorId: "ops:test",
     isTest: false,
+    actionType: "transfer",
     createdAt: "2026-08-08T00:00:00.000Z",
     submittedAt: null,
     confirmedAt: null,
@@ -89,6 +90,7 @@ function makeDeps(over: Partial<ManualTransferDeps> = {}): ManualTransferDeps {
         chainId: input.chainId,
         actorId: input.actorId,
         isTest: input.isTest,
+        actionType: input.actionType,
         status: "pending",
       });
       store.set(input.operationId, row);
@@ -528,6 +530,7 @@ describe("public Purse snapshot safety", () => {
             "0x6666666666666666666666666666666666666666666666666666666666666666",
           confirmedAt: "2026-08-08T12:00:00.000Z",
           explorerTxUrl: null,
+          actionType: "transfer",
         },
       ],
       createClient: () => ({}) as never,

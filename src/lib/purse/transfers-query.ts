@@ -21,6 +21,7 @@ type ConfirmedRow = {
   chain_id: number;
   tx_hash: string;
   confirmed_at: string;
+  action_type?: string | null;
 };
 
 /**
@@ -40,7 +41,7 @@ export async function listConfirmedPurseTransfers(
   const { data, error } = await db
     .from("purse_transfers")
     .select(
-      "id, operation_id, recipient_address, amount_formatted, token_address, chain_id, tx_hash, confirmed_at",
+      "id, operation_id, recipient_address, amount_formatted, token_address, chain_id, tx_hash, confirmed_at, action_type",
     )
     .eq("status", "confirmed")
     .eq("is_test", false)
@@ -71,6 +72,7 @@ export async function listConfirmedPurseTransfers(
       txHash,
       confirmedAt: String(r.confirmed_at),
       explorerTxUrl: explorerTxUrl(chainId, txHash),
+      actionType: r.action_type === "burn" ? "burn" : "transfer",
     };
   });
 }

@@ -7,6 +7,7 @@
 
 export {
   P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+  FENN_DEAD_ADDRESS,
   FENN_PURSE_PRIVATE_KEY_ENV,
   PUBLIC_PURSE_TRANSFER_HISTORY_LIMIT,
 } from "@/lib/purse/constants";
@@ -15,6 +16,8 @@ export { getPurseConfig, requireEnabledPurseConfig } from "@/lib/purse/config";
 export {
   executeManualOneFennTransfer,
   executeManualTestTransfer,
+  executeManualOneFennBurn,
+  executeManualTestBurn,
   buildManualTransferPreview,
   buildManualTestTransferPreview,
 } from "@/lib/purse/transfer";

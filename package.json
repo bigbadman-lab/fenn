@@ -25,6 +25,7 @@
     "agent:run-x": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-run-x-pipeline.ts",
     "agent:test-wall": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-wall.ts",
     "agent:test-purse-effect": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-purse-effect.ts",
+    "agent:test-purse-burn": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/agent-test-purse-burn.ts",
     "chronicle:daily": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/chronicle-daily.ts",
     "market-watch:worker": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-worker.ts",
     "market-watch:replay": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/market-watch-replay.ts",

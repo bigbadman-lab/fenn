@@ -50,6 +50,11 @@ export const STAGE125_POLICY_CODES = [
    * Plans a single transfer_fenn effect via operator entrypoint.
    */
   "permitted_transfer_p1a",
+  /**
+   * Controlled Stage P1A.1 scaffold only — never produced by live X authority.
+   * Plans a single burn_fenn dead-address effect via operator entrypoint.
+   */
+  "permitted_burn_p1a",
 ] as const;
 
 export type Stage125PolicyCode = (typeof STAGE125_POLICY_CODES)[number];
@@ -58,6 +63,7 @@ export const STAGE125_EFFECT_TYPES = [
   "reply_on_x",
   "write_to_wall",
   "transfer_fenn",
+  "burn_fenn",
 ] as const;
 
 export type Stage125EffectType = (typeof STAGE125_EFFECT_TYPES)[number];
@@ -70,13 +76,23 @@ export function stage12ReplyIdempotencyKey(xPostId: string): string {
 }
 
 /**
- * Stage 12.6 → Purse operation_id bridge.
+ * Stage 12.6 → Purse operation_id bridge (transfer).
  * Same effectId always maps to the same operation_id across retries.
  */
 export function stage12TransferPurseOperationId(effectId: string): string {
   const id = effectId.trim();
   if (!id) throw new Error("effectId must be non-empty");
   return `stage12:transfer_fenn:${id}`;
+}
+
+/**
+ * Stage 12.6 → Purse operation_id bridge (burn / dead-address).
+ * Distinct namespace from transfer_fenn — never shared.
+ */
+export function stage12BurnPurseOperationId(effectId: string): string {
+  const id = effectId.trim();
+  if (!id) throw new Error("effectId must be non-empty");
+  return `stage12:burn_fenn:${id}`;
 }
 
 /**
@@ -92,4 +108,16 @@ export function stage12TransferFennEffectIdempotencyKey(
     throw new Error("operationLabel invalid");
   }
   return `p1a:transfer_fenn:${label}`;
+}
+
+/** Effect-row idempotency key for controlled P1A.1 burn tests. */
+export function stage12BurnFennEffectIdempotencyKey(
+  operationLabel: string,
+): string {
+  const label = operationLabel.trim();
+  if (!label) throw new Error("operationLabel must be non-empty");
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,64}$/.test(label)) {
+    throw new Error("operationLabel invalid");
+  }
+  return `p1a:burn_fenn:${label}`;
 }
