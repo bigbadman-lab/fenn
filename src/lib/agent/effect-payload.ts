@@ -1,6 +1,11 @@
 import { STAGE12_X_REPLY_MAX_CHARS } from "@/lib/agent/judge-config";
 import { stage12WallSourceExternalId } from "@/lib/wall/stage12-tool-contract";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
+import { P0_MANUAL_TRANSFER_AMOUNT_FORMATTED } from "@/lib/purse/constants";
+import {
+  isNormalizedEvmAddress,
+  parseEvmAddress,
+} from "@/lib/wallet/evm";
 
 export type ValidatedReplyPayload = {
   replyToXPostId: string;
@@ -14,6 +19,23 @@ export type ValidatedWallPayload = {
   /** Optional Stage 3 Chronicler memory link (application-owned). */
   chroniclerFactMemoryId: string | null;
 };
+
+/**
+ * P1A transfer_fenn payload after fail-closed validation.
+ * Token/chain/key/calldata never accepted.
+ */
+export type ValidatedTransferFennPayload = {
+  recipientAddress: string;
+  amountFormatted: "1";
+  /**
+   * Explicit rail. Only `"p1a_test"` uses disposable-token test settlement.
+   * Absent/official paths use official FENN only.
+   */
+  executionRail: "p1a_test" | "official";
+};
+
+/** Strict allowed value enabling disposable-token rail. */
+export const TRANSFER_FENN_P1A_TEST_RAIL = "p1a_test" as const;
 
 function isDigitSnowflake(value: string): boolean {
   return /^\d+$/.test(value.trim());
@@ -107,5 +129,85 @@ export function validateWallEffectPayload(
       p.chroniclerFactMemoryId.trim().length > 0
         ? p.chroniclerFactMemoryId.trim()
         : null,
+  };
+}
+
+/**
+ * Fail-closed validation for transfer_fenn at the Stage 12.6 boundary.
+ * Rejects token/chain/calldata and any amount other than exactly "1".
+ */
+export function validateTransferFennEffectPayload(
+  payload: unknown,
+): ValidatedTransferFennPayload {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("invalid_transfer_payload");
+  }
+  const p = payload as Record<string, unknown>;
+
+  // Hard rejections — never accept model/operator supply of these fields.
+  if ("tokenAddress" in p && p.tokenAddress != null && p.tokenAddress !== "") {
+    throw new Error("transfer_token_forbidden");
+  }
+  if ("token" in p && p.token != null && p.token !== "") {
+    throw new Error("transfer_token_forbidden");
+  }
+  if ("chainId" in p && p.chainId != null && p.chainId !== "") {
+    throw new Error("transfer_chain_forbidden");
+  }
+  if ("chain" in p && p.chain != null && p.chain !== "") {
+    throw new Error("transfer_chain_forbidden");
+  }
+  if ("calldata" in p && p.calldata != null && p.calldata !== "") {
+    throw new Error("transfer_calldata_forbidden");
+  }
+  if ("data" in p && p.data != null && p.data !== "") {
+    throw new Error("transfer_calldata_forbidden");
+  }
+  if ("privateKey" in p || "secret" in p) {
+    throw new Error("transfer_secret_forbidden");
+  }
+
+  const amountRaw =
+    typeof p.amountFormatted === "string"
+      ? p.amountFormatted
+      : typeof p.amount === "string"
+        ? p.amount
+        : "";
+  if (amountRaw.trim() !== P0_MANUAL_TRANSFER_AMOUNT_FORMATTED) {
+    throw new Error("transfer_amount_not_fixed");
+  }
+
+  const recipientRaw =
+    typeof p.recipientAddress === "string"
+      ? p.recipientAddress
+      : typeof p.recipient === "string"
+        ? p.recipient
+        : "";
+
+  let recipientAddress: string;
+  try {
+    recipientAddress = parseEvmAddress(recipientRaw);
+  } catch {
+    throw new Error("transfer_invalid_recipient");
+  }
+  if (!isNormalizedEvmAddress(recipientAddress)) {
+    throw new Error("transfer_invalid_recipient");
+  }
+
+  const railRaw =
+    typeof p.executionRail === "string" ? p.executionRail.trim() : "";
+  let executionRail: "p1a_test" | "official";
+  if (railRaw === "" || railRaw === "official") {
+    executionRail = "official";
+  } else if (railRaw === TRANSFER_FENN_P1A_TEST_RAIL) {
+    executionRail = "p1a_test";
+  } else {
+    throw new Error("transfer_execution_rail_invalid");
+  }
+
+  return {
+    recipientAddress,
+    amountFormatted: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+    executionRail,
   };
 }

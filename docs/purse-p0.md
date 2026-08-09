@@ -263,7 +263,7 @@ Re-run the **same** `--operation-id`:
 ## Explicit non-goals (still NOT live)
 
 - Autonomous AI spending
-- X agent `transfer_fenn` effects
+- Model-originated X agent `transfer_fenn` effects (Stage **P1A** executes controlled tests only — see `docs/agent-purse-p1a.md`)
 - Multi-turn wallet collection on X
 - Greenwood contribution of knowledge
 - Arbitrary amounts / tokens / chains

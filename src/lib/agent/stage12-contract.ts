@@ -51,6 +51,7 @@ export const STAGE12_MAY = [
   "choose from STAGE12_LIVE_AGENT_ACTIONS (no live wall-only from X)",
   "form and persist Stage 12.3 intentions without executing them",
   "authorise final intentions into pending consequence plans (Stage 12.5)",
+  "execute controlled transfer_fenn Stage 12.6 effects via Purse P0 (operator P1A only)",
 ] as const;
 
 /** What Stage 12 must never do. */
@@ -71,6 +72,9 @@ export const STAGE12_MAY_NOT = [
   "let the model control reply target, idempotency keys, or Wall provenance",
   "execute authorised effects in Stage 12.5 (pending only; Stage 12.6 executes)",
   "ask the model what to do during Stage 12.6 effect execution",
+  "let Stage 12 hold or log FENN_PURSE_PRIVATE_KEY",
+  "let Stage 12 choose transfer token, chain, calldata, or amount other than 1",
+  "let the live model originate transfer_fenn effects (P1A is operator-controlled only)",
 ] as const;
 
 export type {

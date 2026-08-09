@@ -14,12 +14,17 @@ import {
 } from "@/lib/agent/effect-persist";
 import {
   validateReplyEffectPayload,
+  validateTransferFennEffectPayload,
   validateWallEffectPayload,
 } from "@/lib/agent/effect-payload";
 import { createXReplyAsFenn } from "@/lib/x/write-client";
 import { writeFennWallEntry } from "@/lib/wall/write";
 import { WallError } from "@/lib/wall/errors";
 import { linkWallFactMemoryToEntry } from "@/lib/agent/chronicler-memory";
+import {
+  executeTransferFennViaPurse,
+  type TransferFennAdapterDeps,
+} from "@/lib/agent/transfer-effect-adapter";
 
 type AdminLike = {
   from: (table: string) => unknown;
@@ -58,6 +63,7 @@ type Stage126Deps = {
   admin?: AdminLike;
   createReply?: typeof createXReplyAsFenn;
   writeWall?: typeof writeFennWallEntry;
+  transferAdapter?: TransferFennAdapterDeps;
 };
 
 function clampLimit(limit: number | undefined): number {
@@ -151,6 +157,47 @@ async function executeClaimedEffect(
         ...base,
         status: "completed",
         externalResultId: wallResult.entry.id,
+      };
+    }
+
+    if (claimed.effectType === "transfer_fenn") {
+      const payload = validateTransferFennEffectPayload(claimed.payload);
+      const transferResult = await executeTransferFennViaPurse(
+        {
+          effectId: claimed.effectId,
+          payload,
+        },
+        deps.transferAdapter,
+      );
+
+      if (!transferResult.ok) {
+        await failXPerceptionEffect(
+          {
+            effectId: claimed.effectId,
+            failureClass: transferResult.failureClass,
+            lastError: `${transferResult.code}:${transferResult.message}`,
+          },
+          { admin: deps.admin },
+        );
+        return {
+          ...base,
+          status: "failed",
+          failureClass: transferResult.failureClass,
+          errorCode: transferResult.code,
+        };
+      }
+
+      await completeXPerceptionEffect(
+        {
+          effectId: claimed.effectId,
+          externalResultId: transferResult.txHash,
+        },
+        { admin: deps.admin },
+      );
+      return {
+        ...base,
+        status: "completed",
+        externalResultId: transferResult.txHash,
       };
     }
 

@@ -45,11 +45,20 @@ export const STAGE125_POLICY_CODES = [
    * when callers enforce recovery; kept for pure policy evaluation diagnostics.
    */
   "reply_generation_failed",
+  /**
+   * Controlled Stage P1A scaffold only — never produced by live X authority.
+   * Plans a single transfer_fenn effect via operator entrypoint.
+   */
+  "permitted_transfer_p1a",
 ] as const;
 
 export type Stage125PolicyCode = (typeof STAGE125_POLICY_CODES)[number];
 
-export const STAGE125_EFFECT_TYPES = ["reply_on_x", "write_to_wall"] as const;
+export const STAGE125_EFFECT_TYPES = [
+  "reply_on_x",
+  "write_to_wall",
+  "transfer_fenn",
+] as const;
 
 export type Stage125EffectType = (typeof STAGE125_EFFECT_TYPES)[number];
 
@@ -58,4 +67,29 @@ export function stage12ReplyIdempotencyKey(xPostId: string): string {
   const id = xPostId.trim();
   if (!id) throw new Error("xPostId must be non-empty");
   return `${id}:reply`;
+}
+
+/**
+ * Stage 12.6 → Purse operation_id bridge.
+ * Same effectId always maps to the same operation_id across retries.
+ */
+export function stage12TransferPurseOperationId(effectId: string): string {
+  const id = effectId.trim();
+  if (!id) throw new Error("effectId must be non-empty");
+  return `stage12:transfer_fenn:${id}`;
+}
+
+/**
+ * Effect-row idempotency key for controlled P1A transfer tests.
+ * Distinct from purse operation_id (which uses durable effect uuid).
+ */
+export function stage12TransferFennEffectIdempotencyKey(
+  operationLabel: string,
+): string {
+  const label = operationLabel.trim();
+  if (!label) throw new Error("operationLabel must be non-empty");
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,64}$/.test(label)) {
+    throw new Error("operationLabel invalid");
+  }
+  return `p1a:transfer_fenn:${label}`;
 }

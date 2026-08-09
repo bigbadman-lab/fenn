@@ -12,13 +12,17 @@ function read(rel: string): string {
 }
 
 describe("Purse P0 architecture hardening", () => {
-  it("does not extend X perception effects with transfer_fenn", () => {
+  it("does not extend Stage 12.5 model planning with transfer_fenn", () => {
     const authority = read("src/lib/agent/authority-config.ts");
-    assert.match(authority, /STAGE125_EFFECT_TYPES = \["reply_on_x", "write_to_wall"\]/);
-    assert.doesNotMatch(authority, /transfer_fenn/);
+    assert.match(authority, /transfer_fenn/);
+    // Live type list may include transfer_fenn for execution schema, but planning does not.
+    const policy = read("src/lib/agent/authority-policy.ts");
+    assert.doesNotMatch(policy, /type:\s*["']transfer_fenn["']|planTransfer/);
 
     const execute = read("src/lib/agent/stage126-execute.ts");
-    assert.doesNotMatch(execute, /transfer_fenn|purse|writeContract/);
+    assert.match(execute, /transfer_fenn/);
+    assert.match(execute, /executeTransferFennViaPurse/);
+    assert.doesNotMatch(execute, /writeContract|privateKeyToAccount|FENN_PURSE_PRIVATE_KEY/);
   });
 
   it("public Commons readers never touch private keys or wallet clients", () => {
