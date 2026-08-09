@@ -8,6 +8,9 @@
  * Does not activate settlement, fund Purse, or broadcast.
  */
 
+// Force ES module scope so Next/tsc does not merge `main` with sibling scripts.
+export {};
+
 async function main() {
   const { parseContractCliArg, runFennLaunchActivate, formatFennLaunchActivateReport } =
     await import("@/lib/ops/fenn-launch-activate");

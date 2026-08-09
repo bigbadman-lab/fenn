@@ -7,6 +7,9 @@
  * Never writes DB, never claims effects, never broadcasts, never activates.
  */
 
+// Force ES module scope so Next/tsc does not merge `main` with sibling scripts.
+export {};
+
 async function main() {
   const { runFennLaunchCheck, formatFennLaunchCheckReport } = await import(
     "@/lib/ops/fenn-launch-check"
