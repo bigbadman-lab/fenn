@@ -1,13 +1,14 @@
 /**
- * Stage P1B.1 controlled economic-judgement harness (operator-only).
+ * Stage P1B.1 / P1B.2 controlled economic-judgement harness (operator-only).
  *
- * DEFAULT: real Stage 12.4 final judge model → modelEconomicAction →
+ * P1B.1 DEFAULT: real Stage 12.4 final judge → modelEconomicAction →
  * authority preview. Dry-run never claims or broadcasts.
  *
- * OPTIONAL: --force-intent injects operator intent for authority/executor only
- * (explicitly labelled; not calibration).
+ * P1B.2: --execute-model-intent → same real model, then Stage 12.6 +
+ * disposable test rail only (never force-intent; never official FENN).
  *
- * Copy-forward production paths that hard-set NONE are not used here.
+ * OPTIONAL: --force-intent for authority/executor ops (NOT model judgement).
+ *
  * Ordinary live X traffic never uses disposable rail via this harness.
  */
 
@@ -15,11 +16,14 @@ import "server-only";
 
 import {
   STAGE125_POLICY_VERSION,
+  stage12BurnPurseOperationId,
+  stage12TransferPurseOperationId,
 } from "@/lib/agent/authority-config";
 import {
   evaluateAuthorityDecision,
   type AuthorityDecision,
 } from "@/lib/agent/authority-policy";
+import { planEconomicEffects } from "@/lib/agent/economic-authority";
 import {
   economicIntentToJson,
   normalizeModelEconomicAction,
@@ -37,6 +41,7 @@ import {
   formatPurseEconomicStateForPrompt,
   type PurseEconomicState,
 } from "@/lib/agent/purse-economic-context";
+import { replyClaimsCompletedEconomicAction } from "@/lib/agent/economic-followup";
 import { runFennPublicFinalJudgement } from "@/lib/agent/stage124-final-judge-model";
 import type { Stage124FinalJudgeModelCaller } from "@/lib/agent/stage124-final-judge-model";
 import { stage124FinalJudgementModelSchema } from "@/lib/agent/stage124-final-judgement-schema";
@@ -49,6 +54,12 @@ import {
 } from "@/lib/agent/stage124-final-judge-prompt";
 import { FENN_UNTRUSTED_X_MARKERS } from "@/lib/agent/judge-prompt";
 import { FENN_DEAD_ADDRESS } from "@/lib/purse/constants";
+import {
+  isPurseTestModeExplicitlyAllowed,
+  isPurseTestModeProductionHost,
+  resolveArmedPurseTestToken,
+} from "@/lib/purse/test-mode";
+import { FENN_PURSE_TEST_MODE_ENV } from "@/lib/purse/constants";
 import { createHash, randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -56,8 +67,7 @@ const AUTHOR_X_USER_ID = "9000000000000000002";
 
 /**
  * Fresh synthetic snowflake per calibration run — avoids freezing an old
- * finalized judgement intent when reusing operation labels.
- * Production finality is never weakened (no production row mutation).
+ * finalized judgement intent when reusing operation labels for dry-runs.
  */
 export function p1bCalibrationXPostId(
   operationLabel: string,
@@ -73,7 +83,7 @@ export function p1bCalibrationXPostId(
   return `9005${String(n).padStart(15, "0")}`;
 }
 
-/** Stable id for forced-intent executor tests only (label-bound). */
+/** Stable id for force-intent executor tests only (label-bound). */
 export function p1bForcedIntentXPostId(operationLabel: string): string {
   const label = operationLabel.trim();
   if (!label) throw new Error("operationLabel required");
@@ -82,16 +92,38 @@ export function p1bForcedIntentXPostId(operationLabel: string): string {
   return `9004${String(n).padStart(15, "0")}`;
 }
 
+/**
+ * Durable synthetic post id for P1B.2 model-originated execution.
+ * Same operation label → same id (retries / already_completed).
+ */
+export function p1b2ModelExecutionXPostId(operationLabel: string): string {
+  const label = operationLabel.trim();
+  if (!label) throw new Error("operationLabel required");
+  const digest = createHash("sha256")
+    .update(`p1b2-model-exec:${label}`)
+    .digest("hex");
+  const n = Number.parseInt(digest.slice(0, 12), 16) % 1e15;
+  return `9006${String(n).padStart(15, "0")}`;
+}
+
 export type P1bEconomicJudgementResult = {
   ok: boolean;
   status:
     | "dry_run"
     | "forced_intent_preview"
+    | "no_economic_action"
+    | "economic_refused"
+    | "completed"
+    | "already_completed"
     | "authorised"
     | "executed"
     | "failed"
+    | "ambiguous"
     | "scaffold_failed";
-  mode: "model_judgement" | "forced_intent";
+  mode:
+    | "model_judgement"
+    | "forced_intent"
+    | "MODEL_JUDGEMENT_EXECUTION_TEST";
   operationLabel: string;
   runNonce?: string;
   xPostId?: string;
@@ -99,9 +131,7 @@ export type P1bEconomicJudgementResult = {
   trustedWalletAvailable: boolean;
   trustedWallet?: string | null;
   trustedAttestation?: TrustedEconomicAttestation | null;
-  /** Real model (or force) economic intention. */
   modelEconomicAction?: FinalEconomicIntent;
-  /** True when modelEconomicAction was operator-injected via force mode. */
   intentForced: boolean;
   speechAction?: string;
   replyText?: string | null;
@@ -116,13 +146,14 @@ export type P1bEconomicJudgementResult = {
   dryRun: boolean;
   claimAttempted: boolean;
   broadcastAttempted: boolean;
+  effectId?: string;
+  purseOperationId?: string;
   externalResultId?: string;
   economicFollowupPreview?: string;
+  isTest?: boolean;
   errorCode?: string;
-  /** Harness-only provider failure detail (never secrets / full prompts). */
   providerFailure?: HarnessProviderFailure | null;
   durationMs: number;
-  /** Production note for docs/tests. */
   copyForwardNote?: string;
 };
 
@@ -149,8 +180,123 @@ export function harnessPurseState(
 }
 
 /**
- * Controlled harness OpenAI caller for calibration.
- * Surfaces sanitized provider schema/API errors (production path stays redacted).
+ * Fail-closed pre-checks for disposable-rail model execution.
+ * Does not touch the signing path.
+ */
+export function assertP1b2DisposableRailReady(
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  if (isPurseTestModeProductionHost(env)) {
+    throw new Error("p1b2_test_rail_production_host_forbidden");
+  }
+  if (!isPurseTestModeExplicitlyAllowed(env[FENN_PURSE_TEST_MODE_ENV])) {
+    throw new Error("p1b2_test_rail_not_explicitly_allowed");
+  }
+  // Token config + chain arming
+  resolveArmedPurseTestToken(env);
+}
+
+/** Official FENN live closes the disposable rail for P1B.2. */
+export async function assertP1b2OfficialFennAbsent(
+  loadOfficial: () => Promise<unknown> = async () => {
+    const { getOfficialFennTokenAsset } = await import(
+      "@/lib/treasury/official-token"
+    );
+    return getOfficialFennTokenAsset();
+  },
+): Promise<void> {
+  const official = await loadOfficial();
+  if (official) {
+    throw new Error("p1b2_official_fenn_blocks_disposable_rail");
+  }
+}
+
+/** Economic-only authority decision (no speech effects, no X posts). */
+export function planP1bEconomicOnlyDecision(input: {
+  perceptionEventId: string;
+  xPostId: string;
+  reasonCode?: string;
+  economicIntent: FinalEconomicIntent | unknown;
+  trustedWallet?: string | null;
+  purseState?: PurseEconomicState | null;
+}): AuthorityDecision {
+  const economicIntent = normalizeModelEconomicAction(input.economicIntent);
+  const planned = planEconomicEffects({
+    economicIntent,
+    reasonCode: input.reasonCode ?? "answered_from_public_knowledge",
+    perceptionEventId: input.perceptionEventId,
+    harnessBoundWallet: input.trustedWallet ?? null,
+    purseState: input.purseState ?? harnessPurseState(),
+    executionRail: "p1a_test",
+    sufficientBalance: true,
+  });
+
+  if (planned.effects.length === 0 || economicIntent.type === "NONE") {
+    return {
+      outcome: "no_action",
+      policyCode: "no_action",
+      policyVersion: STAGE125_POLICY_VERSION,
+      finalAction: "do_nothing",
+      sourceXPostId: input.xPostId.trim(),
+      effects: [],
+      policyOutcome: "blocked",
+    };
+  }
+
+  return {
+    outcome: "permitted",
+    policyCode: planned.policyHint ?? "permitted_transfer_p1b",
+    policyVersion: STAGE125_POLICY_VERSION,
+    finalAction: "do_nothing",
+    sourceXPostId: input.xPostId.trim(),
+    effects: planned.effects,
+    policyOutcome: "blocked",
+  };
+}
+
+/** Authority evaluation including speech effects (dry-run / force preview). */
+export function evaluateP1bEconomicAuthority(input: {
+  perceptionEventId: string;
+  judgementId?: string;
+  xPostId: string;
+  speechAction?: "reply_on_x" | "do_nothing" | "reply_and_write_to_wall";
+  replyText?: string | null;
+  reasonCode?: string;
+  economicIntent: FinalEconomicIntent | unknown;
+  trustedWallet?: string | null;
+  purseState?: PurseEconomicState | null;
+}): AuthorityDecision {
+  return evaluateAuthorityDecision({
+    perceptionEventId: input.perceptionEventId,
+    judgementId: input.judgementId ?? "judgement-p1b",
+    xPostId: input.xPostId,
+    perceptionType: "mention",
+    finalStatus: "finalized",
+    finalAction: input.speechAction ?? "reply_on_x",
+    finalReplyText:
+      input.speechAction === "do_nothing"
+        ? null
+        : (input.replyText ?? "Heard."),
+    finalWallBody: null,
+    finalReasonCode: input.reasonCode ?? "answered_from_public_knowledge",
+    finalEconomicIntent: economicIntentToJson(
+      typeof input.economicIntent === "object" &&
+        input.economicIntent &&
+        "type" in (input.economicIntent as object)
+        ? normalizeModelEconomicAction(input.economicIntent)
+        : normalizeModelEconomicAction(input.economicIntent),
+    ),
+    economicContext: {
+      harnessBoundWallet: input.trustedWallet ?? null,
+      executionRail: "p1a_test",
+      purseState: input.purseState ?? harnessPurseState(),
+      sufficientBalance: true,
+    },
+  });
+}
+
+/**
+ * Controlled harness OpenAI caller (diagnostics). Production path stays redacted.
  */
 async function p1bCalibrationModelCaller(args: {
   model: string;
@@ -238,76 +384,78 @@ async function p1bCalibrationModelCaller(args: {
   }
 }
 
-/**
- * Authority-only evaluation for harness / unit tests (no DB for decision).
- */
-export function evaluateP1bEconomicAuthority(input: {
-  perceptionEventId: string;
-  judgementId?: string;
-  xPostId: string;
-  speechAction?: "reply_on_x" | "do_nothing" | "reply_and_write_to_wall";
-  replyText?: string | null;
-  reasonCode?: string;
-  economicIntent: FinalEconomicIntent | unknown;
-  trustedWallet?: string | null;
-  purseState?: PurseEconomicState | null;
-}): AuthorityDecision {
-  return evaluateAuthorityDecision({
-    perceptionEventId: input.perceptionEventId,
-    judgementId: input.judgementId ?? "judgement-p1b",
-    xPostId: input.xPostId,
-    perceptionType: "mention",
-    finalStatus: "finalized",
-    finalAction: input.speechAction ?? "reply_on_x",
-    finalReplyText:
-      input.speechAction === "do_nothing"
-        ? null
-        : (input.replyText ?? "Heard."),
-    finalWallBody: null,
-    finalReasonCode: input.reasonCode ?? "answered_from_public_knowledge",
-    finalEconomicIntent: economicIntentToJson(
-      typeof input.economicIntent === "object" &&
-        input.economicIntent &&
-        "type" in (input.economicIntent as object)
-        ? normalizeModelEconomicAction(input.economicIntent)
-        : normalizeModelEconomicAction(input.economicIntent),
-    ),
-    economicContext: {
-      harnessBoundWallet: input.trustedWallet ?? null,
-      executionRail: "p1a_test",
-      purseState: input.purseState ?? harnessPurseState(),
-      sufficientBalance: true,
-    },
-  });
+function baseResult(partial: Partial<P1bEconomicJudgementResult> & {
+  ok: boolean;
+  status: P1bEconomicJudgementResult["status"];
+  mode: P1bEconomicJudgementResult["mode"];
+  operationLabel: string;
+  intentForced: boolean;
+  dryRun: boolean;
+  claimAttempted: boolean;
+  broadcastAttempted: boolean;
+  trustedWalletAvailable: boolean;
+  durationMs: number;
+}): P1bEconomicJudgementResult {
+  return partial;
+}
+
+function mapExecuteStatus(
+  status: string,
+): P1bEconomicJudgementResult["status"] {
+  if (status === "completed") return "completed";
+  if (status === "already_completed_skipped") return "already_completed";
+  if (status === "dry_run") return "dry_run";
+  if (status === "failed") return "failed";
+  return "failed";
+}
+
+function purseOpIdForEffect(
+  effectType: string | undefined,
+  effectId: string | undefined,
+): string | undefined {
+  if (!effectId) return undefined;
+  if (effectType === "burn_fenn") return stage12BurnPurseOperationId(effectId);
+  if (effectType === "transfer_fenn") {
+    return stage12TransferPurseOperationId(effectId);
+  }
+  return undefined;
 }
 
 /**
- * Run real Stage 12.4 final judge calibration (default path).
- * Dry-run by default: no claim, no settlement, no broadcast.
+ * Run real Stage 12.4 final judge calibration / P1B.2 model-originated execution.
  */
 export async function runP1bEconomicJudgementTest(input: {
   operationLabel: string;
   text: string;
   trustedWallet?: string | null;
   attestation?: TrustedEconomicAttestation | null;
-  /**
-   * Operator bypass for authority/executor tests only.
-   * When set, model is NOT called; labelled intentForced.
-   */
   forceIntent?: FinalEconomicIntent | null;
   replyText?: string;
   dryRun?: boolean;
-  /** Only with forceIntent — optional execute through Stage 12.6. */
+  /** Legacy force-intent execute path only. */
   execute?: boolean;
+  /**
+   * P1B.2: real model judgement then Stage 12.6 disposable settlement.
+   * Never uses force-intent. Default false.
+   */
+  executeModelIntent?: boolean;
   admin?: SupabaseClient;
-  /** Inject model for tests; production calibration uses real OpenAI. */
   callModel?: Stage124FinalJudgeModelCaller;
+  /** Inject Stage 12.6 deps (tests). */
+  executeEffect?: typeof import("@/lib/agent/stage126-execute").executeOneXPerceptionEffect;
+  env?: NodeJS.ProcessEnv;
+  /** Test hook: load official FENN (null allowed). */
+  loadOfficialFenn?: () => Promise<unknown>;
 }): Promise<P1bEconomicJudgementResult> {
   const started = Date.now();
   const operationLabel = input.operationLabel.trim();
   const text = input.text.slice(0, 2000);
-  const dryRun = input.execute === true ? false : input.dryRun !== false;
+  const executeModelIntent = input.executeModelIntent === true;
   const forceMode = Boolean(input.forceIntent);
+  const forceExecute =
+    Boolean(input.execute) && forceMode && !executeModelIntent;
+  const dryRun = executeModelIntent || forceExecute ? false : input.dryRun !== false;
+
   const trustedWallet = input.trustedWallet?.trim() || null;
   const trustedWalletAvailable = Boolean(trustedWallet);
   const attestation = input.attestation ?? null;
@@ -319,187 +467,84 @@ export async function runP1bEconomicJudgementTest(input: {
   const copyForwardNote =
     "Production Stage 12.4 copy-forward (no live caps) hard-sets economic NONE without re-judge; this harness always uses the real final-judge path.";
 
+  const env = input.env ?? process.env;
+
   try {
-    if (forceMode) {
-      // Forced-intent authority preview (or execute) — never called model judgement.
-      const forced = normalizeModelEconomicAction(input.forceIntent);
-      const runNonce = `force-${Date.now()}`;
-      const xPostId = p1bForcedIntentXPostId(
-        `${operationLabel}:${runNonce.slice(-8)}`,
-      );
-      const perceptionEventId = `pe-force-${runNonce}`;
-      const decision = evaluateP1bEconomicAuthority({
-        perceptionEventId,
-        xPostId,
-        speechAction: "reply_on_x",
-        replyText: input.replyText ?? "Noted.",
-        economicIntent: forced,
+    if (executeModelIntent && forceMode) {
+      return baseResult({
+        ok: false,
+        status: "failed",
+        mode: "MODEL_JUDGEMENT_EXECUTION_TEST",
+        operationLabel,
+        trustedWalletAvailable,
         trustedWallet,
-        purseState,
+        trustedAttestation: attestation,
+        intentForced: true,
+        dryRun: true,
+        claimAttempted: false,
+        broadcastAttempted: false,
+        errorCode: "p1b2_force_intent_incompatible_with_model_execution",
+        durationMs: Date.now() - started,
+        copyForwardNote,
       });
+    }
 
-      if (!dryRun && input.execute) {
-        // Optional execution for force mode only (P1A-style path retained).
-        const { persistXPerceptionAuthorization } = await import(
-          "@/lib/agent/authority-persist"
-        );
-        const { executeOneXPerceptionEffect } = await import(
-          "@/lib/agent/stage126-execute"
-        );
-        const db = input.admin ?? (await import("@/lib/supabase/admin").then((m) =>
-          m.createAdminClient(),
-        ));
+    if (forceMode) {
+      return await runForceIntentBranch({
+        input,
+        operationLabel,
+        text,
+        dryRun: !forceExecute,
+        forceExecute,
+        trustedWallet,
+        trustedWalletAvailable,
+        attestation,
+        purseState,
+        started,
+        copyForwardNote,
+      });
+    }
 
-        // Fresh event+judgement for force execute; no reuse of old finals.
-        const insertEvent = await db
-          .from("x_perception_events")
-          .insert({
-            x_post_id: xPostId,
-            perception_type: "mention",
-            author_x_user_id: AUTHOR_X_USER_ID,
-            author_username: "p1b_force_test",
-            author_display_name: "P1B Force Intent",
-            body: text,
-            conversation_id: null,
-            referenced_tweet_ids: [],
-            x_created_at: new Date().toISOString(),
-            status: "processed",
-            processed_at: new Date().toISOString(),
-          })
-          .select("id")
-          .single();
-        if (insertEvent.error || !insertEvent.data) {
-          throw new Error("p1b_force_event_insert_failed");
-        }
-        const eventId = String(insertEvent.data.id);
-        const insertJ = await db
-          .from("x_perception_judgements")
-          .insert({
-            perception_event_id: eventId,
-            action: "reply_on_x",
-            reason_code: "answered_from_public_knowledge",
-            engage: true,
-            reply_text: input.replyText ?? "Noted.",
-            wall_body: null,
-            needs_live_state: [],
-            identity_unverified: false,
-            knowledge_available: true,
-            model: "p1b-force-intent",
-            prompt_version: "p1b1-force",
-            final_status: "finalized",
-            live_state_available: true,
-            live_state_succeeded: [],
-            live_state_failed: [],
-            finalized_at: new Date().toISOString(),
-            final_action: "reply_on_x",
-            final_reason_code: "answered_from_public_knowledge",
-            final_engage: true,
-            final_reply_text: input.replyText ?? "Noted.",
-            final_wall_body: null,
-            final_identity_unverified: false,
-            final_model: "p1b-force-intent",
-            final_prompt_version: "p1b1-force",
-            final_economic_intent: economicIntentToJson(forced),
-          })
-          .select("id")
-          .single();
-        if (insertJ.error || !insertJ.data) {
-          throw new Error("p1b_force_judgement_insert_failed");
-        }
-        const decisionLive = evaluateP1bEconomicAuthority({
-          perceptionEventId: eventId,
-          judgementId: String(insertJ.data.id),
-          xPostId,
-          speechAction: "reply_on_x",
-          replyText: input.replyText ?? "Noted.",
-          economicIntent: forced,
-          trustedWallet,
-          purseState,
-        });
-        await persistXPerceptionAuthorization(
-          {
-            perceptionEventId: eventId,
-            judgementId: String(insertJ.data.id),
-            decision: decisionLive,
-          },
-          { admin: db as never },
-        );
-        const one = await executeOneXPerceptionEffect(
-          { xPostId, dryRun: false },
-          { admin: db as never },
-        );
-        void STAGE125_POLICY_VERSION;
-        return {
-          ok: one.status === "completed" || decisionLive.outcome === "permitted",
-          status: one.status === "completed" ? "executed" : "authorised",
-          mode: "forced_intent",
+    // --- Real model path ---
+    if (executeModelIntent) {
+      try {
+        assertP1b2DisposableRailReady(env);
+        await assertP1b2OfficialFennAbsent(input.loadOfficialFenn);
+      } catch (error) {
+        return baseResult({
+          ok: false,
+          status: "failed",
+          mode: "MODEL_JUDGEMENT_EXECUTION_TEST",
           operationLabel,
-          runNonce,
-          xPostId,
           untrustedText: text,
           trustedWalletAvailable,
           trustedWallet,
           trustedAttestation: attestation,
-          modelEconomicAction: forced,
-          intentForced: true,
-          speechAction: "reply_on_x",
-          replyText: input.replyText ?? "Noted.",
-          authorityOutcome: decisionLive.outcome,
-          policyCode: decisionLive.policyCode,
-          authorityPlannedEffects: decisionLive.effects.map((e) => ({
-            type: e.type,
-            idempotencyKey: e.idempotencyKey,
-            payload: e.payload,
-          })),
-          economicExecutionEligible: true,
-          dryRun: false,
-          claimAttempted: true,
-          broadcastAttempted: true,
-          externalResultId: one.externalResultId,
-          economicFollowupPreview: one.economicFollowupPreview,
-          errorCode: one.errorCode,
+          intentForced: false,
+          dryRun: true,
+          claimAttempted: false,
+          broadcastAttempted: false,
+          errorCode:
+            error instanceof Error
+              ? error.message.slice(0, 120)
+              : "p1b2_test_rail_refused",
+          isTest: true,
           durationMs: Date.now() - started,
           copyForwardNote,
-        };
+        });
       }
-
-      return {
-        ok: true,
-        status: "forced_intent_preview",
-        mode: "forced_intent",
-        operationLabel,
-        runNonce,
-        xPostId,
-        untrustedText: text,
-        trustedWalletAvailable,
-        trustedWallet,
-        trustedAttestation: attestation,
-        modelEconomicAction: forced,
-        intentForced: true,
-        speechAction: "reply_on_x",
-        replyText: input.replyText ?? "Noted.",
-        authorityOutcome: decision.outcome,
-        policyCode: decision.policyCode,
-        authorityPlannedEffects: decision.effects.map((e) => ({
-          type: e.type,
-          idempotencyKey: e.idempotencyKey,
-          payload: e.payload,
-        })),
-        economicExecutionEligible: decision.effects.some(
-          (e) => e.type === "transfer_fenn" || e.type === "burn_fenn",
-        ),
-        dryRun: true,
-        claimAttempted: false,
-        broadcastAttempted: false,
-        durationMs: Date.now() - started,
-        copyForwardNote,
-      };
     }
 
-    // --- Real model calibration path (default) ---
-    const runNonce = randomBytes(8).toString("hex");
-    const xPostId = p1bCalibrationXPostId(operationLabel, runNonce);
-    const perceptionEventId = `pe-cal-${runNonce}`;
+    // Durable identity for execution retries; random for dry calibration samples.
+    const runNonce = executeModelIntent
+      ? `exec-${operationLabel}`
+      : randomBytes(8).toString("hex");
+    const xPostId = executeModelIntent
+      ? p1b2ModelExecutionXPostId(operationLabel)
+      : p1bCalibrationXPostId(operationLabel, runNonce);
+    const provisionalPerceptionId = executeModelIntent
+      ? `pe-p1b2-${operationLabel}`
+      : `pe-cal-${runNonce}`;
 
     const intention = await runFennPublicFinalJudgement({
       xPostId,
@@ -515,28 +560,68 @@ export async function runP1bEconomicJudgementTest(input: {
       trustedPurseStateBlock: purseBlock,
       trustedWalletAvailable,
       trustedEconomicAttestationBlock: attestationBlock,
-      // Injected tests OR harness caller with diagnostics (not production redaction path).
       callModel: input.callModel ?? p1bCalibrationModelCaller,
     });
 
     const modelEconomicAction = intention.economicIntent;
-    const decision = evaluateP1bEconomicAuthority({
-      perceptionEventId,
+    const speechAction = intention.action;
+    const replyText = intention.replyText;
+
+    // Authority preview uses provisional id; execution rebinds to DB event id.
+    const decisionPreview = evaluateP1bEconomicAuthority({
+      perceptionEventId: provisionalPerceptionId,
       xPostId,
-      speechAction: intention.action,
-      replyText: intention.replyText,
+      speechAction: speechAction as "reply_on_x" | "do_nothing" | "reply_and_write_to_wall",
+      replyText,
       reasonCode: intention.reasonCode,
       economicIntent: modelEconomicAction,
       trustedWallet,
       purseState,
     });
 
-    // Calibration always ends as dry-run for model path — no claim/broadcast.
-    if (!dryRun) {
-      // Hard safety: model calibration must not become execution path.
-      return {
-        ok: false,
-        status: "failed",
+    const economicPlanned = decisionPreview.effects.filter(
+      (e) => e.type === "transfer_fenn" || e.type === "burn_fenn",
+    );
+
+    const plannedEffectsPayload = decisionPreview.effects.map((e) => ({
+      type: e.type,
+      idempotencyKey: e.idempotencyKey,
+      payload: e.payload,
+    }));
+
+    // ---- Dry-run calibration (default) ----
+    if (!executeModelIntent) {
+      if (input.execute === true && !forceMode) {
+        return baseResult({
+          ok: false,
+          status: "failed",
+          mode: "model_judgement",
+          operationLabel,
+          runNonce,
+          xPostId,
+          untrustedText: text,
+          trustedWalletAvailable,
+          trustedWallet,
+          trustedAttestation: attestation,
+          modelEconomicAction,
+          intentForced: false,
+          speechAction,
+          replyText,
+          authorityOutcome: decisionPreview.outcome,
+          policyCode: decisionPreview.policyCode,
+          authorityPlannedEffects: plannedEffectsPayload,
+          dryRun: true,
+          claimAttempted: false,
+          broadcastAttempted: false,
+          errorCode: "p1b_calibration_execute_forbidden",
+          durationMs: Date.now() - started,
+          copyForwardNote,
+        });
+      }
+
+      return baseResult({
+        ok: true,
+        status: "dry_run",
         mode: "model_judgement",
         operationLabel,
         runNonce,
@@ -547,19 +632,347 @@ export async function runP1bEconomicJudgementTest(input: {
         trustedAttestation: attestation,
         modelEconomicAction,
         intentForced: false,
+        speechAction,
+        replyText,
+        authorityOutcome: decisionPreview.outcome,
+        policyCode: decisionPreview.policyCode,
+        authorityPlannedEffects: plannedEffectsPayload,
+        economicExecutionEligible: economicPlanned.length > 0,
         dryRun: true,
         claimAttempted: false,
         broadcastAttempted: false,
-        errorCode: "p1b_calibration_execute_forbidden",
+        isTest: true,
         durationMs: Date.now() - started,
         copyForwardNote,
-      };
+      });
     }
 
-    return {
-      ok: true,
-      status: "dry_run",
-      mode: "model_judgement",
+    // ---- P1B.2 model-originated execution ----
+    if (modelEconomicAction.type === "NONE") {
+      return baseResult({
+        ok: true,
+        status: "no_economic_action",
+        mode: "MODEL_JUDGEMENT_EXECUTION_TEST",
+        operationLabel,
+        runNonce,
+        xPostId,
+        untrustedText: text,
+        trustedWalletAvailable,
+        trustedWallet,
+        trustedAttestation: attestation,
+        modelEconomicAction,
+        intentForced: false,
+        speechAction,
+        replyText,
+        authorityOutcome: decisionPreview.outcome,
+        policyCode: decisionPreview.policyCode,
+        authorityPlannedEffects: plannedEffectsPayload,
+        economicExecutionEligible: false,
+        dryRun: false,
+        claimAttempted: false,
+        broadcastAttempted: false,
+        isTest: true,
+        durationMs: Date.now() - started,
+        copyForwardNote,
+      });
+    }
+
+    // Economic-only decision for persist (no X reply effect).
+    const economicDecisionForPreview = planP1bEconomicOnlyDecision({
+      perceptionEventId: provisionalPerceptionId,
+      xPostId,
+      reasonCode: intention.reasonCode,
+      economicIntent: modelEconomicAction,
+      trustedWallet,
+      purseState,
+    });
+
+    const economicOnly = economicDecisionForPreview.effects.filter(
+      (e) => e.type === "transfer_fenn" || e.type === "burn_fenn",
+    );
+
+    if (economicOnly.length === 0) {
+      return baseResult({
+        ok: true,
+        status: "economic_refused",
+        mode: "MODEL_JUDGEMENT_EXECUTION_TEST",
+        operationLabel,
+        runNonce,
+        xPostId,
+        untrustedText: text,
+        trustedWalletAvailable,
+        trustedWallet,
+        trustedAttestation: attestation,
+        modelEconomicAction,
+        intentForced: false,
+        speechAction,
+        replyText,
+        authorityOutcome: economicDecisionForPreview.outcome,
+        policyCode: economicDecisionForPreview.policyCode,
+        authorityPlannedEffects: economicDecisionForPreview.effects.map((e) => ({
+          type: e.type,
+          idempotencyKey: e.idempotencyKey,
+          payload: e.payload,
+        })),
+        economicExecutionEligible: false,
+        dryRun: false,
+        claimAttempted: false,
+        broadcastAttempted: false,
+        isTest: true,
+        durationMs: Date.now() - started,
+        copyForwardNote,
+      });
+    }
+
+    const db =
+      input.admin ??
+      (await import("@/lib/supabase/admin").then((m) => m.createAdminClient()));
+
+    // Scaffold event + judgement first so we have durable perceptionEventId.
+    const { data: existingEvent } = await db
+      .from("x_perception_events")
+      .select("id")
+      .eq("x_post_id", xPostId)
+      .maybeSingle();
+
+    let perceptionEventId: string;
+    if (existingEvent?.id) {
+      perceptionEventId = String(existingEvent.id);
+    } else {
+      const insert = await db
+        .from("x_perception_events")
+        .insert({
+          x_post_id: xPostId,
+          perception_type: "mention",
+          author_x_user_id: AUTHOR_X_USER_ID,
+          author_username: "p1b2_model_exec",
+          author_display_name: "P1B.2 Model Execution",
+          body: text,
+          conversation_id: null,
+          referenced_tweet_ids: [],
+          x_created_at: new Date().toISOString(),
+          status: "processed",
+          processed_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (insert.error || !insert.data) {
+        const retry = await db
+          .from("x_perception_events")
+          .select("id")
+          .eq("x_post_id", xPostId)
+          .maybeSingle();
+        if (retry.error || !retry.data) {
+          throw new Error("p1b2_event_insert_failed");
+        }
+        perceptionEventId = String(retry.data.id);
+      } else {
+        perceptionEventId = String(insert.data.id);
+      }
+    }
+
+    // Durable economic plan keyed to real event UUID.
+    const decisionDurable = planP1bEconomicOnlyDecision({
+      perceptionEventId,
+      xPostId,
+      reasonCode: intention.reasonCode,
+      economicIntent: modelEconomicAction,
+      trustedWallet,
+      purseState,
+    });
+
+    const durableEconomic = decisionDurable.effects.filter(
+      (e) => e.type === "transfer_fenn" || e.type === "burn_fenn",
+    );
+    if (durableEconomic.length === 0) {
+      return baseResult({
+        ok: true,
+        status: "economic_refused",
+        mode: "MODEL_JUDGEMENT_EXECUTION_TEST",
+        operationLabel,
+        runNonce,
+        xPostId,
+        untrustedText: text,
+        trustedWalletAvailable,
+        trustedWallet,
+        trustedAttestation: attestation,
+        modelEconomicAction,
+        intentForced: false,
+        speechAction,
+        replyText,
+        authorityOutcome: decisionDurable.outcome,
+        policyCode: decisionDurable.policyCode,
+        authorityPlannedEffects: decisionDurable.effects.map((e) => ({
+          type: e.type,
+          idempotencyKey: e.idempotencyKey,
+          payload: e.payload,
+        })),
+        dryRun: false,
+        claimAttempted: false,
+        broadcastAttempted: false,
+        isTest: true,
+        durationMs: Date.now() - started,
+        copyForwardNote,
+      });
+    }
+
+    const persistDecision: AuthorityDecision = {
+      ...decisionDurable,
+      effects: durableEconomic,
+      finalAction: "do_nothing",
+      sourceXPostId: xPostId,
+      policyVersion: STAGE125_POLICY_VERSION,
+    };
+
+    const replyForAudit =
+      replyText && replyClaimsCompletedEconomicAction(replyText)
+        ? "I have considered this. Settlement is not claimed until confirmed."
+        : replyText;
+
+    const { data: existingJudgement } = await db
+      .from("x_perception_judgements")
+      .select("id")
+      .eq("perception_event_id", perceptionEventId)
+      .maybeSingle();
+
+    let judgementId: string;
+    if (existingJudgement?.id) {
+      judgementId = String(existingJudgement.id);
+    } else {
+      const insertJ = await db
+        .from("x_perception_judgements")
+        .insert({
+          perception_event_id: perceptionEventId,
+          action: speechAction,
+          reason_code: intention.reasonCode,
+          engage: true,
+          reply_text: replyForAudit,
+          wall_body: null,
+          needs_live_state: [],
+          identity_unverified: false,
+          knowledge_available: true,
+          model: "p1b2-model-originated",
+          prompt_version: "p1b2-v1",
+          final_status: "finalized",
+          live_state_available: true,
+          live_state_succeeded: [],
+          live_state_failed: [],
+          finalized_at: new Date().toISOString(),
+          final_action: "do_nothing",
+          final_reason_code: intention.reasonCode,
+          final_engage: false,
+          final_reply_text: replyForAudit,
+          final_wall_body: null,
+          final_identity_unverified: false,
+          final_model: "p1b2-model-originated",
+          final_prompt_version: "p1b2-v1",
+          final_economic_intent: economicIntentToJson(modelEconomicAction),
+        })
+        .select("id")
+        .single();
+      if (insertJ.error || !insertJ.data) {
+        const retry = await db
+          .from("x_perception_judgements")
+          .select("id")
+          .eq("perception_event_id", perceptionEventId)
+          .maybeSingle();
+        if (retry.error || !retry.data) {
+          throw new Error("p1b2_judgement_insert_failed");
+        }
+        judgementId = String(retry.data.id);
+      } else {
+        judgementId = String(insertJ.data.id);
+      }
+    }
+
+    const { persistXPerceptionAuthorization } = await import(
+      "@/lib/agent/authority-persist"
+    );
+    await persistXPerceptionAuthorization(
+      {
+        perceptionEventId,
+        judgementId,
+        decision: persistDecision,
+      },
+      { admin: db as never },
+    );
+
+    const { data: effects } = await db
+      .from("x_perception_effects")
+      .select("id, type, status")
+      .eq("perception_event_id", perceptionEventId);
+
+    const econEffect = (effects ?? []).find((e) => {
+      const t = String((e as { type?: string }).type ?? "");
+      return t === "transfer_fenn" || t === "burn_fenn";
+    }) as { id?: string; type?: string; status?: string } | undefined;
+
+    // Prefer completed economic effect on re-run without rebroadcasting via empty claim
+    if (econEffect?.status === "completed") {
+      const effectId = String(econEffect.id);
+      return baseResult({
+        ok: true,
+        status: "already_completed",
+        mode: "MODEL_JUDGEMENT_EXECUTION_TEST",
+        operationLabel,
+        runNonce,
+        xPostId,
+        untrustedText: text,
+        trustedWalletAvailable,
+        trustedWallet,
+        trustedAttestation: attestation,
+        modelEconomicAction,
+        intentForced: false,
+        speechAction,
+        replyText: replyForAudit,
+        authorityOutcome: persistDecision.outcome,
+        policyCode: persistDecision.policyCode,
+        authorityPlannedEffects: persistDecision.effects.map((e) => ({
+          type: e.type,
+          idempotencyKey: e.idempotencyKey,
+          payload: e.payload,
+        })),
+        economicExecutionEligible: true,
+        dryRun: false,
+        claimAttempted: false,
+        broadcastAttempted: false,
+        effectId,
+        purseOperationId: purseOpIdForEffect(econEffect.type, effectId),
+        isTest: true,
+        durationMs: Date.now() - started,
+        copyForwardNote,
+      });
+    }
+
+    const executeOne =
+      input.executeEffect ??
+      (await import("@/lib/agent/stage126-execute")).executeOneXPerceptionEffect;
+
+    const one = await executeOne(
+      { xPostId, dryRun: false },
+      { admin: db as never },
+    );
+
+    const effectId = one.effectId ?? (econEffect?.id ? String(econEffect.id) : undefined);
+    const effectType = one.effectType ?? econEffect?.type;
+    let status = mapExecuteStatus(one.status);
+    if (one.failureClass === "ambiguous" || one.errorCode === "purse_ambiguous") {
+      status = "ambiguous";
+    }
+    if (one.status === "already_completed_skipped") {
+      status = "already_completed";
+    }
+
+    const signed =
+      one.status === "completed" || one.status === "already_completed_skipped";
+
+    return baseResult({
+      ok:
+        status === "completed" ||
+        status === "already_completed" ||
+        status === "ambiguous",
+      status,
+      mode: "MODEL_JUDGEMENT_EXECUTION_TEST",
       operationLabel,
       runNonce,
       xPostId,
@@ -569,24 +982,28 @@ export async function runP1bEconomicJudgementTest(input: {
       trustedAttestation: attestation,
       modelEconomicAction,
       intentForced: false,
-      speechAction: intention.action,
-      replyText: intention.replyText,
-      authorityOutcome: decision.outcome,
-      policyCode: decision.policyCode,
-      authorityPlannedEffects: decision.effects.map((e) => ({
+      speechAction,
+      replyText: replyForAudit,
+      authorityOutcome: persistDecision.outcome,
+      policyCode: persistDecision.policyCode,
+      authorityPlannedEffects: persistDecision.effects.map((e) => ({
         type: e.type,
         idempotencyKey: e.idempotencyKey,
         payload: e.payload,
       })),
-      economicExecutionEligible: decision.effects.some(
-        (e) => e.type === "transfer_fenn" || e.type === "burn_fenn",
-      ),
-      dryRun: true,
-      claimAttempted: false,
-      broadcastAttempted: false,
+      economicExecutionEligible: true,
+      dryRun: false,
+      claimAttempted: true,
+      broadcastAttempted: signed || one.status === "failed",
+      effectId,
+      purseOperationId: purseOpIdForEffect(effectType, effectId),
+      externalResultId: one.externalResultId,
+      economicFollowupPreview: one.economicFollowupPreview,
+      isTest: true,
+      errorCode: one.errorCode,
       durationMs: Date.now() - started,
       copyForwardNote,
-    };
+    });
   } catch (error) {
     const providerFailure =
       error &&
@@ -600,10 +1017,14 @@ export async function runP1bEconomicJudgementTest(input: {
           ? sanitizeHarnessProviderFailure(error)
           : null;
 
-    return {
+    return baseResult({
       ok: false,
       status: "scaffold_failed",
-      mode: forceMode ? "forced_intent" : "model_judgement",
+      mode: forceMode
+        ? "forced_intent"
+        : executeModelIntent
+          ? "MODEL_JUDGEMENT_EXECUTION_TEST"
+          : "model_judgement",
       operationLabel,
       untrustedText: text,
       trustedWalletAvailable,
@@ -618,8 +1039,212 @@ export async function runP1bEconomicJudgementTest(input: {
         error instanceof Error ? error.message.slice(0, 180) : "p1b_failed",
       providerFailure,
       copyForwardNote,
-    };
+    });
   }
+}
+
+async function runForceIntentBranch(args: {
+  input: {
+    forceIntent?: FinalEconomicIntent | null;
+    replyText?: string;
+    admin?: SupabaseClient;
+    execute?: boolean;
+  };
+  operationLabel: string;
+  text: string;
+  dryRun: boolean;
+  forceExecute: boolean;
+  trustedWallet: string | null;
+  trustedWalletAvailable: boolean;
+  attestation: TrustedEconomicAttestation | null;
+  purseState: PurseEconomicState;
+  started: number;
+  copyForwardNote: string;
+}): Promise<P1bEconomicJudgementResult> {
+  const {
+    operationLabel,
+    text,
+    dryRun,
+    forceExecute,
+    trustedWallet,
+    trustedWalletAvailable,
+    attestation,
+    purseState,
+    started,
+    copyForwardNote,
+  } = args;
+  const forced = normalizeModelEconomicAction(args.input.forceIntent);
+  const runNonce = `force-${Date.now()}`;
+  const xPostId = p1bForcedIntentXPostId(
+    `${operationLabel}:${runNonce.slice(-8)}`,
+  );
+  const perceptionEventId = `pe-force-${runNonce}`;
+  const decision = evaluateP1bEconomicAuthority({
+    perceptionEventId,
+    xPostId,
+    speechAction: "reply_on_x",
+    replyText: args.input.replyText ?? "Noted.",
+    economicIntent: forced,
+    trustedWallet,
+    purseState,
+  });
+
+  if (forceExecute) {
+    const { persistXPerceptionAuthorization } = await import(
+      "@/lib/agent/authority-persist"
+    );
+    const { executeOneXPerceptionEffect } = await import(
+      "@/lib/agent/stage126-execute"
+    );
+    const db =
+      args.input.admin ??
+      (await import("@/lib/supabase/admin").then((m) => m.createAdminClient()));
+
+    const insertEvent = await db
+      .from("x_perception_events")
+      .insert({
+        x_post_id: xPostId,
+        perception_type: "mention",
+        author_x_user_id: AUTHOR_X_USER_ID,
+        author_username: "p1b_force_test",
+        author_display_name: "P1B Force Intent",
+        body: text,
+        conversation_id: null,
+        referenced_tweet_ids: [],
+        x_created_at: new Date().toISOString(),
+        status: "processed",
+        processed_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+    if (insertEvent.error || !insertEvent.data) {
+      throw new Error("p1b_force_event_insert_failed");
+    }
+    const eventId = String(insertEvent.data.id);
+    const insertJ = await db
+      .from("x_perception_judgements")
+      .insert({
+        perception_event_id: eventId,
+        action: "reply_on_x",
+        reason_code: "answered_from_public_knowledge",
+        engage: true,
+        reply_text: args.input.replyText ?? "Noted.",
+        wall_body: null,
+        needs_live_state: [],
+        identity_unverified: false,
+        knowledge_available: true,
+        model: "p1b-force-intent",
+        prompt_version: "p1b1-force",
+        final_status: "finalized",
+        live_state_available: true,
+        live_state_succeeded: [],
+        live_state_failed: [],
+        finalized_at: new Date().toISOString(),
+        final_action: "do_nothing",
+        final_reason_code: "answered_from_public_knowledge",
+        final_engage: false,
+        final_reply_text: null,
+        final_wall_body: null,
+        final_identity_unverified: false,
+        final_model: "p1b-force-intent",
+        final_prompt_version: "p1b1-force",
+        final_economic_intent: economicIntentToJson(forced),
+      })
+      .select("id")
+      .single();
+    if (insertJ.error || !insertJ.data) {
+      throw new Error("p1b_force_judgement_insert_failed");
+    }
+    const decisionLive = planP1bEconomicOnlyDecision({
+      perceptionEventId: eventId,
+      xPostId,
+      economicIntent: forced,
+      trustedWallet,
+      purseState,
+    });
+    const economicOnly = decisionLive.effects.filter(
+      (e) => e.type === "transfer_fenn" || e.type === "burn_fenn",
+    );
+    await persistXPerceptionAuthorization(
+      {
+        perceptionEventId: eventId,
+        judgementId: String(insertJ.data.id),
+        decision: decisionLive,
+      },
+      { admin: db as never },
+    );
+    const one = await executeOneXPerceptionEffect(
+      { xPostId, dryRun: false },
+      { admin: db as never },
+    );
+    return baseResult({
+      ok: one.status === "completed" || one.status === "already_completed_skipped",
+      status: mapExecuteStatus(one.status),
+      mode: "forced_intent",
+      operationLabel,
+      runNonce,
+      xPostId,
+      untrustedText: text,
+      trustedWalletAvailable,
+      trustedWallet,
+      trustedAttestation: attestation,
+      modelEconomicAction: forced,
+      intentForced: true,
+      speechAction: "reply_on_x",
+      replyText: args.input.replyText ?? "Noted.",
+      authorityOutcome: decisionLive.outcome,
+      policyCode: decisionLive.policyCode,
+      authorityPlannedEffects: economicOnly.map((e) => ({
+        type: e.type,
+        idempotencyKey: e.idempotencyKey,
+        payload: e.payload,
+      })),
+      economicExecutionEligible: true,
+      dryRun: false,
+      claimAttempted: true,
+      broadcastAttempted: true,
+      effectId: one.effectId,
+      purseOperationId: purseOpIdForEffect(one.effectType, one.effectId),
+      externalResultId: one.externalResultId,
+      economicFollowupPreview: one.economicFollowupPreview,
+      isTest: true,
+      errorCode: one.errorCode,
+      durationMs: Date.now() - started,
+      copyForwardNote,
+    });
+  }
+
+  return baseResult({
+    ok: true,
+    status: "forced_intent_preview",
+    mode: "forced_intent",
+    operationLabel,
+    runNonce,
+    xPostId,
+    untrustedText: text,
+    trustedWalletAvailable,
+    trustedWallet,
+    trustedAttestation: attestation,
+    modelEconomicAction: forced,
+    intentForced: true,
+    speechAction: "reply_on_x",
+    replyText: args.input.replyText ?? "Noted.",
+    authorityOutcome: decision.outcome,
+    policyCode: decision.policyCode,
+    authorityPlannedEffects: decision.effects.map((e) => ({
+      type: e.type,
+      idempotencyKey: e.idempotencyKey,
+      payload: e.payload,
+    })),
+    economicExecutionEligible: decision.effects.some(
+      (e) => e.type === "transfer_fenn" || e.type === "burn_fenn",
+    ),
+    dryRun: true,
+    claimAttempted: false,
+    broadcastAttempted: false,
+    durationMs: Date.now() - started,
+    copyForwardNote,
+  });
 }
 
 /**
@@ -649,7 +1274,7 @@ export function buildP1bCalibrationPromptBodies(input: {
       input.attestation ?? null,
     ),
   });
-  // Untrusted markers used by production payload builder
   void FENN_UNTRUSTED_X_MARKERS;
   return { system, user };
 }
+

@@ -153,7 +153,39 @@ npm run agent:test-economic-judgement -- \
 
 `--execute` only with `--force-intent` (disposable test rail). Model calibration never executes.
 
-Reusing `--operation-label` does **not** freeze old model intent: each model calibration run uses a fresh synthetic post id (nonce). Operation label remains grouping metadata.
+Reusing `--operation-label` does **not** freeze old model intent for **dry-run calibration**: each dry run uses a fresh synthetic post id (nonce). Operation label remains grouping metadata.
+
+## P1B.2 — model-originated execution (disposable rail)
+
+After calibration, prove that **FENN’s own model judgement** can move the **test token** on Robinhood Chain via existing Stage 12.6 → Purse adapters.
+
+```bash
+npm run agent:test-economic-judgement -- \
+  --text "I reported the issue." \
+  --trusted-wallet 0x… \
+  --trusted-fact "FENN operators verified that this account privately disclosed a critical wallet-data vulnerability. Reproduction was confirmed and remediation completed." \
+  --reference-id security-live-test-001 \
+  --operation-label p1b2-model-transfer-001 \
+  --execute-model-intent
+```
+
+Rules:
+
+| Rule | Detail |
+|------|--------|
+| Default | still dry-run; **never** broadcasts without `--execute-model-intent` |
+| Model | real Stage 12.4 only — **not** `--force-intent` |
+| NONE | `status = no_economic_action` — success, **no** claim/broadcast |
+| Rerun judgement sample | use a **fresh** `--operation-label` |
+| Same label retry | durable synthetic post id + Stage 12 effect id → same Purse `operation_id` |
+| Rail | `FENN_PURSE_TEST_MODE=explicit_allow`, test token envs, Robinhood 4663 |
+| Host | production host refused |
+| Official FENN | if official FENN resolves, disposable execution is blocked |
+| Settlement rows | `is_test=true`; Commons hides them |
+
+Do **not** use `--force-intent` for the model-originated chain proof.
+
+Output mode: `MODEL_JUDGEMENT_EXECUTION_TEST`, `intentForced: false`.
 
 ## Migration
 
@@ -163,7 +195,7 @@ Reusing `--operation-label` does **not** freeze old model intent: each model cal
 - `permitted_transfer_p1b` / `permitted_burn_p1b` / `permitted_reply_and_economic`
 - Claim + finalize RPC extensions
 
-**P1B.1:** no migration. Trusted attestation is harness/runtime DTO only.
+**P1B.1 / P1B.2:** no migration. Trusted attestation is harness/runtime DTO only. Execution reuses Stage 12 + Purse adapters.
 
 ## Toward P1C
 
@@ -171,4 +203,5 @@ Reusing `--operation-label` does **not** freeze old model intent: each model cal
 - Operator attestation beyond harness DTO
 - Copy-forward economic re-judge decision
 - Post-confirmation follow-up as real second reply
+- Optional official-FENN model-originated path (not this harness)
 - Still fixed amount until P2

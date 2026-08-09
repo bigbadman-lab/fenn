@@ -1,26 +1,17 @@
 /**
- * Stage P1B.1 ops CLI: real economic judgement calibration + optional force-intent.
+ * Stage P1B.1/P1B.2 ops CLI: real economic judgement + optional model-originated execution.
  *
- * Default (calibration): real Stage 12.4 final judge → authority PREVIEW.
- * Never claims/broadcasts in calibration mode.
+ * Default: calibration dry-run (real Stage 12.4 model + authority preview).
  *
- * Usage:
- *   npm run agent:test-economic-judgement -- \
- *     --text "I found the bug." \
- *     --operation-label calibration-001 \
- *     --dry-run
- *
+ * P1B.2 model-originated disposable-rail execution:
  *   npm run agent:test-economic-judgement -- \
  *     --text "I reported the issue." \
  *     --trusted-wallet 0x… \
  *     --trusted-fact "FENN operators verified …" \
- *     --operation-label calibration-B \
- *     --dry-run
+ *     --operation-label p1b2-model-transfer-001 \
+ *     --execute-model-intent
  *
- * Force intent (authority/executor only — NOT model judgement):
- *   npm run agent:test-economic-judgement -- \
- *     --text "…" --operation-label force-1 \
- *     --force-intent transfer --trusted-wallet 0x… --dry-run
+ * Never use --force-intent for the model-originated chain proof.
  */
 
 import {
@@ -42,6 +33,7 @@ function parseArgs(argv: string[]): {
   forceIntent: "none" | "transfer" | "burn" | null;
   dryRun: boolean;
   execute: boolean;
+  executeModelIntent: boolean;
 } {
   let text: string | null = null;
   let operationLabel: string | null = null;
@@ -52,6 +44,7 @@ function parseArgs(argv: string[]): {
   let forceIntent: "none" | "transfer" | "burn" | null = null;
   let dryRun = false;
   let execute = false;
+  let executeModelIntent = false;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--text") {
@@ -90,7 +83,6 @@ function parseArgs(argv: string[]): {
       i += 1;
       continue;
     }
-    // Backward-compat alias — still force mode, not default model.
     if (arg === "--intent") {
       const v = (argv[i + 1] ?? "none").toLowerCase();
       if (v === "transfer" || v === "burn" || v === "none") forceIntent = v;
@@ -99,6 +91,7 @@ function parseArgs(argv: string[]): {
     }
     if (arg === "--dry-run") dryRun = true;
     if (arg === "--execute") execute = true;
+    if (arg === "--execute-model-intent") executeModelIntent = true;
   }
   return {
     text,
@@ -110,6 +103,7 @@ function parseArgs(argv: string[]): {
     forceIntent,
     dryRun,
     execute,
+    executeModelIntent,
   };
 }
 
@@ -137,23 +131,37 @@ async function main() {
   if (!args.text || !args.operationLabel) {
     console.error(
       [
-        "Usage (real model calibration — default):",
+        "Usage (real model calibration — default dry-run):",
         "  npm run agent:test-economic-judgement -- \\",
         "    --text \"…\" --operation-label calibration-001 --dry-run",
         "",
+        "P1B.2 model-originated disposable test-rail execution:",
         "  npm run agent:test-economic-judgement -- \\",
         "    --text \"I reported the issue.\" \\",
         "    --trusted-wallet 0x… \\",
-        "    --trusted-fact \"FENN operators verified a consequential contribution…\" \\",
-        "    --operation-label calibration-B --dry-run",
+        "    --trusted-fact \"FENN operators verified …\" \\",
+        "    --reference-id security-live-test-001 \\",
+        "    --operation-label p1b2-model-transfer-001 \\",
+        "    --execute-model-intent",
         "",
         "Force intent (authority only — NOT model judgement):",
         "  … --force-intent transfer --trusted-wallet 0x… --dry-run",
         "",
-        "Default dry-run: model judges + authority preview; no claim/broadcast.",
-        "Trusted wallet is destination eligibility only — not merit.",
-        "Untrusted text cannot create attestation.",
+        "Rules:",
+        "  - Default never broadcasts.",
+        "  - --execute-model-intent never with --force-intent.",
+        "  - Model may choose NONE → no transaction (success: no_economic_action).",
+        "  - Fresh operation-label for a new model sample.",
+        "  - Disposable rail only (FENN_PURSE_TEST_MODE=explicit_allow).",
       ].join("\n"),
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  if (args.executeModelIntent && args.forceIntent != null) {
+    console.error(
+      "[agent:test-economic-judgement] --execute-model-intent is incompatible with --force-intent",
     );
     process.exitCode = 1;
     return;
@@ -183,12 +191,15 @@ async function main() {
   const forceIntent =
     args.forceIntent != null ? buildForceIntent(args.forceIntent) : null;
 
-  // Execute only allowed with force-intent (ops), never with model calibration.
-  const execute =
-    Boolean(args.execute) && forceIntent != null && args.forceIntent !== "none";
-  if (args.execute && !execute) {
+  // Legacy --execute: force-intent path only (not model).
+  const forceExecute =
+    Boolean(args.execute) &&
+    !args.executeModelIntent &&
+    forceIntent != null &&
+    args.forceIntent !== "none";
+  if (args.execute && !forceExecute && !args.executeModelIntent) {
     console.error(
-      "[agent:test-economic-judgement] --execute requires --force-intent and is never used for model calibration",
+      "[agent:test-economic-judgement] --execute alone is not valid; use --execute-model-intent (model) or --execute with --force-intent (ops)",
     );
     process.exitCode = 1;
     return;
@@ -200,9 +211,17 @@ async function main() {
     trustedWallet: args.trustedWallet,
     attestation,
     forceIntent,
-    dryRun: !execute,
-    execute,
+    dryRun: args.executeModelIntent || forceExecute ? false : true,
+    execute: forceExecute,
+    executeModelIntent: args.executeModelIntent,
   });
+
+  const warning =
+    result.mode === "MODEL_JUDGEMENT_EXECUTION_TEST"
+      ? "P1B.2 model-originated execution — disposable rail only; intentForced must be false"
+      : result.mode === "model_judgement"
+        ? "P1B.1 calibration — real Stage 12.4 model judgement; no claim/broadcast"
+        : "P1B force-intent — operator bypass; NOT model economic judgement";
 
   console.log(
     JSON.stringify(
@@ -214,10 +233,7 @@ async function main() {
         dryRun: result.dryRun,
         claimAttempted: result.claimAttempted,
         broadcastAttempted: result.broadcastAttempted,
-        warning:
-          result.mode === "model_judgement"
-            ? "P1B.1 calibration — real Stage 12.4 model judgement; no claim/broadcast"
-            : "P1B force-intent — operator bypass; NOT model economic judgement",
+        warning,
         operationLabel: result.operationLabel,
         runNonce: result.runNonce ?? null,
         xPostId: result.xPostId ?? null,
@@ -238,8 +254,11 @@ async function main() {
         policyCode: result.policyCode ?? null,
         authorityPlannedEffects: result.authorityPlannedEffects ?? [],
         economicExecutionEligible: result.economicExecutionEligible ?? false,
+        effectId: result.effectId ?? null,
+        purseOperationId: result.purseOperationId ?? null,
         externalResultId: result.externalResultId ?? null,
         economicFollowupPreview: result.economicFollowupPreview ?? null,
+        isTest: result.isTest ?? null,
         copyForwardNote: result.copyForwardNote ?? null,
         errorCode: result.errorCode ?? null,
         providerFailure: result.providerFailure ?? null,
