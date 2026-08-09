@@ -3,12 +3,36 @@
  */
 
 import { replyClaimsCompletedEconomicAction } from "@/lib/agent/economic-followup";
-import type { WalletSpeechFacts } from "@/lib/agent/wallet-speech-facts";
+import {
+  walletSpeechMomentRequiresAmount,
+  walletSpeechMomentRequiresShortWallet,
+  type WalletSpeechFacts,
+} from "@/lib/agent/wallet-speech-facts";
 
 export type WalletSpeechValidation = {
   ok: boolean;
   reasons: string[];
 };
+
+/**
+ * Whether prose presents the locked amount as a number token.
+ * Accepts the frozen decimal string and common thousand-separator forms of the
+ * *same* digits (e.g. 10000 ↔ 10,000). Does not accept a different magnitude.
+ */
+export function textPresentsLockedAmount(
+  text: string,
+  lockedAmount: string,
+): boolean {
+  const locked = lockedAmount.replace(/,/g, "").trim().replace(/\.0+$/, "");
+  if (!locked) return false;
+  const nums =
+    text.match(/\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b|\b\d+(?:\.\d+)?\b/g) ?? [];
+  for (const n of nums) {
+    const norm = n.replace(/,/g, "").replace(/\.0+$/, "");
+    if (norm === locked) return true;
+  }
+  return false;
+}
 
 /**
  * Deterministic checks after model expression.
@@ -47,23 +71,15 @@ export function validateWalletSpeechAgainstFacts(
     }
   }
 
-  if (facts.moment === "destination_required" && amount) {
-    if (!t.includes(amount)) {
+  // Amount required by moment + fact present → prose must present that amount.
+  if (walletSpeechMomentRequiresAmount(facts.moment) && amount) {
+    if (!textPresentsLockedAmount(t, amount)) {
       reasons.push("missing_amount");
     }
   }
 
-  if (facts.moment === "destination_confirmation" && short) {
+  if (walletSpeechMomentRequiresShortWallet(facts.moment) && short) {
     if (!t.includes(short)) {
-      reasons.push("missing_short_wallet");
-    }
-  }
-
-  if (facts.moment === "destination_confirmed_pending") {
-    if (amount && !t.includes(amount)) {
-      reasons.push("missing_amount");
-    }
-    if (short && !t.includes(short)) {
       reasons.push("missing_short_wallet");
     }
   }
@@ -87,17 +103,13 @@ export function validateWalletSpeechAgainstFacts(
   if (short) {
     const addrs = t.match(/0x[a-fA-F0-9]{40}/g) ?? [];
     for (const a of addrs) {
-      // short form is first6…last4 of normalized — full address may include hex without matching short
       const norm = a.toLowerCase();
-      const shortCore = short.replace("…", "").toLowerCase();
-      // Allow full address only if it starts/ends matching short form prefix/suffix
       const prefix = short.slice(0, 6).toLowerCase();
       const suffix = short.slice(-4).toLowerCase();
       if (!(norm.startsWith(prefix) && norm.endsWith(suffix))) {
         reasons.push("foreign_wallet");
         break;
       }
-      void shortCore;
     }
   }
 
@@ -106,17 +118,15 @@ export function validateWalletSpeechAgainstFacts(
 
 /** Detect another positive integer-like amount token that is not the locked amount. */
 function extractForeignAmount(text: string, locked: string): boolean {
-  const lockedNorm = locked.replace(/,/g, "").trim();
-  // Match numbers that look like token amounts (not hex tails).
-  const nums = text.match(/\b\d{1,3}(?:,\d{3})+\b|\b\d{4,}\b|\b\d+\b/g) ?? [];
+  const lockedNorm = locked.replace(/,/g, "").trim().replace(/\.0+$/, "");
+  const nums =
+    text.match(/\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b|\b\d+(?:\.\d+)?\b/g) ?? [];
   for (const n of nums) {
-    const norm = n.replace(/,/g, "");
+    const norm = n.replace(/,/g, "").replace(/\.0+$/, "");
     if (norm === lockedNorm) continue;
     // Allow tiny counts in prose (1, 2) unless they equal multi-digit locked
     if (norm.length <= 2 && lockedNorm.length > 2) continue;
-    // Ignore 0x hex length fragments mis-detected — already handled by \b
     if (norm !== lockedNorm && Number(norm) > 0) {
-      // If locked is 25000, reject 100000 appearing
       if (norm.length >= 3 || Number(norm) >= 100) {
         return true;
       }

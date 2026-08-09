@@ -765,7 +765,7 @@ async function applyPendingDestinationSideEffects(input: {
     return decision;
   }
 
-  await createAwaitingWalletInteraction({
+  const created = await createAwaitingWalletInteraction({
     authorXUserId: claimed.authorXUserId,
     sourceXPostId: claimed.xPostId,
     originPerceptionEventId: claimed.perceptionEventId,
@@ -775,8 +775,14 @@ async function applyPendingDestinationSideEffects(input: {
     admin: input.admin as never,
   });
 
+  // Frozen amount from durable interaction when created; else intent (same freeze law).
+  const frozenAmount =
+    created.ok && created.interaction.proposedAmount.trim()
+      ? created.interaction.proposedAmount
+      : intent.proposedAmount;
+
   // P1D.1: fact-locked Book of Speech (not raw template overwrite).
-  const facts = speechFactsDestinationRequired(intent.proposedAmount);
+  const facts = speechFactsDestinationRequired(frozenAmount);
   const rendered = await renderWalletCollectionSpeech({
     facts,
     untrustedUserBody: claimed.body,

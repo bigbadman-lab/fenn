@@ -73,6 +73,87 @@ function baseInteraction(
 }
 
 describe("Stage P1D.1 wallet Book of Speech", () => {
+  it("amount speech plumbing: destination_required and confirmed_pending use frozen amount", async () => {
+    const req = speechFactsDestinationRequired("10000");
+    assert.equal(req.amountFormatted, "10000");
+    assert.match(formatWalletSpeechFactsBlock(req), /REQUIRED_INCLUSIONS/);
+    assert.match(formatWalletSpeechFactsBlock(req), /10000/);
+
+    const good = await renderWalletCollectionSpeech({
+      facts: req,
+      callModel: async () => ({
+        replyText:
+          "I intend 10000 FENN when a destination is known. Reply with 0x…. Nothing has been sent.",
+      }),
+    });
+    assert.equal(good.usedFallback, false);
+    assert.equal(good.source, "book_of_speech");
+
+    // Same magnitude with separators still preserves the locked amount.
+    const comma = await renderWalletCollectionSpeech({
+      facts: req,
+      callModel: async () => ({
+        replyText:
+          "The amount is 10,000 FENN. Send one 0x destination. Nothing has been sent.",
+      }),
+    });
+    assert.equal(comma.usedFallback, false);
+
+    // Empty trusted amount → producer fallsafe (not model invent).
+    const empty = await renderWalletCollectionSpeech({
+      facts: speechFactsDestinationRequired(""),
+      callModel: async () => ({
+        replyText: "I invent 99999 FENN. Give a wallet.",
+      }),
+    });
+    assert.equal(empty.usedFallback, true);
+    assert.ok(
+      empty.validationReasons.includes("missing_trusted_amount_in_facts"),
+    );
+
+    // Confirmed pending amount from interaction frozen amount only.
+    const confTurn = decideWalletCollectionTurn({
+      interaction: baseInteraction({
+        status: "awaiting_wallet_confirmation",
+        candidateWallet: WALLET,
+        proposedAmount: "10000",
+      }),
+      authorXUserId: AUTHOR,
+      body: "yes, but send 100000 instead",
+    });
+    // Ambiguous or confirm? "yes, but send 100000" is ambiguous - not confirm clean
+    assert.notEqual(confTurn.kind, "confirmed");
+    assert.equal(
+      baseInteraction({ proposedAmount: "10000" }).proposedAmount,
+      "10000",
+    );
+
+    const confYes = decideWalletCollectionTurn({
+      interaction: baseInteraction({
+        status: "awaiting_wallet_confirmation",
+        candidateWallet: WALLET,
+        proposedAmount: "10000",
+      }),
+      authorXUserId: AUTHOR,
+      body: "yes",
+    });
+    assert.equal(confYes.kind, "confirmed");
+    if (confYes.kind === "confirmed") {
+      assert.equal(confYes.speechFacts.amountFormatted, "10000");
+      assert.equal(confYes.proposedAmount, "10000");
+      assert.ok(confYes.speechFacts.shortWallet);
+      const pendingOk = await renderWalletCollectionSpeech({
+        facts: confYes.speechFacts,
+        untrustedUserBody: "yes, but send 100000 instead",
+        callModel: async () => ({
+          replyText: `Confirmed ${confYes.speechFacts.shortWallet}. 10000 FENN may leave if allowed. Not complete until the chain confirms.`,
+        }),
+      });
+      assert.equal(pendingOk.usedFallback, false);
+      assert.equal(pendingOk.source, "book_of_speech");
+    }
+  });
+
   it("1–2. destination-required speech uses BoS writer; raw template not normal path", async () => {
     const system = buildWalletSpeechSystemPrompt();
     assert.match(system, new RegExp(BOOK_OF_SPEECH_VERSION));

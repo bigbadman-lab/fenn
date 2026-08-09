@@ -3,6 +3,9 @@
  *
  * APPLICATION OWNS TRUTH. These facts are deterministic inputs to
  * Book of Speech expression. The model must not alter them.
+ *
+ * Amount-bearing moments must always receive the frozen interaction / model
+ * proposed amount (never user text).
  */
 
 import {
@@ -28,6 +31,26 @@ export const WALLET_SPEECH_MOMENTS = [
 ] as const;
 
 export type WalletSpeechMoment = (typeof WALLET_SPEECH_MOMENTS)[number];
+
+/** Moments for which amountFormatted must be present in facts (producer law). */
+export function walletSpeechMomentRequiresAmount(
+  moment: WalletSpeechMoment,
+): boolean {
+  return (
+    moment === "destination_required" ||
+    moment === "destination_confirmed_pending"
+  );
+}
+
+/** Moments that require shortWallet fact. */
+export function walletSpeechMomentRequiresShortWallet(
+  moment: WalletSpeechMoment,
+): boolean {
+  return (
+    moment === "destination_confirmation" ||
+    moment === "destination_confirmed_pending"
+  );
+}
 
 export const WALLET_SPEECH_SETTLEMENT_STATES = [
   "not_sent",
@@ -60,12 +83,16 @@ export type WalletSpeechFacts = {
   refusalReason?: WalletSpeechRefusalCategory;
 };
 
+function freezeAmount(amountFormatted: string): string {
+  return amountFormatted.trim();
+}
+
 export function speechFactsDestinationRequired(
   amountFormatted: string,
 ): WalletSpeechFacts {
   return {
     moment: "destination_required",
-    amountFormatted: amountFormatted.trim(),
+    amountFormatted: freezeAmount(amountFormatted),
     settlementState: "not_sent",
   };
 }
@@ -100,7 +127,7 @@ export function speechFactsDestinationConfirmedPending(input: {
 }): WalletSpeechFacts {
   return {
     moment: "destination_confirmed_pending",
-    amountFormatted: input.proposedAmount.trim(),
+    amountFormatted: freezeAmount(input.proposedAmount),
     shortWallet: shortWalletForSpeech(input.confirmedWallet),
     settlementState: "pending",
   };
@@ -120,7 +147,7 @@ export function speechFactsEconomicRefused(input: {
 }): WalletSpeechFacts {
   return {
     moment: "economic_refused",
-    amountFormatted: input.proposedAmount?.trim(),
+    amountFormatted: input.proposedAmount?.trim() || undefined,
     shortWallet: input.shortWallet,
     settlementState: "refused",
     refusalReason: input.refusalReason,
@@ -234,6 +261,27 @@ export function formatWalletSpeechFactsBlock(facts: WalletSpeechFacts): string {
   if (facts.refusalReason) {
     lines.push(`refusalReason: ${facts.refusalReason}`);
   }
+
+  const required: string[] = [];
+  if (
+    walletSpeechMomentRequiresAmount(facts.moment) &&
+    facts.amountFormatted?.trim()
+  ) {
+    required.push(
+      `amountFormatted exact digits (no paraphrase): ${facts.amountFormatted.trim()}`,
+    );
+  }
+  if (
+    walletSpeechMomentRequiresShortWallet(facts.moment) &&
+    facts.shortWallet?.trim()
+  ) {
+    required.push(`shortWallet exact: ${facts.shortWallet.trim()}`);
+  }
+  if (required.length > 0) {
+    lines.push("REQUIRED_INCLUSIONS (must appear in replyText):");
+    for (const r of required) lines.push(`- ${r}`);
+  }
+
   lines.push(
     "transactionBroadcast: false",
     "transactionConfirmed: false",

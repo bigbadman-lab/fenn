@@ -21,6 +21,7 @@ import {
 } from "@/lib/agent/reply-recovery-schema";
 import {
   buildWalletSpeechFallback,
+  walletSpeechMomentRequiresAmount,
   type WalletSpeechFacts,
 } from "@/lib/agent/wallet-speech-facts";
 import {
@@ -138,6 +139,14 @@ export async function renderWalletCollectionSpeech(input: {
   forceFallback?: boolean;
 }): Promise<WalletSpeechRenderResult> {
   const facts = input.facts;
+
+  // Producer fail-closed: amount-required moments with blank amount never pretend model can invent it.
+  if (
+    walletSpeechMomentRequiresAmount(facts.moment) &&
+    !facts.amountFormatted?.trim()
+  ) {
+    return fallbackResult(facts, ["missing_trusted_amount_in_facts"]);
+  }
 
   if (input.forceFallback) {
     return fallbackResult(facts, ["force_fallback"]);
