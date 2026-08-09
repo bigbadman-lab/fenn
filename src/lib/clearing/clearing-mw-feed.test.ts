@@ -55,7 +55,7 @@ function wood(
     id,
     occurredAt: at,
     amountLabel,
-    transactionUrl: "https://explorer.robinhood.com/tx/0x" + "ab".repeat(32),
+    transactionUrl: "https://robinhoodchain.blockscout.com/tx/0x" + "ab".repeat(32),
   };
 }
 
@@ -158,7 +158,7 @@ describe("Market Watch 1.0B amount + explorer formatting", () => {
     const hash = "0x" + "ab".repeat(32);
     assert.equal(
       marketWatchExplorerUrl(4663, hash),
-      `https://explorer.robinhood.com/tx/${hash}`,
+      `https://robinhoodchain.blockscout.com/tx/${hash}`,
     );
     assert.equal(marketWatchExplorerUrl(4663, "not-a-hash"), null);
   });

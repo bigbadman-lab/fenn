@@ -181,9 +181,13 @@ describe("Desk Register API and privacy", () => {
     );
   });
 
-  it("explorer address helper is chain-mapped", () => {
+  it("explorer address helper is chain-mapped to Blockscout", () => {
     const explorer = read("src/lib/greenwood/hollow/explorer.ts");
     assert.match(explorer, /robinhoodAddressExplorerUrl/);
-    assert.match(explorer, /explorer\.robinhood\.com\/address\//);
+    assert.match(explorer, /ROBINHOOD_CHAIN_EXPLORER_BASE/);
+    assert.match(explorer, /robinhoodchain\.blockscout\.com/);
+    assert.match(explorer, /\/tx\//);
+    assert.match(explorer, /\/address\//);
+    assert.doesNotMatch(explorer, /explorer\.robinhood\.com/);
   });
 });

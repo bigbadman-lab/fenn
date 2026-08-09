@@ -430,7 +430,7 @@ describe("getPublicTreasurySnapshot", () => {
       symbol: "FENN" as const,
       chainId: ROBINHOOD_CHAIN_ID,
       contractAddress: TOKEN,
-      explorerUrl: `https://explorer.robinhood.com/address/${TOKEN}`,
+      explorerUrl: `https://robinhoodchain.blockscout.com/address/${TOKEN}`,
     };
     const snapshot = await getPublicTreasurySnapshot({
       getConfig: async () => ({ configured: false }),
@@ -463,7 +463,7 @@ describe("getPublicTreasurySnapshot", () => {
       symbol: "FENN" as const,
       chainId: ROBINHOOD_CHAIN_ID,
       contractAddress: TOKEN,
-      explorerUrl: `https://explorer.robinhood.com/address/${TOKEN}`,
+      explorerUrl: `https://robinhoodchain.blockscout.com/address/${TOKEN}`,
     };
     const snapshot = await getPublicTreasurySnapshot({
       getConfig: async () => ({
@@ -558,7 +558,7 @@ describe("GET /api/treasury route", () => {
       symbol: "FENN" as const,
       chainId: ROBINHOOD_CHAIN_ID,
       contractAddress: TOKEN,
-      explorerUrl: `https://explorer.robinhood.com/address/${TOKEN}`,
+      explorerUrl: `https://robinhoodchain.blockscout.com/address/${TOKEN}`,
     };
     const response = await handleTreasuryGet(async () => ({
       state: "ready",
@@ -605,7 +605,7 @@ describe("GET /api/treasury route", () => {
       symbol: "FENN" as const,
       chainId: ROBINHOOD_CHAIN_ID,
       contractAddress: TOKEN,
-      explorerUrl: `https://explorer.robinhood.com/address/${TOKEN}`,
+      explorerUrl: `https://robinhoodchain.blockscout.com/address/${TOKEN}`,
     };
     const response = await handleTreasuryGet(async () => ({
       state: "ready",

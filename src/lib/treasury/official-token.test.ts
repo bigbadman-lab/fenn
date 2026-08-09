@@ -156,7 +156,7 @@ describe("toPublicOfficialFennToken", () => {
     assert.equal(token!.contractAddress, FENN);
     assert.equal(
       token!.explorerUrl,
-      `https://explorer.robinhood.com/address/${FENN}`,
+      `https://robinhoodchain.blockscout.com/address/${FENN}`,
     );
     const json = JSON.stringify(token);
     assert.doesNotMatch(json, /metadata|official|public_contract|decimals|"id"/);

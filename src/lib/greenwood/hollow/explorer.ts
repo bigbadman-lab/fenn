@@ -1,13 +1,20 @@
 import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
 
 /**
+ * Canonical Robinhood Chain Blockscout base (no trailing slash).
+ * Used for address + tx explorer links across Treasury, Commons, Purse, Hollow, Market Watch.
+ */
+export const ROBINHOOD_CHAIN_EXPLORER_BASE =
+  "https://robinhoodchain.blockscout.com" as const;
+
+/**
  * Approved explorer bases for Hollow on-chain rewards.
  * Unknown chains return null — never build URLs from untrusted input.
  */
 const TX_EXPLORER_BY_CHAIN: Readonly<Record<number, string>> = {
   1: "https://etherscan.io/tx/",
   8453: "https://basescan.org/tx/",
-  [ROBINHOOD_CHAIN_ID]: "https://explorer.robinhood.com/tx/",
+  [ROBINHOOD_CHAIN_ID]: `${ROBINHOOD_CHAIN_EXPLORER_BASE}/tx/`,
 };
 
 const TX_HASH_RE = /^0x[a-fA-F0-9]{64}$/;
@@ -31,7 +38,7 @@ export function explorerTxUrl(
 const ADDRESS_EXPLORER_BY_CHAIN: Readonly<Record<number, string>> = {
   1: "https://etherscan.io/address/",
   8453: "https://basescan.org/address/",
-  [ROBINHOOD_CHAIN_ID]: "https://explorer.robinhood.com/address/",
+  [ROBINHOOD_CHAIN_ID]: `${ROBINHOOD_CHAIN_EXPLORER_BASE}/address/`,
 };
 
 /**
@@ -62,4 +69,3 @@ export function shortenWallet(address: string | null | undefined): string | null
   if (a.length < 12) return a;
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
-

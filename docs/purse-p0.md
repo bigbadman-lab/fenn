@@ -110,7 +110,7 @@ Use a **new** `operation-id` only for an intentional second transfer.
 ## Verify the transaction
 
 1. CLI JSON includes `txHash` and `confirmedAt` when `ok: true`.
-2. Robinhood explorer: `https://explorer.robinhood.com/tx/<txHash>`
+2. Robinhood explorer: `https://robinhoodchain.blockscout.com/tx/<txHash>`
 3. SQL:
 
 ```sql

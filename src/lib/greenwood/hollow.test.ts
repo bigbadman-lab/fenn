@@ -64,9 +64,18 @@ describe("Hollow explorer helpers", () => {
     assert.equal(shortenWallet("0x1111111111111111111111111111111111111111"), "0x1111…1111");
     assert.equal(
       robinhoodAddressExplorerUrl("0x1111111111111111111111111111111111111111"),
-      "https://explorer.robinhood.com/address/0x1111111111111111111111111111111111111111",
+      "https://robinhoodchain.blockscout.com/address/0x1111111111111111111111111111111111111111",
     );
     assert.equal(robinhoodAddressExplorerUrl("not-an-address"), null);
+  });
+
+  it("builds Robinhood Chain Blockscout transaction URLs on chain 4663", () => {
+    const hash =
+      "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    assert.equal(
+      explorerTxUrl(4663, hash),
+      `https://robinhoodchain.blockscout.com/tx/${hash}`,
+    );
   });
 });
 
