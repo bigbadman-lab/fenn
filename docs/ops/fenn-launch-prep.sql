@@ -4,17 +4,14 @@
 -- Does NOT insert a migration. Does NOT activate settlement.
 -- Does NOT set contract_address.
 -- Does NOT modify the existing ETH / native NULL-contract row.
+-- Does NOT update ETH. Does NOT activate settlement.
 --
--- Implementation note:
---   Scan + conflict + insert live in a single DO $$ block. Do not use a CTE or
---   TEMP TABLE across statements — Supabase SQL editor may not preserve session
---   scope between statement boundaries.
---
--- Post-condition:
---   ETH (or other native) NULL-contract row(s) on 4663 remain
---   Exactly one official/public FENN row on chain 4663
---   contract_address IS NULL
---   Application official-token resolver still reports unavailable (dormant)
+-- Implementation (PL/pgSQL law):
+--   The entire prep decision runs inside ONE DO block.
+--   Scalars (n_official, n_dormant, existing_id, …) are variables only —
+--   never relations. Prefer  name := (SELECT …)  over SELECT … INTO name
+--   so a flaky multi-statement splitter cannot treat INTO as table-create
+--   SQL or leave a bare name that later resolves as FROM-relation (42P01).
 --
 -- Requires:
 --   migration 44  treasury_assets_one_official_public_4663_uidx
@@ -22,83 +19,123 @@
 --                 null_contract_coexistence: ETH + dormant FENN both may use
 --                 contract_address NULL on chain 4663
 
-DO $$
+DO $prep$
 DECLARE
-  n_official integer;
-  n_live integer;
-  live_addr text;
-  r record;
+  n_official   integer;
+  n_live       integer;
+  n_dormant    integer;
+  existing_id  uuid;
+  existing_symbol text;
+  existing_decimals integer;
+  existing_tracked boolean;
+  existing_chain integer;
+  live_addr    text;
 BEGIN
-  -- Count official/public candidates on Robinhood Chain
-  SELECT count(*)::integer
-  INTO n_official
-  FROM public.treasury_assets
-  WHERE chain_id = 4663
-    AND (metadata->>'official') = 'true'
-    AND (metadata->>'public_contract') = 'true';
+  -- 1) Count official/public FENN candidates on Robinhood Chain
+  n_official := (
+    SELECT count(*)::integer
+    FROM public.treasury_assets t
+    WHERE t.chain_id = 4663
+      AND lower(trim(t.symbol)) = 'fenn'
+      AND (t.metadata->>'official') = 'true'
+      AND (t.metadata->>'public_contract') = 'true'
+  );
 
+  -- 2) Multiple official/public FENN rows → fail loudly
   IF n_official > 1 THEN
     RAISE EXCEPTION
-      'FENN_LAUNCH_PREP_CONFLICT: % official/public rows on chain 4663 — fix manually, do not duplicate',
+      'FENN_LAUNCH_PREP_CONFLICT: % official/public FENN rows on chain 4663 — fix manually, do not duplicate',
       n_official;
   END IF;
 
-  -- Live contract already present — never overwrite
-  SELECT count(*)::integer, max(contract_address)
-  INTO n_live, live_addr
-  FROM public.treasury_assets
-  WHERE chain_id = 4663
-    AND (metadata->>'official') = 'true'
-    AND (metadata->>'public_contract') = 'true'
-    AND contract_address IS NOT NULL
-    AND length(trim(contract_address)) > 0;
+  -- 3) Exactly one live (non-null contract) → stop; never overwrite
+  n_live := (
+    SELECT count(*)::integer
+    FROM public.treasury_assets t
+    WHERE t.chain_id = 4663
+      AND lower(trim(t.symbol)) = 'fenn'
+      AND (t.metadata->>'official') = 'true'
+      AND (t.metadata->>'public_contract') = 'true'
+      AND t.contract_address IS NOT NULL
+      AND length(trim(t.contract_address)) > 0
+  );
 
   IF n_live > 0 THEN
+    live_addr := (
+      SELECT max(t.contract_address)
+      FROM public.treasury_assets t
+      WHERE t.chain_id = 4663
+        AND lower(trim(t.symbol)) = 'fenn'
+        AND (t.metadata->>'official') = 'true'
+        AND (t.metadata->>'public_contract') = 'true'
+        AND t.contract_address IS NOT NULL
+        AND length(trim(t.contract_address)) > 0
+    );
     RAISE EXCEPTION
-      'FENN_LAUNCH_PREP_ALREADY_LIVE: official row already has contract_address=% — do not overwrite',
+      'FENN_LAUNCH_PREP_ALREADY_LIVE: official FENN already has contract_address=% — do not overwrite',
       live_addr;
   END IF;
 
-  -- Existing dormant match — already prepared (no insert / no ETH touch)
-  SELECT
-    id,
-    symbol,
-    chain_id,
-    contract_address,
-    decimals,
-    is_tracked,
-    metadata
-  INTO r
-  FROM public.treasury_assets
-  WHERE chain_id = 4663
-    AND (metadata->>'official') = 'true'
-    AND (metadata->>'public_contract') = 'true'
-  LIMIT 1;
+  -- 4) Exactly one dormant row → verify and leave as-is
+  n_dormant := (
+    SELECT count(*)::integer
+    FROM public.treasury_assets t
+    WHERE t.chain_id = 4663
+      AND lower(trim(t.symbol)) = 'fenn'
+      AND (t.metadata->>'official') = 'true'
+      AND (t.metadata->>'public_contract') = 'true'
+      AND t.contract_address IS NULL
+  );
 
-  IF FOUND THEN
-    IF upper(trim(r.symbol)) <> 'FENN' THEN
+  IF n_dormant = 1 THEN
+    SELECT
+      t.id,
+      t.symbol,
+      t.chain_id,
+      t.decimals,
+      t.is_tracked
+    INTO
+      existing_id,
+      existing_symbol,
+      existing_chain,
+      existing_decimals,
+      existing_tracked
+    FROM public.treasury_assets t
+    WHERE t.chain_id = 4663
+      AND lower(trim(t.symbol)) = 'fenn'
+      AND (t.metadata->>'official') = 'true'
+      AND (t.metadata->>'public_contract') = 'true'
+      AND t.contract_address IS NULL
+    LIMIT 1;
+
+    IF upper(trim(existing_symbol)) <> 'FENN' THEN
       RAISE EXCEPTION
         'FENN_LAUNCH_PREP_CONFLICT: existing official row symbol=% (expected FENN)',
-        r.symbol;
+        existing_symbol;
     END IF;
-    IF r.decimals IS DISTINCT FROM 18 THEN
+    IF existing_chain IS DISTINCT FROM 4663 THEN
+      RAISE EXCEPTION
+        'FENN_LAUNCH_PREP_CONFLICT: existing official row chain_id=% (expected 4663)',
+        existing_chain;
+    END IF;
+    IF existing_decimals IS DISTINCT FROM 18 THEN
       RAISE EXCEPTION
         'FENN_LAUNCH_PREP_CONFLICT: existing official row decimals=% (expected 18)',
-        r.decimals;
+        existing_decimals;
     END IF;
-    IF r.is_tracked IS NOT TRUE THEN
+    IF existing_tracked IS NOT TRUE THEN
       RAISE EXCEPTION
         'FENN_LAUNCH_PREP_CONFLICT: existing official row is_tracked is false';
     END IF;
-    IF r.contract_address IS NOT NULL THEN
-      RAISE EXCEPTION
-        'FENN_LAUNCH_PREP_CONFLICT: dormant check found non-null contract unexpectedly';
-    END IF;
 
     RAISE NOTICE
-      'FENN_LAUNCH_PREP_OK: dormant official row already prepared id=% contract_address=NULL',
-      r.id;
-  ELSE
+      'FENN_LAUNCH_PREP_OK: already prepared (dormant official FENN id=% contract_address=NULL)',
+      existing_id;
+    RETURN;
+  END IF;
+
+  -- 5) None → insert dormant FENN (ETH and all other assets are never touched)
+  IF n_official = 0 AND n_dormant = 0 THEN
     INSERT INTO public.treasury_assets (
       symbol,
       name,
@@ -127,25 +164,29 @@ BEGIN
 
     RAISE NOTICE
       'FENN_LAUNCH_PREP_OK: inserted dormant official FENN row (contract_address=NULL)';
+    RETURN;
   END IF;
-END $$;
+
+  -- Defensive: any other cardinality combination
+  RAISE EXCEPTION
+    'FENN_LAUNCH_PREP_CONFLICT: unexpected counts n_official=% n_dormant=% n_live=%',
+    n_official, n_dormant, n_live;
+END
+$prep$;
 
 -- ---------------------------------------------------------------------------
--- Verification (read-only) — ETH + FENN null-contract rows on 4663
+-- Verification (read-only) — ETH + FENN on 4663
 -- ---------------------------------------------------------------------------
 SELECT
   symbol,
+  name,
   chain_id,
   contract_address,
   decimals,
+  is_tracked,
+  display_order,
   metadata
 FROM public.treasury_assets
 WHERE chain_id = 4663
-  AND (
-    upper(trim(symbol)) = 'ETH'
-    OR (
-      (metadata->>'official') = 'true'
-      AND (metadata->>'public_contract') = 'true'
-    )
-  )
-ORDER BY symbol;
+  AND lower(symbol) IN ('eth', 'fenn')
+ORDER BY display_order, symbol;
