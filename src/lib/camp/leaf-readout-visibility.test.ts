@@ -11,31 +11,66 @@ function read(rel: string): string {
   return readFileSync(join(repo, rel), "utf8");
 }
 
+const registered = {
+  privyReady: true,
+  authenticated: true,
+  profileResolved: true,
+  registered: true,
+  hasProfile: true,
+} as const;
+
 describe("shouldShowCampLeafReadout", () => {
   it("logged-out visitor → personal LEAF section hidden", () => {
     assert.equal(
-      shouldShowCampLeafReadout({ privyReady: true, authenticated: false }),
+      shouldShowCampLeafReadout({
+        privyReady: true,
+        authenticated: false,
+        profileResolved: true,
+        registered: false,
+        hasProfile: false,
+      }),
       false,
     );
   });
 
-  it("auth unresolved (Privy not ready) → personal LEAF section hidden", () => {
+  it("auth / profile unresolved → personal LEAF section hidden", () => {
     assert.equal(
-      shouldShowCampLeafReadout({ privyReady: false, authenticated: false }),
+      shouldShowCampLeafReadout({
+        privyReady: false,
+        authenticated: false,
+        profileResolved: false,
+        registered: false,
+        hasProfile: false,
+      }),
       false,
     );
-    // Must not flash guest LEAF while session may still resolve authenticated.
     assert.equal(
-      shouldShowCampLeafReadout({ privyReady: false, authenticated: true }),
+      shouldShowCampLeafReadout({
+        privyReady: true,
+        authenticated: true,
+        profileResolved: false,
+        registered: false,
+        hasProfile: false,
+      }),
       false,
     );
   });
 
-  it("logged-in user → personal LEAF section visible (including 0 LEAF)", () => {
+  it("authenticated but unregistered → no LEAF: 0 placeholder chrome", () => {
     assert.equal(
-      shouldShowCampLeafReadout({ privyReady: true, authenticated: true }),
-      true,
+      shouldShowCampLeafReadout({
+        privyReady: true,
+        authenticated: true,
+        profileResolved: true,
+        registered: false,
+        hasProfile: false,
+      }),
+      false,
     );
+  });
+
+  it("registered Outlaw → personal LEAF section visible (including 0 LEAF)", () => {
+    assert.equal(shouldShowCampLeafReadout(registered), true);
   });
 });
 
@@ -43,24 +78,27 @@ describe("CampLeafReadout gate contract", () => {
   const readout = read("src/components/camp/camp-leaf-readout.tsx");
   const ground = read("src/components/camp/camp-ground.tsx");
 
-  it("uses FennAuth + shouldShowCampLeafReadout; no guest dash LEAF placeholder", () => {
+  it("uses FennAuth + shouldShowCampLeafReadout; no guest LEAF chrome", () => {
     assert.match(readout, /useFennAuth/);
     assert.match(readout, /shouldShowCampLeafReadout/);
     assert.match(readout, /return null/);
     assert.doesNotMatch(readout, /LEAF:\s*<span className="muted">—<\/span>/);
+    assert.doesNotMatch(readout, /checking\.\.\./);
+    assert.doesNotMatch(readout, /not yet written in the register/);
+    assert.doesNotMatch(readout, /camp-leaf">0<\/span>/);
     assert.doesNotMatch(readout, /fetch\(/);
     assert.doesNotMatch(readout, /\/api\/ledger/);
   });
 
-  it("authenticated paths preserve 0 LEAF and profile balance readout", () => {
-    assert.match(readout, /LEAF: <span className="camp-leaf">0<\/span>/);
+  it("registered path preserves OUTLAW + profile.leafBalance readout", () => {
+    assert.match(
+      readout,
+      /OUTLAW \{formatOutlawNumber\(profile\.outlawNumber\)\}/,
+    );
     assert.match(
       readout,
       /LEAF: <span className="camp-leaf">\{profile\.leafBalance\}<\/span>/,
     );
-    assert.match(readout, /checking\.\.\./);
-    assert.match(readout, /not yet written in the register/);
-    assert.match(readout, /OUTLAW \{formatOutlawNumber\(profile\.outlawNumber\)\}/);
   });
 
   it("Camp still mounts CampLeafReadout under leaf note (lore stays public)", () => {
