@@ -76,7 +76,7 @@ Untrusted. Never parse X text into transaction amounts. The final judge is taugh
 
 ## Constitution
 
-`purse-economic-constitution-v1.3` — finite Purse, magnitude has meaning, transfer = recognition, burn = permanent surrender (stronger reason), requested amounts do not set action.
+`purse-economic-constitution-v1.4` — finite Purse, magnitude has meaning, transfer = recognition, burn = permanent surrender (stronger reason), requested amounts do not set action. Destination availability is execution readiness — not merit; missing wallet must not force NONE.
 
 ## Settlement
 

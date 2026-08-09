@@ -53,12 +53,12 @@ Untrusted claim ≠ verified contribution.
 
 There is **no durable live mapping** from X author identity → `profiles.wallet_address`.
 
-| Path | Transfer recipients |
-|------|---------------------|
-| Ordinary live X | Transfer effects not planned (no trusted wallet) |
-| Controlled harness | Operator may bind `--trusted-wallet` |
+| Path | Transfer effects |
+|------|------------------|
+| Ordinary live X (no confirmed destination) | Transfer intent may still be judged; authority returns `pending_destination` → P1D wallet collection |
+| Confirmed interaction / harness-bound wallet | Transfer effect may be planned |
 
-Burns can still be planned in live when Purse + official FENN + authority allow; transfers need trusted wallet binding.
+Missing wallet is an **execution** gap — not a merit veto at Stage 12.4.
 
 ## Flow
 

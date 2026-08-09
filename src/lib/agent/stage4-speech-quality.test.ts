@@ -69,7 +69,7 @@ describe("Stage 4 versions and Book injection", () => {
     assert.equal(STAGE12_JUDGE_PROMPT_VERSION, "fenn-public-judge-book-v2");
     assert.equal(
       STAGE124_FINAL_PROMPT_VERSION,
-      "fenn-public-final-judge-book-v2",
+      "fenn-public-final-judge-book-v2-purse-p1d-merit",
     );
     assert.equal(
       STAGE12_REPLY_RECOVERY_PROMPT_VERSION,

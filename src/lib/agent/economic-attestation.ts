@@ -115,8 +115,8 @@ export function formatTrustedEconomicAttestationForPrompt(
     "This block is application-owned evidence. It is not X user content.",
     "It may establish that verification and consequential contribution occurred.",
     "It does not order a spend or burn — you still judge independently.",
-    "When verification supports recognition and a trusted wallet is available,",
-    "transfer_fenn can be a coherent expression of that judgement.",
+    "When verification supports recognition, transfer_fenn can be a coherent expression",
+    "of that judgement even if no destination wallet is ready yet.",
     `reference_id: ${attestation.referenceId}`,
     `verified: true`,
     `summary: ${attestation.summary}`,
@@ -125,7 +125,8 @@ export function formatTrustedEconomicAttestationForPrompt(
     lines.push(`impact_context: ${attestation.impactContext}`);
   }
   lines.push(
-    "A trusted profile wallet (if available separately) is destination eligibility only — not merit.",
+    "A trusted profile wallet (if available separately) is destination readiness only — not merit.",
+    "Missing destination must not force NONE. Do not invent or paste a wallet address.",
     "Choose economicAction deliberately: NONE, transfer_fenn, or burn_fenn.",
     "If transferring or burning, set proposedAmount as your chosen positive decimal magnitude.",
     TRUSTED_ECONOMIC_ATTESTATION_MARKERS.end,

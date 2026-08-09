@@ -2,6 +2,8 @@
 
 ## Summary
 
+Economic merit is independent of destination. FENN may decide `transfer_fenn` + amount even with **no trusted wallet**.
+
 When FENN decides `transfer_fenn` with a proposed amount but **no trusted destination** exists:
 
 1. Economic decision is **preserved** (amount + reason frozen)
@@ -13,6 +15,8 @@ When FENN decides `transfer_fenn` with a proposed amount but **no trusted destin
 7. If authority refuses → FENN-voice refusal reply; no silent optimistic “I will send”
 
 Burn never enters this flow. Amount cannot be renegotiated mid-collection. No permanent X↔wallet identity.
+
+Stage 12.4 must **not** choose NONE merely because destination is missing.
 
 ## Voice law (P1D.1)
 

@@ -149,7 +149,7 @@ describe("Stage P1B economic judgement", () => {
     assert.equal(intention.economicIntent.type, "NONE");
   });
 
-  it("no trusted wallet → no transfer effect", () => {
+  it("no trusted wallet → no transfer effect (pending_destination; speech may remain)", () => {
     const d = evaluateP1bEconomicAuthority({
       perceptionEventId: "pe-1",
       xPostId: "9004000000000000001",
@@ -166,6 +166,7 @@ describe("Stage P1B economic judgement", () => {
       false,
     );
     assert.ok(d.effects.some((e) => e.type === "reply_on_x"));
+    assert.equal(d.pendingDestination === true || d.policyCode === "pending_destination", true);
   });
 
   it("trusted wallet → exact proposed transfer amount planned", () => {

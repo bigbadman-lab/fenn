@@ -482,5 +482,13 @@ describe("MVP full disposable economic rehearsal", () => {
     assert.match(cli, /--execute-test/);
     assert.match(cli, /force_intent_forbidden/);
     assert.match(cli, /trusted_wallet_forbidden/);
+
+    // Merit/destination separation: stage12.4 must not force NONE for missing wallet
+    const finalUserLaw = read("src/lib/agent/stage124-final-judge-prompt.ts");
+    assert.doesNotMatch(finalUserLaw, /transfer_fenn must be NONE/);
+    assert.match(finalUserLaw, /Decide economic merit before destination/);
+    const constitution = read("src/lib/fenn-voice/economic-constitution.ts");
+    assert.doesNotMatch(constitution, /choose NONE for economy/);
+    assert.match(constitution, /EXECUTION PREREQUISITE/);
   });
 });

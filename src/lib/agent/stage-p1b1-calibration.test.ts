@@ -128,8 +128,22 @@ describe("Stage P1B.1 calibration harness", () => {
       text: "hi",
       trustedWalletAvailable: true,
     });
-    assert.match(user, /eligibility only/i);
+    assert.match(user, /execution readiness only|eligibility only/i);
     assert.match(user, /not proof of merit|not merit/i);
+  });
+
+  it("4b. no-wallet context does not instruct model to force NONE on transfer", () => {
+    const { user, system } = buildP1bCalibrationPromptBodies({
+      text: "I reported the issue.",
+      trustedWalletAvailable: false,
+      attestation: ATTESTATION,
+    });
+    assert.doesNotMatch(user, /transfer_fenn must be NONE/i);
+    assert.doesNotMatch(system, /choose NONE for economy/i);
+    assert.doesNotMatch(system, /If no trusted wallet is available.*NONE/i);
+    assert.match(user, /destination will occur later|collect and confirm a destination|independent of destination/i);
+    assert.match(system, /EXECUTION PREREQUISITE|missing destination must not force NONE|not merely because a destination is missing/i);
+    assert.match(user, /Decide economic merit before destination/i);
   });
 
   it("5. arbitrary X claim cannot create trusted attestation", () => {
@@ -480,7 +494,7 @@ describe("Stage P1B.1 calibration harness", () => {
   });
 
   it("constitution v1.3 balances magnitude with legitimate Purse use; scenarios present", () => {
-    assert.equal(ECONOMIC_CONSTITUTION_VERSION, "purse-economic-constitution-v1.3");
+    assert.equal(ECONOMIC_CONSTITUTION_VERSION, "purse-economic-constitution-v1.4");
     const block = buildEconomicJudgementInstructionBlock();
     assert.match(block, /not merely preserved/);
     assert.match(block, /not merely a defensive reserve/i);

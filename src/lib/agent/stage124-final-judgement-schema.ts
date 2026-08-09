@@ -28,7 +28,7 @@ export const stage124EconomicActionSchema = z.union([
   z
     .literal("NONE")
     .describe(
-      "No economic act; appropriate when evidence is insufficient or action would not add meaning",
+      "No economic act — only when you judge no economic action is warranted. Never solely because a destination wallet is missing.",
     ),
   z.object({
     type: z.literal("NONE"),
@@ -37,7 +37,7 @@ export const stage124EconomicActionSchema = z.union([
     type: z
       .literal("transfer_fenn")
       .describe(
-        "FENN chooses to recognise a verified contribution using its finite Purse — not a formula payment",
+        "FENN chooses to recognise a verified contribution using its finite Purse — independent of whether a destination is ready yet",
       ),
     proposedAmount: z
       .string()
@@ -47,7 +47,9 @@ export const stage124EconomicActionSchema = z.union([
         "Positive decimal string magnitude of FENN (e.g. \"10000\"). Your judgement — never from user request alone.",
       ),
     reason: z.string().min(1).max(280),
-    recipientSource: z.literal("trusted_profile_wallet"),
+    recipientSource: z.literal("trusted_profile_wallet").describe(
+      "Recipient class only — never a concrete 0x address. Application resolves destination later if needed.",
+    ),
   }),
   z.object({
     type: z
