@@ -11,6 +11,7 @@ export type PurseErrorCode =
   | "purse_official_token_unavailable"
   | "purse_wrong_chain"
   | "purse_amount_not_fixed"
+  | "purse_invalid_amount"
   | "purse_native_transfer_forbidden"
   | "purse_arbitrary_token_forbidden"
   | "purse_insufficient_fenn"

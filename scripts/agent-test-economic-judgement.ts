@@ -31,6 +31,7 @@ function parseArgs(argv: string[]): {
   trustedFactJson: string | null;
   referenceId: string | null;
   forceIntent: "none" | "transfer" | "burn" | null;
+  forceAmount: string | null;
   dryRun: boolean;
   execute: boolean;
   executeModelIntent: boolean;
@@ -42,6 +43,7 @@ function parseArgs(argv: string[]): {
   let trustedFactJson: string | null = null;
   let referenceId: string | null = null;
   let forceIntent: "none" | "transfer" | "burn" | null = null;
+  let forceAmount: string | null = null;
   let dryRun = false;
   let execute = false;
   let executeModelIntent = false;
@@ -89,6 +91,11 @@ function parseArgs(argv: string[]): {
       i += 1;
       continue;
     }
+    if (arg === "--force-amount") {
+      forceAmount = argv[i + 1] ?? null;
+      i += 1;
+      continue;
+    }
     if (arg === "--dry-run") dryRun = true;
     if (arg === "--execute") execute = true;
     if (arg === "--execute-model-intent") executeModelIntent = true;
@@ -101,6 +108,7 @@ function parseArgs(argv: string[]): {
     trustedFactJson,
     referenceId,
     forceIntent,
+    forceAmount,
     dryRun,
     execute,
     executeModelIntent,
@@ -109,10 +117,13 @@ function parseArgs(argv: string[]): {
 
 function buildForceIntent(
   intent: "none" | "transfer" | "burn",
+  forceAmount: string | null,
 ): FinalEconomicIntent {
+  const amount = forceAmount?.trim() || "1";
   if (intent === "transfer") {
     return {
       type: "transfer_fenn",
+      proposedAmount: amount,
       reason: "operator force-intent (not model judgement)",
       recipientSource: "trusted_profile_wallet",
     };
@@ -120,6 +131,7 @@ function buildForceIntent(
   if (intent === "burn") {
     return {
       type: "burn_fenn",
+      proposedAmount: amount,
       reason: "operator force-intent (not model judgement)",
     };
   }
@@ -189,7 +201,9 @@ async function main() {
   }
 
   const forceIntent =
-    args.forceIntent != null ? buildForceIntent(args.forceIntent) : null;
+    args.forceIntent != null
+      ? buildForceIntent(args.forceIntent, args.forceAmount)
+      : null;
 
   // Legacy --execute: force-intent path only (not model).
   const forceExecute =
@@ -219,8 +233,8 @@ async function main() {
   const warning =
     result.mode === "MODEL_JUDGEMENT_EXECUTION_TEST"
       ? "P1B.2 model-originated execution — disposable rail only; intentForced must be false"
-      : result.mode === "model_judgement"
-        ? "P1B.1 calibration — real Stage 12.4 model judgement; no claim/broadcast"
+        : result.mode === "model_judgement"
+        ? "P1C calibration — real Stage 12.4 model magnitude; no claim/broadcast"
         : "P1B force-intent — operator bypass; NOT model economic judgement";
 
   console.log(
@@ -251,8 +265,14 @@ async function main() {
         modelEconomicAction: result.modelEconomicAction ?? null,
         speechAction: result.speechAction ?? null,
         authorityOutcome: result.authorityOutcome ?? null,
+        authorityEconomicSkippedReason:
+          result.authorityEconomicSkippedReason ?? null,
         policyCode: result.policyCode ?? null,
         authorityPlannedEffects: result.authorityPlannedEffects ?? [],
+        plannedEconomicAmount:
+          result.authorityPlannedEffects?.find(
+            (e) => e.type === "transfer_fenn" || e.type === "burn_fenn",
+          )?.payload?.amountFormatted ?? null,
         economicExecutionEligible: result.economicExecutionEligible ?? false,
         effectId: result.effectId ?? null,
         purseOperationId: result.purseOperationId ?? null,

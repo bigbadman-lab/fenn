@@ -1,8 +1,8 @@
 /**
- * Post-confirmation economic speech helpers (Stage P1B).
+ * Post-confirmation economic speech helpers (Stage P1B / P1C).
  *
  * After a transfer_fenn / burn_fenn settlement is confirmed, speech may state
- * the completed action with trusted facts only.
+ * the completed action with trusted facts only — including exact confirmed amount.
  *
  * Does not invent a second autonomous agent. Callers supply trusted facts.
  * Pre-confirmation text must never claim completion.
@@ -13,7 +13,8 @@ import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
 
 export type EconomicFollowupFacts = {
   actionType: "transfer" | "burn";
-  amountFormatted: "1";
+  /** Exact confirmed amount (decimal string). */
+  amountFormatted: string;
   txHash: string;
   chainId?: number;
   recipientAddress?: string | null;
@@ -27,7 +28,7 @@ export type EconomicFollowupDraft = {
 
 /**
  * Truth-first draft for a completed economic action.
- * Prefer Book of Speech generation later; P1B uses deterministic trusted facts.
+ * Prefer Book of Speech generation later; trusted facts always carry exact amount.
  */
 export function buildEconomicFollowupDraft(
   facts: EconomicFollowupFacts,
@@ -38,12 +39,13 @@ export function buildEconomicFollowupDraft(
     facts.txHash.length > 14
       ? `${facts.txHash.slice(0, 10)}…`
       : facts.txHash;
+  const amount = facts.amountFormatted.trim();
 
   let text: string;
   if (facts.actionType === "burn") {
-    text = `1 FENN left my Purse for the dead address. It will not return. ${shortHash}`;
+    text = `${amount} FENN left my Purse for the dead address. It will not return. ${shortHash}`;
   } else {
-    text = `1 FENN left my Purse. ${shortHash}`;
+    text = `${amount} FENN left my Purse. ${shortHash}`;
   }
   if (explorerUrl) {
     text = `${text} ${explorerUrl}`.slice(0, 280);

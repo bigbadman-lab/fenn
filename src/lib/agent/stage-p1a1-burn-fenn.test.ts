@@ -54,13 +54,19 @@ describe("Stage P1A.1 burn_fenn effect contract", () => {
     assert.match(policy, /planEconomicEffects|appendEconomicEffects/);
   });
 
-  it("validates fixed amount and rejects recipient/token/chain overrides", () => {
+  it("validates positive decimal amount and rejects recipient/token/chain overrides", () => {
     const ok = validateBurnFennEffectPayload({
       amountFormatted: "1",
       executionRail: TRANSFER_FENN_P1A_TEST_RAIL,
     });
     assert.equal(ok.amountFormatted, "1");
     assert.equal(ok.executionRail, "p1a_test");
+
+    const variable = validateBurnFennEffectPayload({
+      amountFormatted: "50000",
+      executionRail: TRANSFER_FENN_P1A_TEST_RAIL,
+    });
+    assert.equal(variable.amountFormatted, "50000");
 
     assert.throws(
       () =>
@@ -73,9 +79,9 @@ describe("Stage P1A.1 burn_fenn effect contract", () => {
     assert.throws(
       () =>
         validateBurnFennEffectPayload({
-          amountFormatted: "2",
+          amountFormatted: "0",
         }),
-      /burn_amount_not_fixed/,
+      /burn_amount_invalid/,
     );
     assert.throws(
       () =>

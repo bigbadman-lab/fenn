@@ -99,6 +99,11 @@ export type ManualOneFennTransferInput = {
   recipientAddress: string;
   operationId: string;
   actorId?: string;
+  /**
+   * Trusted decimal string (Stage P1C). Default `"1"` preserves P0 manual CLI.
+   * Never derived from untrusted X text at this boundary.
+   */
+  amountFormatted?: string;
 };
 
 export type ManualOneFennTransferResult =
@@ -108,7 +113,8 @@ export type ManualOneFennTransferResult =
       operationId: string;
       transferId: string;
       recipientAddress: string;
-      amountFormatted: "1";
+      /** Exact settled amount (decimal string). */
+      amountFormatted: string;
       tokenAddress: string;
       chainId: number;
       purseAddress: string;

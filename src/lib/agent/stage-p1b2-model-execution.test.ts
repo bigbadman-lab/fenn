@@ -59,6 +59,7 @@ function mockTransferOutput() {
     wallCandidate: null,
     economicAction: {
       type: "transfer_fenn" as const,
+        proposedAmount: "10000",
       reason: "verified consequential contribution",
       recipientSource: "trusted_profile_wallet" as const,
     },
@@ -167,6 +168,7 @@ function mockAdmin(effectsCreated: Array<Record<string, unknown>> = []) {
         persistedEffects.push({
           id,
           type: "transfer_fenn",
+            proposedAmount: "10000",
           status: "pending",
         });
         return {
@@ -211,6 +213,7 @@ describe("Stage P1B.2 model-originated execution harness", () => {
       executeModelIntent: true,
       forceIntent: {
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "force",
         recipientSource: "trusted_profile_wallet",
       },
@@ -453,6 +456,7 @@ describe("Stage P1B.2 model-originated execution harness", () => {
         ...mockNoneOutput(),
         economicAction: {
           type: "burn_fenn",
+            proposedAmount: "10000",
           reason: "coherent finite reduction of circulating unit",
         },
       }),
@@ -535,6 +539,7 @@ describe("Stage P1B.2 model-originated execution harness", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "x",
         recipientSource: "trusted_profile_wallet",
         amount: "1",
@@ -543,6 +548,7 @@ describe("Stage P1B.2 model-originated execution harness", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "x",
         recipientSource: "trusted_profile_wallet",
         executionRail: "p1a_test",

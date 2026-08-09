@@ -12,11 +12,11 @@ import { PurseError } from "@/lib/purse/errors";
 import {
   assertNotNativeTransfer,
   assertOfficialFennTokenOnly,
-  assertP0ManualAmount,
   assertRobinhoodChainId,
   mayRetryBroadcast,
   parseOperationId,
   parsePurseRecipient,
+  parseVariablePurseAmount,
   shouldReconcileExistingTx,
 } from "@/lib/purse/policy";
 import {
@@ -41,7 +41,6 @@ import {
   waitForPurseTransactionReceipt,
   type BroadcastErc20TransferResult,
 } from "@/lib/purse/wallet";
-import { parseTokenAmountToRaw } from "@/lib/treasury/amounts";
 import {
   createRobinhoodPublicClient,
   readErc20Balance,
@@ -198,7 +197,7 @@ function confirmedResult(
     operationId: row.operationId,
     transferId: row.id,
     recipientAddress: row.recipientAddress,
-    amountFormatted: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+    amountFormatted: row.amountFormatted,
     tokenAddress: row.tokenAddress,
     chainId: row.chainId,
     purseAddress,
@@ -319,21 +318,24 @@ type UnitTransferContext = {
   isTest: boolean;
   actionType: PurseActionType;
   insufficientCode: "purse_insufficient_fenn" | "purse_insufficient_test_token";
-  insufficientMessage: (balanceFormatted: string) => string;
+  insufficientMessage: (
+    balanceFormatted: string,
+    amountFormatted: string,
+  ) => string;
 };
 
 /**
- * Shared P0 unit-transfer lifecycle (one ERC-20 unit, fixed "1").
+ * Shared Purse ERC-20 transfer lifecycle (variable trusted amount, Stage P1C).
  * Used by official/test transfer and dead-address burn paths.
+ * Amount is exact approved decimal string — never float math, never clamped.
  */
 async function executeManualUnitTransfer(
   input: ManualOneFennTransferInput,
   context: UnitTransferContext,
   overrides?: Partial<ManualTransferDeps>,
 ): Promise<ManualOneFennTransferResult> {
-  // Hard policy: P0 never transfers native.
+  // Hard policy: Purse never transfers native.
   assertNotNativeTransfer("erc20");
-  assertP0ManualAmount(P0_MANUAL_TRANSFER_AMOUNT_FORMATTED);
   assertRobinhoodChainId(context.token.chainId);
 
   const operationId = parseOperationId(input.operationId);
@@ -341,6 +343,14 @@ async function executeManualUnitTransfer(
   const actorId =
     input.actorId?.trim() ||
     (context.isTest ? P0_MANUAL_TEST_ACTOR_ID : P0_MANUAL_ACTOR_ID);
+
+  const amountParsed = parseVariablePurseAmount(
+    input.amountFormatted ?? P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+    context.token.decimals,
+  );
+  const amountFormatted = amountParsed.amountFormatted;
+  const amountRaw = amountParsed.amountRaw;
+  const amountRawStr = amountRaw.toString();
 
   if (context.actionType === "burn") {
     const dead = parseEvmAddress(FENN_DEAD_ADDRESS);
@@ -365,11 +375,6 @@ async function executeManualUnitTransfer(
     );
   }
 
-  const amountRaw = parseTokenAmountToRaw(
-    P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
-    context.token.decimals,
-  );
-  const amountRawStr = amountRaw.toString();
   const tokenAddress = context.token.contractAddress;
 
   const locked = await deps.acquireLock();
@@ -378,7 +383,7 @@ async function executeManualUnitTransfer(
       ok: false,
       code: "purse_lock_busy",
       message:
-        "Another Purse transfer is in progress — P0 allows one transfer at a time",
+        "Another Purse transfer is in progress — one transfer at a time",
       operationId,
     };
   }
@@ -391,7 +396,7 @@ async function executeManualUnitTransfer(
         operationId,
         recipientAddress,
         amountRaw: amountRawStr,
-        amountFormatted: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+        amountFormatted,
         tokenAddress,
         chainId: ROBINHOOD_CHAIN_ID,
         actorId,
@@ -401,9 +406,11 @@ async function executeManualUnitTransfer(
     }
 
     // Validate settlement identity against current request (idempotent reuse).
+    // Amount mismatch fails closed — never rebroadcast a different amount.
     if (
       row.recipientAddress !== recipientAddress ||
-      row.amountFormatted !== P0_MANUAL_TRANSFER_AMOUNT_FORMATTED ||
+      row.amountFormatted !== amountFormatted ||
+      row.amountRaw !== amountRawStr ||
       row.tokenAddress !== tokenAddress ||
       row.chainId !== ROBINHOOD_CHAIN_ID ||
       row.isTest !== context.isTest ||
@@ -474,7 +481,7 @@ async function executeManualUnitTransfer(
       return failResult(
         failed,
         context.insufficientCode,
-        context.insufficientMessage(balance.formatted),
+        context.insufficientMessage(balance.formatted, amountFormatted),
       );
     }
 
@@ -530,12 +537,12 @@ async function executeManualUnitTransfer(
 }
 
 /**
- * Operator-only P0 path: transfer exactly 1 official FENN from the Purse.
+ * Official FENN transfer from the Purse (variable trusted amount, Stage P1C).
+ * Defaults to amount "1" when amountFormatted omitted (P0 CLI compatibility).
  *
- * - Fixed amount "1" (no amount parameter accepted by the public API)
  * - Official FENN ERC-20 only (never reads FENN_PURSE_TEST_*)
  * - Robinhood Chain only
- * - Idempotent on operationId
+ * - Idempotent on operationId — amount immutable after persistence
  * - Never rebroadcasts ambiguous / known-tx operations
  * - Completes only after chain confirmation
  */
@@ -557,8 +564,8 @@ export async function executeManualOneFennTransfer(
       isTest: false,
       actionType: "transfer",
       insufficientCode: "purse_insufficient_fenn",
-      insufficientMessage: (balanceFormatted) =>
-        `Purse FENN balance ${balanceFormatted} is less than 1`,
+      insufficientMessage: (balanceFormatted, amountFormatted) =>
+        `Purse FENN balance ${balanceFormatted} is less than ${amountFormatted}`,
     },
     overrides,
   );
@@ -593,7 +600,7 @@ function refuseTestRailIfOfficialFennLive(
 }
 
 /**
- * Operator-only pre-launch test path: transfer exactly 1 disposable ERC-20.
+ * Pre-launch test path: disposable ERC-20 transfer (variable trusted amount).
  *
  * Never used in production hosts. Never runs once official FENN resolves.
  * Never reads as official FENN. Persists is_test = true.
@@ -619,15 +626,15 @@ export async function executeManualTestTransfer(
       isTest: true,
       actionType: "transfer",
       insufficientCode: "purse_insufficient_test_token",
-      insufficientMessage: (balanceFormatted) =>
-        `Purse test-token balance ${balanceFormatted} is less than 1`,
+      insufficientMessage: (balanceFormatted, amountFormatted) =>
+        `Purse test-token balance ${balanceFormatted} is less than ${amountFormatted}`,
     },
     overrides,
   );
 }
 
 /**
- * Dead-address burn: ERC-20 transfer of exactly 1 unit to FENN_DEAD_ADDRESS.
+ * Dead-address burn: ERC-20 transfer to FENN_DEAD_ADDRESS.
  * Does not call ERC-20 burn(); does not reduce totalSupply.
  * Recipient is fixed in code — callers must not supply alternate destinations.
  */
@@ -635,6 +642,7 @@ export async function executeManualOneFennBurn(
   input: {
     operationId: string;
     actorId?: string;
+    amountFormatted?: string;
   },
   overrides?: Partial<ManualTransferDeps>,
 ): Promise<ManualOneFennTransferResult> {
@@ -647,6 +655,7 @@ export async function executeManualOneFennBurn(
       recipientAddress: dead,
       operationId: input.operationId,
       actorId: input.actorId ?? "ops:purse-burn",
+      amountFormatted: input.amountFormatted,
     },
     {
       token: {
@@ -657,8 +666,8 @@ export async function executeManualOneFennBurn(
       isTest: false,
       actionType: "burn",
       insufficientCode: "purse_insufficient_fenn",
-      insufficientMessage: (balanceFormatted) =>
-        `Purse FENN balance ${balanceFormatted} is less than 1`,
+      insufficientMessage: (balanceFormatted, amountFormatted) =>
+        `Purse FENN balance ${balanceFormatted} is less than ${amountFormatted}`,
     },
     overrides,
   );
@@ -671,6 +680,7 @@ export async function executeManualTestBurn(
   input: {
     operationId: string;
     actorId?: string;
+    amountFormatted?: string;
   },
   overrides?: Partial<ManualTransferDeps>,
   env: NodeJS.ProcessEnv = process.env,
@@ -685,6 +695,7 @@ export async function executeManualTestBurn(
       recipientAddress: dead,
       operationId: input.operationId,
       actorId: input.actorId ?? "ops:purse-burn-test",
+      amountFormatted: input.amountFormatted,
     },
     {
       token: {
@@ -695,8 +706,8 @@ export async function executeManualTestBurn(
       isTest: true,
       actionType: "burn",
       insufficientCode: "purse_insufficient_test_token",
-      insufficientMessage: (balanceFormatted) =>
-        `Purse test-token balance ${balanceFormatted} is less than 1`,
+      insufficientMessage: (balanceFormatted, amountFormatted) =>
+        `Purse test-token balance ${balanceFormatted} is less than ${amountFormatted}`,
     },
     overrides,
   );

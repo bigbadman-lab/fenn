@@ -1,6 +1,6 @@
 /**
- * Pure Purse P0 policy — no I/O, no private keys.
- * Intent: reject anything that is not fixed 1 official FENN on Robinhood.
+ * Pure Purse policy — no I/O, no private keys.
+ * P0 CLI remains fixed-amount; Stage P1C settlement accepts trusted decimal strings.
  */
 
 import {
@@ -8,6 +8,7 @@ import {
 } from "@/lib/purse/constants";
 import { PurseError } from "@/lib/purse/errors";
 import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
+import { parseTokenAmountToRaw } from "@/lib/treasury/amounts";
 import type { OfficialFennTokenAsset } from "@/lib/treasury/types";
 import {
   isNormalizedEvmAddress,
@@ -41,8 +42,8 @@ export function parsePurseRecipient(raw: string): string {
 }
 
 /**
- * P0 manual amount is fixed to exactly 1 FENN (formatted decimal).
- * There is no parameter that can raise or lower it.
+ * P0 manual operator CLI amount is fixed to exactly 1 FENN (formatted decimal).
+ * Stage 12 / P1C uses parseVariablePurseAmount instead.
  */
 export function assertP0ManualAmount(amountFormatted: string): "1" {
   if (amountFormatted.trim() !== P0_MANUAL_TRANSFER_AMOUNT_FORMATTED) {
@@ -53,6 +54,66 @@ export function assertP0ManualAmount(amountFormatted: string): "1" {
     );
   }
   return P0_MANUAL_TRANSFER_AMOUNT_FORMATTED;
+}
+
+/**
+ * Trusted decimal-string amount for Purse settlement (Stage P1C).
+ * Uses integer raw units via token decimals — never JS float math.
+ */
+export function parseVariablePurseAmount(
+  amountFormatted: string,
+  decimals: number,
+): { amountFormatted: string; amountRaw: bigint } {
+  const trimmed = amountFormatted.trim();
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+    throw new PurseError(
+      "purse_invalid_amount",
+      "Amount must be a positive decimal string",
+      400,
+    );
+  }
+  if (/[eE+\-_,]/.test(trimmed) && !/^\d+(\.\d+)?$/.test(trimmed)) {
+    throw new PurseError(
+      "purse_invalid_amount",
+      "Amount must be a positive decimal string",
+      400,
+    );
+  }
+  const [whole, frac = ""] = trimmed.split(".");
+  if (frac.length > decimals) {
+    throw new PurseError(
+      "purse_invalid_amount",
+      "Amount has too many fractional digits for this token",
+      400,
+    );
+  }
+  const allZero =
+    /^0+$/.test(whole) && (frac.length === 0 || /^0+$/.test(frac));
+  if (allZero) {
+    throw new PurseError(
+      "purse_invalid_amount",
+      "Amount must be greater than zero",
+      400,
+    );
+  }
+  let amountRaw: bigint;
+  try {
+    amountRaw = parseTokenAmountToRaw(trimmed, decimals);
+  } catch {
+    throw new PurseError(
+      "purse_invalid_amount",
+      "Amount could not be converted to token units",
+      400,
+    );
+  }
+  if (amountRaw <= BigInt(0)) {
+    throw new PurseError(
+      "purse_invalid_amount",
+      "Amount must be greater than zero",
+      400,
+    );
+  }
+  return { amountFormatted: trimmed, amountRaw };
 }
 
 /** Native token transfers are never supported by the Purse module. */

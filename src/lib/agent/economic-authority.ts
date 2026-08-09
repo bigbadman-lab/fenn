@@ -1,6 +1,9 @@
 /**
- * Stage P1B economic authority — plans transfer_fenn / burn_fenn effects.
+ * Stage P1B/P1C economic authority — plans transfer_fenn / burn_fenn effects.
  * Pure rules over trusted application fields. Model reason is audit-only.
+ *
+ * P1C: amount is the exact validated model proposedAmount (never clamped).
+ * Authority may only permit or refuse.
  */
 
 import {
@@ -8,12 +11,21 @@ import {
   stage12TransferFennEffectIdempotencyKey,
   type Stage125PolicyCode,
 } from "@/lib/agent/authority-config";
+import {
+  compareEconomicAmountFormatted,
+  isEconomicAmountPositiveAndAtMost,
+  parseEconomicProposedAmount,
+  sumEconomicAmountFormatted,
+} from "@/lib/agent/economic-amount";
+import {
+  loadEconomicAuthorityLimits,
+  type EconomicAuthorityLimits,
+} from "@/lib/agent/economic-authority-limits";
 import type { FinalEconomicIntent } from "@/lib/agent/economic-intent";
 import type { AuthorityEffectPlan } from "@/lib/agent/authority-policy";
 import type { PurseEconomicState } from "@/lib/agent/purse-economic-context";
 import { resolveTrustedTransferRecipient } from "@/lib/agent/trusted-recipient";
 import { FENN_DEAD_ADDRESS } from "@/lib/purse/constants";
-import { P0_MANUAL_TRANSFER_AMOUNT_FORMATTED } from "@/lib/purse/constants";
 import { isHardBlockReasonCode } from "@/lib/agent/reply-guarantee-policy";
 import { parseEvmAddress } from "@/lib/wallet/evm";
 
@@ -31,6 +43,9 @@ export type EconomicAuthorityContext = {
     | "environment"
     | "testRailExplicitlyActive"
     | "officialFennAvailable"
+    | "remainingBalanceFormatted"
+    | "rolling24hOutflowFormatted"
+    | "tokenDecimals"
   > | null;
   /**
    * Live path: always "official".
@@ -38,8 +53,13 @@ export type EconomicAuthorityContext = {
    * Never read from model.
    */
   executionRail: "official" | "p1a_test";
-  /** Optional pre-checked balance in formatted units (trusted). */
+  /**
+   * Optional hard gate. When false, refuse regardless of amount.
+   * When true/undefined, amount is compared to remaining balance if known.
+   */
   sufficientBalance?: boolean;
+  /** Optional override (defaults from env/TEST defaults). */
+  limits?: EconomicAuthorityLimits;
 };
 
 export type EconomicPlanResult = {
@@ -49,39 +69,95 @@ export type EconomicPlanResult = {
   policyHint: Stage125PolicyCode | null;
 };
 
-function hasUnitBalance(sufficient: boolean | undefined): boolean {
-  // If not supplied, authority may still plan; execute fails closed on chain.
-  // For hard live safety preferred when known.
-  if (sufficient === false) return false;
-  return true;
+function refuse(reason: string): EconomicPlanResult {
+  return { effects: [], skippedReason: reason, policyHint: null };
+}
+
+function proposedAmountOrRefuse(
+  intent: Extract<FinalEconomicIntent, { proposedAmount: string }>,
+): { ok: true; amount: string } | { ok: false; reason: string } {
+  try {
+    return {
+      ok: true,
+      amount: parseEconomicProposedAmount(intent.proposedAmount),
+    };
+  } catch (error) {
+    const msg =
+      error instanceof Error ? error.message : "economic_amount_malformed";
+    return { ok: false, reason: msg };
+  }
+}
+
+function checkBalance(
+  amount: string,
+  ctx: EconomicAuthorityContext,
+): string | null {
+  if (ctx.sufficientBalance === false) {
+    return "insufficient_balance";
+  }
+  const remaining = ctx.purseState?.remainingBalanceFormatted;
+  const decimals = ctx.purseState?.tokenDecimals ?? 18;
+  if (remaining != null && remaining.trim() !== "") {
+    try {
+      if (
+        compareEconomicAmountFormatted(amount, remaining, decimals) > 0
+      ) {
+        return "insufficient_balance";
+      }
+    } catch {
+      return "insufficient_balance";
+    }
+  }
+  return null;
+}
+
+function checkRolling24h(
+  amount: string,
+  ctx: EconomicAuthorityContext,
+  limits: EconomicAuthorityLimits,
+): string | null {
+  const decimals = ctx.purseState?.tokenDecimals ?? 18;
+  const prior = ctx.purseState?.rolling24hOutflowFormatted ?? "0";
+  try {
+    const projected = sumEconomicAmountFormatted(
+      [prior, amount],
+      decimals,
+    );
+    if (
+      !isEconomicAmountPositiveAndAtMost(
+        projected,
+        limits.maxRolling24hOutflowFormatted,
+        decimals,
+      )
+    ) {
+      // Never clamp — refuse the whole action.
+      return "amount_exceeds_rolling_24h_limit";
+    }
+  } catch {
+    return "amount_exceeds_rolling_24h_limit";
+  }
+  return null;
 }
 
 /**
  * Map economic intent → zero or one economic effect plan.
- * Never trusts model recipient/amount/token fields.
+ * Never trusts model recipient/token/rail fields.
+ * Never clamps proposedAmount — only permit or refuse.
  */
 export function planEconomicEffects(
   ctx: EconomicAuthorityContext,
 ): EconomicPlanResult {
   if (isHardBlockReasonCode(ctx.reasonCode)) {
-    return {
-      effects: [],
-      skippedReason: "hard_block",
-      policyHint: null,
-    };
+    return refuse("hard_block");
   }
 
   const intent = ctx.economicIntent;
   if (!intent || intent.type === "NONE") {
-    return { effects: [], skippedReason: "none", policyHint: null };
+    return refuse("none");
   }
 
   if (!ctx.purseState?.isEnabled || !ctx.purseState.economicExecutionEnabled) {
-    return {
-      effects: [],
-      skippedReason: "purse_unavailable",
-      policyHint: null,
-    };
+    return refuse("purse_unavailable");
   }
 
   // Live traffic must never silently use disposable rail.
@@ -89,55 +165,57 @@ export function planEconomicEffects(
     ctx.executionRail === "p1a_test" &&
     !ctx.purseState.testRailExplicitlyActive
   ) {
-    return {
-      effects: [],
-      skippedReason: "test_rail_forbidden",
-      policyHint: null,
-    };
+    return refuse("test_rail_forbidden");
   }
 
   if (
     ctx.executionRail === "official" &&
     !ctx.purseState.officialFennAvailable
   ) {
-    return {
-      effects: [],
-      skippedReason: "official_fenn_unavailable",
-      policyHint: null,
-    };
-  }
-
-  if (!hasUnitBalance(ctx.sufficientBalance)) {
-    return {
-      effects: [],
-      skippedReason: "insufficient_balance",
-      policyHint: null,
-    };
+    return refuse("official_fenn_unavailable");
   }
 
   const eventKey = ctx.perceptionEventId.trim();
   if (!eventKey) {
-    return { effects: [], skippedReason: "missing_event", policyHint: null };
+    return refuse("missing_event");
   }
+
+  const limits = ctx.limits ?? loadEconomicAuthorityLimits();
+  const decimals = ctx.purseState.tokenDecimals ?? 18;
 
   if (intent.type === "transfer_fenn") {
     if (intent.recipientSource !== "trusted_profile_wallet") {
-      return {
-        effects: [],
-        skippedReason: "invalid_recipient_source",
-        policyHint: null,
-      };
+      return refuse("invalid_recipient_source");
     }
+
+    const amountResult = proposedAmountOrRefuse(intent);
+    if (!amountResult.ok) {
+      return refuse(amountResult.reason);
+    }
+    const amount = amountResult.amount;
+
+    if (
+      !isEconomicAmountPositiveAndAtMost(
+        amount,
+        limits.maxSingleTransferFormatted,
+        decimals,
+      )
+    ) {
+      // NEVER clamp — refuse rather than rewrite FENN's amount.
+      return refuse("amount_exceeds_transfer_limit");
+    }
+
+    const bal = checkBalance(amount, ctx);
+    if (bal) return refuse(bal);
+
+    const rolling = checkRolling24h(amount, ctx, limits);
+    if (rolling) return refuse(rolling);
 
     const resolved = resolveTrustedTransferRecipient({
       harnessBoundWallet: ctx.harnessBoundWallet,
     });
     if (!resolved.ok) {
-      return {
-        effects: [],
-        skippedReason: `no_trusted_wallet:${resolved.reason}`,
-        policyHint: null,
-      };
+      return refuse(`no_trusted_wallet:${resolved.reason}`);
     }
 
     return {
@@ -150,7 +228,8 @@ export function planEconomicEffects(
           ),
           payload: {
             recipientAddress: resolved.walletAddress,
-            amountFormatted: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+            // Exact model-proposed amount after validation — never rewritten.
+            amountFormatted: amount,
             executionRail: ctx.executionRail,
             // Audit only — not used for settlement.
             economicReason: intent.reason,
@@ -166,6 +245,29 @@ export function planEconomicEffects(
   if (intent.type === "burn_fenn") {
     // Dead address is fixed server-side; payload must not include it.
     void parseEvmAddress(FENN_DEAD_ADDRESS);
+
+    const amountResult = proposedAmountOrRefuse(intent);
+    if (!amountResult.ok) {
+      return refuse(amountResult.reason);
+    }
+    const amount = amountResult.amount;
+
+    if (
+      !isEconomicAmountPositiveAndAtMost(
+        amount,
+        limits.maxSingleBurnFormatted,
+        decimals,
+      )
+    ) {
+      return refuse("amount_exceeds_burn_limit");
+    }
+
+    const bal = checkBalance(amount, ctx);
+    if (bal) return refuse(bal);
+
+    const rolling = checkRolling24h(amount, ctx, limits);
+    if (rolling) return refuse(rolling);
+
     return {
       effects: [
         {
@@ -174,7 +276,7 @@ export function planEconomicEffects(
             `p1b:${eventKey}`,
           ),
           payload: {
-            amountFormatted: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+            amountFormatted: amount,
             executionRail: ctx.executionRail,
             economicReason: intent.reason,
           },
@@ -185,5 +287,5 @@ export function planEconomicEffects(
     };
   }
 
-  return { effects: [], skippedReason: "none", policyHint: null };
+  return refuse("none");
 }

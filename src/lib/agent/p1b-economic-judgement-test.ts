@@ -23,6 +23,9 @@ import {
   evaluateAuthorityDecision,
   type AuthorityDecision,
 } from "@/lib/agent/authority-policy";
+import {
+  PURSE_ORIGINAL_ALLOCATION_FORMATTED,
+} from "@/lib/agent/economic-amount";
 import { planEconomicEffects } from "@/lib/agent/economic-authority";
 import {
   economicIntentToJson,
@@ -64,6 +67,22 @@ import { createHash, randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const AUTHOR_X_USER_ID = "9000000000000000002";
+
+/**
+ * Resolve a definite Supabase admin client for the harness.
+ * Fail closed if the factory somehow returns nothing (keeps build/tsc happy).
+ */
+async function resolveHarnessAdminClient(
+  admin?: SupabaseClient,
+): Promise<SupabaseClient> {
+  if (admin) return admin;
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const client = createAdminClient();
+  if (!client) {
+    throw new Error("p1b_harness_admin_client_unavailable");
+  }
+  return client;
+}
 
 /**
  * Fresh synthetic snowflake per calibration run — avoids freezing an old
@@ -142,6 +161,8 @@ export type P1bEconomicJudgementResult = {
     idempotencyKey: string;
     payload: Record<string, unknown>;
   }>;
+  /** Deterministic authority skip reason for economic intent (null if planned). */
+  authorityEconomicSkippedReason?: string | null;
   economicExecutionEligible?: boolean;
   dryRun: boolean;
   claimAttempted: boolean;
@@ -166,8 +187,16 @@ export function harnessPurseState(
     environment: "p1b_test_harness",
     officialFennAvailable: false,
     officialBalanceFormatted: null,
-    testBalanceFormatted: "10",
-    remainingBalanceFormatted: "10",
+    // Calibration assumption: 10M original / remaining orientation (not live inventory).
+    testBalanceFormatted: PURSE_ORIGINAL_ALLOCATION_FORMATTED,
+    remainingBalanceFormatted: PURSE_ORIGINAL_ALLOCATION_FORMATTED,
+    tokenDecimals: 18,
+    originalAllocationFormatted: PURSE_ORIGINAL_ALLOCATION_FORMATTED,
+    totalTransferredFormatted: "0",
+    totalBurnedFormatted: "0",
+    largestTransferFormatted: null,
+    largestBurnFormatted: null,
+    rolling24hOutflowFormatted: "0",
     confirmedTransferCount: 0,
     confirmedBurnCount: 0,
     recentActions: [],
@@ -589,6 +618,16 @@ export async function runP1bEconomicJudgementTest(input: {
       payload: e.payload,
     }));
 
+    const economicAuthorityPlan = planEconomicEffects({
+      economicIntent: modelEconomicAction,
+      reasonCode: intention.reasonCode,
+      perceptionEventId: provisionalPerceptionId,
+      harnessBoundWallet: trustedWallet,
+      purseState,
+      executionRail: "p1a_test",
+      sufficientBalance: true,
+    });
+
     // ---- Dry-run calibration (default) ----
     if (!executeModelIntent) {
       if (input.execute === true && !forceMode) {
@@ -610,6 +649,7 @@ export async function runP1bEconomicJudgementTest(input: {
           authorityOutcome: decisionPreview.outcome,
           policyCode: decisionPreview.policyCode,
           authorityPlannedEffects: plannedEffectsPayload,
+          authorityEconomicSkippedReason: economicAuthorityPlan.skippedReason,
           dryRun: true,
           claimAttempted: false,
           broadcastAttempted: false,
@@ -637,6 +677,7 @@ export async function runP1bEconomicJudgementTest(input: {
         authorityOutcome: decisionPreview.outcome,
         policyCode: decisionPreview.policyCode,
         authorityPlannedEffects: plannedEffectsPayload,
+        authorityEconomicSkippedReason: economicAuthorityPlan.skippedReason,
         economicExecutionEligible: economicPlanned.length > 0,
         dryRun: true,
         claimAttempted: false,
@@ -724,9 +765,7 @@ export async function runP1bEconomicJudgementTest(input: {
       });
     }
 
-    const db =
-      input.admin ??
-      (await import("@/lib/supabase/admin").then((m) => m.createAdminClient()));
+    const db = await resolveHarnessAdminClient(input.admin);
 
     // Scaffold event + judgement first so we have durable perceptionEventId.
     const { data: existingEvent } = await db
@@ -1096,9 +1135,7 @@ async function runForceIntentBranch(args: {
     const { executeOneXPerceptionEffect } = await import(
       "@/lib/agent/stage126-execute"
     );
-    const db =
-      args.input.admin ??
-      (await import("@/lib/supabase/admin").then((m) => m.createAdminClient()));
+    const db = await resolveHarnessAdminClient(args.input.admin);
 
     const insertEvent = await db
       .from("x_perception_events")

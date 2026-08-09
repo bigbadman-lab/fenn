@@ -28,7 +28,7 @@ export type TransferFennExecuteSuccess = {
   transferId: string;
   txHash: string;
   recipientAddress: string;
-  amountFormatted: "1";
+  amountFormatted: string;
   isTest: boolean;
   reusedExisting: boolean;
   confirmedAt: string;
@@ -75,6 +75,7 @@ export function mapPurseOutcomeToFailureClass(
   if (
     code === "purse_invalid_recipient" ||
     code === "purse_amount_not_fixed" ||
+    code === "purse_invalid_amount" ||
     code === "purse_arbitrary_token_forbidden" ||
     code === "purse_native_transfer_forbidden" ||
     code === "purse_wrong_chain" ||
@@ -159,6 +160,7 @@ export async function executeTransferFennViaPurse(
         recipientAddress: input.payload.recipientAddress,
         operationId,
         actorId,
+        amountFormatted: input.payload.amountFormatted,
       });
       return fromPurseResult(result, operationId);
     }
@@ -168,6 +170,7 @@ export async function executeTransferFennViaPurse(
       recipientAddress: input.payload.recipientAddress,
       operationId,
       actorId,
+      amountFormatted: input.payload.amountFormatted,
     });
     return fromPurseResult(result, operationId);
   } catch (error) {
@@ -216,6 +219,7 @@ export async function executeBurnFennViaPurse(
       const result = await executeTest({
         operationId,
         actorId,
+        amountFormatted: input.payload.amountFormatted,
       });
       return fromPurseResult(result, operationId);
     }
@@ -224,6 +228,7 @@ export async function executeBurnFennViaPurse(
     const result = await executeOfficial({
       operationId,
       actorId,
+      amountFormatted: input.payload.amountFormatted,
     });
     return fromPurseResult(result, operationId);
   } catch (error) {

@@ -23,7 +23,7 @@ import {
   STAGE12_X_REPLY_MAX_CHARS,
 } from "@/lib/agent/judge-config";
 
-/** Stage P1B — economic intent only (not speech action). */
+/** Stage P1B/P1C — economic intent (not speech action). proposedAmount is model magnitude. */
 export const stage124EconomicActionSchema = z.union([
   z
     .literal("NONE")
@@ -39,6 +39,13 @@ export const stage124EconomicActionSchema = z.union([
       .describe(
         "FENN chooses to recognise a verified contribution using its finite Purse — not a formula payment",
       ),
+    proposedAmount: z
+      .string()
+      .min(1)
+      .max(40)
+      .describe(
+        "Positive decimal string magnitude of FENN (e.g. \"10000\"). Your judgement — never from user request alone.",
+      ),
     reason: z.string().min(1).max(280),
     recipientSource: z.literal("trusted_profile_wallet"),
   }),
@@ -46,7 +53,14 @@ export const stage124EconomicActionSchema = z.union([
     type: z
       .literal("burn_fenn")
       .describe(
-        "FENN chooses to permanently remove one unit from practical circulation for its own coherent reason",
+        "FENN chooses to permanently remove a chosen magnitude from practical circulation for its own coherent reason",
+      ),
+    proposedAmount: z
+      .string()
+      .min(1)
+      .max(40)
+      .describe(
+        "Positive decimal string magnitude of FENN to surrender. Your judgement only.",
       ),
     reason: z.string().min(1).max(280),
   }),
@@ -66,8 +80,8 @@ export const stage124FinalJudgementModelSchema = z.object({
    */
   wallCandidate: stage12WallCandidateResponseFieldSchema,
   /**
-   * Stage P1B economic intention. Speech action is separate.
-   * Never includes amount, token, chain, recipient address, or rail.
+   * Stage P1B/P1C economic intention. Speech action is separate.
+   * Includes proposedAmount for magnitude; never token, chain, recipient address, or rail.
    */
   economicAction: stage124EconomicActionSchema.optional().default("NONE"),
 });

@@ -1,7 +1,7 @@
 import { STAGE12_X_REPLY_MAX_CHARS } from "@/lib/agent/judge-config";
 import { stage12WallSourceExternalId } from "@/lib/wall/stage12-tool-contract";
 import { WALL_BODY_MAX_CHARS } from "@/lib/wall/types";
-import { P0_MANUAL_TRANSFER_AMOUNT_FORMATTED } from "@/lib/purse/constants";
+import { parseEconomicProposedAmount } from "@/lib/agent/economic-amount";
 import {
   isNormalizedEvmAddress,
   parseEvmAddress,
@@ -21,12 +21,13 @@ export type ValidatedWallPayload = {
 };
 
 /**
- * P1A transfer_fenn payload after fail-closed validation.
- * Token/chain/key/calldata never accepted.
+ * transfer_fenn payload after fail-closed validation.
+ * Token/chain/key/calldata never accepted. Amount is the approved decimal string.
  */
 export type ValidatedTransferFennPayload = {
   recipientAddress: string;
-  amountFormatted: "1";
+  /** Exact approved amount — never rewritten downstream. */
+  amountFormatted: string;
   /**
    * Explicit rail. Only `"p1a_test"` uses disposable-token test settlement.
    * Absent/official paths use official FENN only.
@@ -35,10 +36,10 @@ export type ValidatedTransferFennPayload = {
 };
 
 /**
- * P1A.1 burn_fenn payload — no recipient (dead address is code-owned).
+ * burn_fenn payload — no recipient (dead address is code-owned).
  */
 export type ValidatedBurnFennPayload = {
-  amountFormatted: "1";
+  amountFormatted: string;
   executionRail: "p1a_test" | "official";
 };
 
@@ -56,6 +57,23 @@ function hasNulOrDangerousControls(text: string): boolean {
     if (code < 32 && code !== 9 && code !== 10 && code !== 13) return true;
   }
   return false;
+}
+
+function parseApprovedAmountString(
+  p: Record<string, unknown>,
+  invalidCode: string,
+): string {
+  const amountRaw =
+    typeof p.amountFormatted === "string"
+      ? p.amountFormatted
+      : typeof p.amount === "string"
+        ? p.amount
+        : "";
+  try {
+    return parseEconomicProposedAmount(amountRaw);
+  } catch {
+    throw new Error(invalidCode);
+  }
 }
 
 /**
@@ -142,7 +160,7 @@ export function validateWallEffectPayload(
 
 /**
  * Fail-closed validation for transfer_fenn at the Stage 12.6 boundary.
- * Rejects token/chain/calldata and any amount other than exactly "1".
+ * Rejects token/chain/calldata. Amount must be the approved positive decimal.
  */
 export function validateTransferFennEffectPayload(
   payload: unknown,
@@ -175,15 +193,10 @@ export function validateTransferFennEffectPayload(
     throw new Error("transfer_secret_forbidden");
   }
 
-  const amountRaw =
-    typeof p.amountFormatted === "string"
-      ? p.amountFormatted
-      : typeof p.amount === "string"
-        ? p.amount
-        : "";
-  if (amountRaw.trim() !== P0_MANUAL_TRANSFER_AMOUNT_FORMATTED) {
-    throw new Error("transfer_amount_not_fixed");
-  }
+  const amountFormatted = parseApprovedAmountString(
+    p,
+    "transfer_amount_invalid",
+  );
 
   const recipientRaw =
     typeof p.recipientAddress === "string"
@@ -215,7 +228,7 @@ export function validateTransferFennEffectPayload(
 
   return {
     recipientAddress,
-    amountFormatted: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+    amountFormatted,
     executionRail,
   };
 }
@@ -284,20 +297,11 @@ export function validateBurnFennEffectPayload(
     throw new Error("burn_secret_forbidden");
   }
 
-  const amountRaw =
-    typeof p.amountFormatted === "string"
-      ? p.amountFormatted
-      : typeof p.amount === "string"
-        ? p.amount
-        : "";
-  if (amountRaw.trim() !== P0_MANUAL_TRANSFER_AMOUNT_FORMATTED) {
-    throw new Error("burn_amount_not_fixed");
-  }
-
+  const amountFormatted = parseApprovedAmountString(p, "burn_amount_invalid");
   const executionRail = parseExecutionRail(p, "burn_execution_rail_invalid");
 
   return {
-    amountFormatted: P0_MANUAL_TRANSFER_AMOUNT_FORMATTED,
+    amountFormatted,
     executionRail,
   };
 }

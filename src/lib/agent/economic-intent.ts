@@ -1,7 +1,12 @@
 /**
- * Model-facing economic intention types (Stage P1B).
+ * Model-facing economic intention types (Stage P1B / P1C).
  * These are advice to authority — never executable payloads as-is.
+ *
+ * P1C: model proposes magnitude via proposedAmount (decimal string).
+ * Model never sets recipient address, token, chain, rail, or burn destination.
  */
+
+import { parseEconomicProposedAmount } from "@/lib/agent/economic-amount";
 
 export const ECONOMIC_ACTION_TYPES = [
   "NONE",
@@ -11,7 +16,7 @@ export const ECONOMIC_ACTION_TYPES = [
 
 export type EconomicActionTypeName = (typeof ECONOMIC_ACTION_TYPES)[number];
 
-/** Only trusted source the model may claim for P1B transfers. */
+/** Only trusted source the model may claim for transfer recipients. */
 export const ECONOMIC_RECIPIENT_SOURCES = [
   "trusted_profile_wallet",
 ] as const;
@@ -26,11 +31,13 @@ export type ModelEconomicAction =
   | { type: "NONE" }
   | {
       type: "transfer_fenn";
+      proposedAmount: string;
       reason: string;
       recipientSource: EconomicRecipientSource;
     }
   | {
       type: "burn_fenn";
+      proposedAmount: string;
       reason: string;
     };
 
@@ -39,14 +46,21 @@ export type FinalEconomicIntent =
   | { type: "NONE" }
   | {
       type: "transfer_fenn";
+      proposedAmount: string;
       reason: string;
       recipientSource: EconomicRecipientSource;
     }
   | {
       type: "burn_fenn";
+      proposedAmount: string;
       reason: string;
     };
 
+/**
+ * Forbidden control fields from the model.
+ * proposedAmount is the only quantity field allowed (P1C).
+ * amount / amountFormatted remain forbidden — those are execution fields.
+ */
 const FORBIDDEN_MODEL_ECONOMIC_KEYS = [
   "amount",
   "amountFormatted",
@@ -69,6 +83,7 @@ const FORBIDDEN_MODEL_ECONOMIC_KEYS = [
 /**
  * Parse model economicAction. Rejects financial control fields.
  * Malformed input → NONE (fail closed on spending; speech separate).
+ * Invalid amount on transfer/burn throws (caller maps to NONE).
  */
 export function normalizeModelEconomicAction(
   raw: unknown,
@@ -108,8 +123,10 @@ export function normalizeModelEconomicAction(
     if (!reason) {
       throw new Error("economic_reason_required");
     }
+    const proposedAmount = parseEconomicProposedAmount(o.proposedAmount);
     return {
       type: "transfer_fenn",
+      proposedAmount,
       reason,
       recipientSource: "trusted_profile_wallet",
     };
@@ -119,13 +136,14 @@ export function normalizeModelEconomicAction(
     if (!reason) {
       throw new Error("economic_reason_required");
     }
-    return { type: "burn_fenn", reason };
+    const proposedAmount = parseEconomicProposedAmount(o.proposedAmount);
+    return { type: "burn_fenn", proposedAmount, reason };
   }
 
   throw new Error("economic_invalid_type");
 }
 
-/** Persist shape — never includes addresses or amounts. */
+/** Persist shape — includes proposed amount, never addresses/keys. */
 export function economicIntentToJson(
   intent: FinalEconomicIntent,
 ): Record<string, unknown> {
@@ -135,11 +153,16 @@ export function economicIntentToJson(
   if (intent.type === "transfer_fenn") {
     return {
       type: "transfer_fenn",
+      proposedAmount: intent.proposedAmount,
       reason: intent.reason,
       recipientSource: intent.recipientSource,
     };
   }
-  return { type: "burn_fenn", reason: intent.reason };
+  return {
+    type: "burn_fenn",
+    proposedAmount: intent.proposedAmount,
+    reason: intent.reason,
+  };
 }
 
 export function economicIntentFromJson(

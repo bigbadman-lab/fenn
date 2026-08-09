@@ -56,7 +56,7 @@ describe("Stage P1A transfer_fenn effect contract", () => {
     assert.match(policy, /planEconomicEffects|appendEconomicEffects/);
   });
 
-  it("validates recipient + fixed amount and rejects token/chain/calldata", () => {
+  it("validates recipient + positive decimal amount and rejects token/chain/calldata", () => {
     const ok = validateTransferFennEffectPayload({
       recipientAddress: RECIPIENT,
       amountFormatted: "1",
@@ -65,6 +65,13 @@ describe("Stage P1A transfer_fenn effect contract", () => {
     assert.equal(ok.amountFormatted, "1");
     assert.equal(ok.recipientAddress, RECIPIENT);
     assert.equal(ok.executionRail, "p1a_test");
+
+    const variable = validateTransferFennEffectPayload({
+      recipientAddress: RECIPIENT,
+      amountFormatted: "25000",
+      executionRail: TRANSFER_FENN_P1A_TEST_RAIL,
+    });
+    assert.equal(variable.amountFormatted, "25000");
 
     assert.throws(
       () =>
@@ -78,9 +85,17 @@ describe("Stage P1A transfer_fenn effect contract", () => {
       () =>
         validateTransferFennEffectPayload({
           recipientAddress: RECIPIENT,
-          amountFormatted: "2",
+          amountFormatted: "0",
         }),
-      /transfer_amount_not_fixed/,
+      /transfer_amount_invalid/,
+    );
+    assert.throws(
+      () =>
+        validateTransferFennEffectPayload({
+          recipientAddress: RECIPIENT,
+          amountFormatted: "1e5",
+        }),
+      /transfer_amount_invalid/,
     );
     assert.throws(
       () =>

@@ -203,7 +203,7 @@ async function executeClaimedEffect(
       );
       const followup = buildEconomicFollowupDraft({
         actionType: "transfer",
-        amountFormatted: "1",
+        amountFormatted: transferResult.amountFormatted,
         txHash: transferResult.txHash,
         recipientAddress: transferResult.recipientAddress,
       });
@@ -251,7 +251,7 @@ async function executeClaimedEffect(
       );
       const followup = buildEconomicFollowupDraft({
         actionType: "burn",
-        amountFormatted: "1",
+        amountFormatted: burnResult.amountFormatted,
         txHash: burnResult.txHash,
       });
       return {

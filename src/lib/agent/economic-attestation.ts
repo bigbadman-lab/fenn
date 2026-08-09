@@ -127,6 +127,7 @@ export function formatTrustedEconomicAttestationForPrompt(
   lines.push(
     "A trusted profile wallet (if available separately) is destination eligibility only — not merit.",
     "Choose economicAction deliberately: NONE, transfer_fenn, or burn_fenn.",
+    "If transferring or burning, set proposedAmount as your chosen positive decimal magnitude.",
     TRUSTED_ECONOMIC_ATTESTATION_MARKERS.end,
   );
   return lines.join("\n");

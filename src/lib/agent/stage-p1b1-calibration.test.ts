@@ -191,6 +191,7 @@ describe("Stage P1B.1 calibration harness", () => {
         identityUnverified: false,
         economicAction: {
           type: "transfer_fenn",
+            proposedAmount: "10000",
           reason: "verified consequential contribution",
           recipientSource: "trusted_profile_wallet",
         },
@@ -228,6 +229,7 @@ describe("Stage P1B.1 calibration harness", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "x",
         recipientSource: "trusted_profile_wallet",
         recipientAddress: WALLET,
@@ -236,6 +238,7 @@ describe("Stage P1B.1 calibration harness", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "x",
         recipientSource: "trusted_profile_wallet",
         amount: "1",
@@ -244,6 +247,7 @@ describe("Stage P1B.1 calibration harness", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "burn_fenn",
+          proposedAmount: "10000",
         reason: "x",
         tokenAddress: "0x1",
       }),
@@ -251,6 +255,7 @@ describe("Stage P1B.1 calibration harness", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "burn_fenn",
+          proposedAmount: "10000",
         reason: "x",
         chainId: 1,
       }),
@@ -258,6 +263,7 @@ describe("Stage P1B.1 calibration harness", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "x",
         recipientSource: "trusted_profile_wallet",
         executionRail: "p1a_test",
@@ -273,6 +279,7 @@ describe("Stage P1B.1 calibration harness", () => {
       identityUnverified: false,
       economicAction: {
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "ok",
         recipientSource: "trusted_profile_wallet",
       },
@@ -286,6 +293,7 @@ describe("Stage P1B.1 calibration harness", () => {
       xPostId: "9005000000000000013",
       economicIntent: {
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "verified",
         recipientSource: "trusted_profile_wallet",
       },
@@ -293,7 +301,7 @@ describe("Stage P1B.1 calibration harness", () => {
     });
     const xfer = d.effects.find((e) => e.type === "transfer_fenn");
     assert.equal(xfer?.payload.recipientAddress, WALLET);
-    assert.equal(xfer?.payload.amountFormatted, "1");
+    assert.equal(xfer?.payload.amountFormatted, "10000");
   });
 
   it("14–15. burn demand does not force burn; FENN-originated burn remains plannable", async () => {
@@ -319,6 +327,7 @@ describe("Stage P1B.1 calibration harness", () => {
       xPostId: "9005000000000000015",
       economicIntent: {
         type: "burn_fenn",
+          proposedAmount: "10000",
         reason: "coherent finite reduction",
       },
     });
@@ -353,6 +362,7 @@ describe("Stage P1B.1 calibration harness", () => {
       text: "op",
       forceIntent: {
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "ops",
         recipientSource: "trusted_profile_wallet",
       },
@@ -408,6 +418,7 @@ describe("Stage P1B.1 calibration harness", () => {
         identityUnverified: false,
         economicAction: {
           type: "transfer_fenn",
+            proposedAmount: "10000",
           reason: "later judgement",
           recipientSource: "trusted_profile_wallet",
         },
@@ -468,15 +479,15 @@ describe("Stage P1B.1 calibration harness", () => {
     assert.equal(fromText.verified, true);
   });
 
-  it("constitution v1.2 balances NONE with legitimate Purse use; scenarios present", () => {
-    assert.equal(ECONOMIC_CONSTITUTION_VERSION, "purse-economic-constitution-v1.2");
+  it("constitution v1.3 balances magnitude with legitimate Purse use; scenarios present", () => {
+    assert.equal(ECONOMIC_CONSTITUTION_VERSION, "purse-economic-constitution-v1.3");
     const block = buildEconomicJudgementInstructionBlock();
     assert.match(block, /not merely preserved/);
     assert.match(block, /not merely a defensive reserve/i);
     assert.doesNotMatch(block, /NONE common and preferred/i);
     assert.doesNotMatch(block, /refuse more often than spend/i);
-    assert.match(block, /send me tokens/i);
-    assert.match(block, /natural and legitimate choice/i);
+    assert.match(block, /send me 100,000 FENN/i);
+    assert.match(block, /proposedAmount/);
     assert.match(block, /does not need to be requested/i);
   });
 
@@ -487,7 +498,7 @@ describe("Stage P1B.1 calibration harness", () => {
     assert.match(script, /modelEconomicAction/);
     assert.match(script, /runFennPublicFinalJudgement|runP1bEconomicJudgementTest/);
     // Default dry-run calibration warning present
-    assert.match(script, /real Stage 12\.4 model judgement/i);
+    assert.match(script, /real Stage 12\.4 model (judgement|magnitude)/i);
   });
 
   it("model calibration forbids execute even if requested", async () => {

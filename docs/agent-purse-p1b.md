@@ -197,11 +197,12 @@ Output mode: `MODEL_JUDGEMENT_EXECUTION_TEST`, `intentForced: false`.
 
 **P1B.1 / P1B.2:** no migration. Trusted attestation is harness/runtime DTO only. Execution reuses Stage 12 + Purse adapters.
 
-## Toward P1C
+## Toward P1C — **implemented** (see [agent-purse-p1c.md](./agent-purse-p1c.md))
+
+Remaining later work:
 
 - Durable X → verified wallet mapping
 - Operator attestation beyond harness DTO
 - Copy-forward economic re-judge decision
 - Post-confirmation follow-up as real second reply
 - Optional official-FENN model-originated path (not this harness)
-- Still fixed amount until P2

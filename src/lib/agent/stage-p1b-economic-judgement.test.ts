@@ -62,6 +62,7 @@ describe("Stage P1B economic judgement", () => {
       identityUnverified: false,
       economicAction: {
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "clear contribution",
         recipientSource: "trusted_profile_wallet",
       },
@@ -84,6 +85,7 @@ describe("Stage P1B economic judgement", () => {
       identityUnverified: false,
       economicAction: {
         type: "burn_fenn",
+          proposedAmount: "10000",
         reason: "symbolic reduction",
       },
     });
@@ -92,6 +94,7 @@ describe("Stage P1B economic judgement", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "x",
         recipientSource: "trusted_profile_wallet",
         amount: "2",
@@ -100,6 +103,7 @@ describe("Stage P1B economic judgement", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "burn_fenn",
+          proposedAmount: "10000",
         reason: "x",
         tokenAddress: "0x1",
       }),
@@ -107,6 +111,7 @@ describe("Stage P1B economic judgement", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "burn_fenn",
+          proposedAmount: "10000",
         reason: "x",
         chainId: 1,
       }),
@@ -114,6 +119,7 @@ describe("Stage P1B economic judgement", () => {
     assert.throws(() =>
       normalizeModelEconomicAction({
         type: "burn_fenn",
+          proposedAmount: "10000",
         reason: "x",
         burnAddress: FENN_DEAD_ADDRESS,
       }),
@@ -131,6 +137,7 @@ describe("Stage P1B economic judgement", () => {
         identityUnverified: false,
         economicAction: {
           type: "burn_fenn",
+            proposedAmount: "10000",
           reason: "inject",
         },
       },
@@ -148,6 +155,7 @@ describe("Stage P1B economic judgement", () => {
       xPostId: "9004000000000000001",
       economicIntent: {
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "want give",
         recipientSource: "trusted_profile_wallet",
       },
@@ -160,12 +168,13 @@ describe("Stage P1B economic judgement", () => {
     assert.ok(d.effects.some((e) => e.type === "reply_on_x"));
   });
 
-  it("trusted wallet → fixed 1 transfer planned", () => {
+  it("trusted wallet → exact proposed transfer amount planned", () => {
     const d = evaluateP1bEconomicAuthority({
       perceptionEventId: "pe-2",
       xPostId: "9004000000000000002",
       economicIntent: {
         type: "transfer_fenn",
+        proposedAmount: "10000",
         reason: "earned recognition",
         recipientSource: "trusted_profile_wallet",
       },
@@ -173,7 +182,7 @@ describe("Stage P1B economic judgement", () => {
     });
     const xfer = d.effects.find((e) => e.type === "transfer_fenn");
     assert.ok(xfer);
-    assert.equal(xfer?.payload.amountFormatted, "1");
+    assert.equal(xfer?.payload.amountFormatted, "10000");
     assert.equal(xfer?.payload.recipientAddress, WALLET);
     assert.equal(xfer?.payload.executionRail, "p1a_test");
     assert.equal(
@@ -192,7 +201,7 @@ describe("Stage P1B economic judgement", () => {
 
   it("burn uses fixed dead address elsewhere; payload has no destination", () => {
     const planned = planEconomicEffects({
-      economicIntent: { type: "burn_fenn", reason: "rite" },
+      economicIntent: { type: "burn_fenn", proposedAmount: "10000", reason: "rite" },
       reasonCode: "answered_from_public_knowledge",
       perceptionEventId: "pe-3",
       executionRail: "p1a_test",
@@ -206,7 +215,7 @@ describe("Stage P1B economic judgement", () => {
     });
     assert.equal(planned.effects.length, 1);
     assert.equal(planned.effects[0]?.type, "burn_fenn");
-    assert.equal(planned.effects[0]?.payload.amountFormatted, "1");
+    assert.equal(planned.effects[0]?.payload.amountFormatted, "10000");
     assert.equal(
       "recipientAddress" in planned.effects[0].payload ||
         "burnAddress" in planned.effects[0].payload,
@@ -259,6 +268,7 @@ describe("Stage P1B economic judgement", () => {
     const planned = planEconomicEffects({
       economicIntent: {
         type: "transfer_fenn",
+          proposedAmount: "10000",
         reason: "hack",
         recipientSource: "trusted_profile_wallet",
       },
@@ -279,7 +289,7 @@ describe("Stage P1B economic judgement", () => {
 
   it("live rail refused when purse says test rail not active", () => {
     const planned = planEconomicEffects({
-      economicIntent: { type: "burn_fenn", reason: "x" },
+      economicIntent: { type: "burn_fenn", proposedAmount: "10000", reason: "x" },
       reasonCode: "answered_from_public_knowledge",
       perceptionEventId: "pe-6",
       executionRail: "p1a_test",
@@ -297,7 +307,7 @@ describe("Stage P1B economic judgement", () => {
 
   it("official rail refuses without official FENN", () => {
     const planned = planEconomicEffects({
-      economicIntent: { type: "burn_fenn", reason: "x" },
+      economicIntent: { type: "burn_fenn", proposedAmount: "10000", reason: "x" },
       reasonCode: "answered_from_public_knowledge",
       perceptionEventId: "pe-7",
       executionRail: "official",
@@ -320,14 +330,15 @@ describe("Stage P1B economic judgement", () => {
     assert.equal(inv.ok, true);
   });
 
-  it("post-confirmation follow-up uses explorer helper and does not claim pre-confirm", () => {
+  it("post-confirmation follow-up uses exact amount and explorer helper; pre-confirm guarded", () => {
     const draft = buildEconomicFollowupDraft({
       actionType: "burn",
-      amountFormatted: "1",
+      amountFormatted: "25000",
       txHash: TX,
     });
     assert.ok(draft.explorerUrl);
     assert.equal(draft.explorerUrl, explorerTxUrl(ROBINHOOD_CHAIN_ID, TX));
+    assert.match(draft.text, /25000 FENN/);
     assert.equal(
       replyClaimsCompletedEconomicAction("I am considering your request."),
       false,
@@ -351,13 +362,15 @@ describe("Stage P1B economic judgement", () => {
     assert.doesNotMatch(prompt, /FENN_PURSE_PRIVATE_KEY/);
   });
 
-  it("persist shape never carries secrets or amounts into intent json", () => {
+  it("persist shape includes proposedAmount and no addresses/secrets", () => {
     const j = economicIntentToJson({
       type: "transfer_fenn",
+      proposedAmount: "10000",
       reason: "ok",
       recipientSource: "trusted_profile_wallet",
     });
     assert.deepEqual(Object.keys(j).sort(), [
+      "proposedAmount",
       "reason",
       "recipientSource",
       "type",
