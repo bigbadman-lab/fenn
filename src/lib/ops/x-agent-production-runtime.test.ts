@@ -364,7 +364,15 @@ describe("x-agent-production-runtime", () => {
     assert.match(yaml, /buildCommand:\s*npm ci/);
     assert.match(yaml, /startCommand:\s*npm run agent:run-x/);
     assert.match(yaml, /FENN_X_AGENT_EXECUTION_MODE/);
-    assert.match(yaml, /value:\s*disabled/);
+    // Mode is Dashboard-owned (sync: false). value:disabled would reset live on every deploy.
+    assert.match(
+      yaml,
+      /FENN_X_AGENT_EXECUTION_MODE[\s\S]*?sync:\s*false/,
+    );
+    assert.doesNotMatch(
+      yaml,
+      /FENN_X_AGENT_EXECUTION_MODE\s*\n\s*value:\s*disabled/,
+    );
     assert.match(yaml, /FENN_X_AGENT_BATCH_SIZE/);
     assert.match(yaml, /FENN_X_AGENT_MAX_RUNTIME_SECONDS/);
     assert.doesNotMatch(yaml, /sk-live|Bearer /);

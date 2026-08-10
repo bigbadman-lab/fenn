@@ -53,8 +53,8 @@ Blueprint file: [`render.yaml`](../render.yaml) at the repository root.
 
 1. Apply Supabase migration `20260804120000_46_ops_runtime_leases.sql` (or latest that creates `ops_runtime_leases` + lease RPCs).
 2. In Render, create a Blueprint from this repo (or create a Cron Job manually with the same schedule/commands).
-3. Fill Blueprint `sync: false` secrets in the Dashboard (see matrix below).
-4. Confirm `FENN_X_AGENT_EXECUTION_MODE=disabled` on first deploy.
+3. Fill Blueprint `sync: false` vars in the Dashboard (see matrix below), including `FENN_X_AGENT_EXECUTION_MODE`.
+4. On first deploy set `FENN_X_AGENT_EXECUTION_MODE=disabled` in the Dashboard (Blueprint does not pin the value so deploys will not overwrite a later `live` / `dry_run`).
 5. Trigger a manual run and confirm logs show `mode=disabled result=noop`.
 
 # GitHub deployment
@@ -71,7 +71,7 @@ Blueprint file: [`render.yaml`](../render.yaml) at the repository root.
 
 | Variable | Class | Where | Notes |
 |----------|-------|-------|-------|
-| `FENN_X_AGENT_EXECUTION_MODE` | optional / Render-first | Render | `disabled` \| `dry_run` \| `live`; **default disabled** |
+| `FENN_X_AGENT_EXECUTION_MODE` | optional / Render-first | Render (Dashboard, `sync: false`) | `disabled` \| `dry_run` \| `live`; code default **disabled** if unset; **not** Blueprint-pinned (avoids deploy overwrite) |
 | `FENN_X_AGENT_BATCH_SIZE` | optional / Render | Render | Default `1` |
 | `FENN_X_AGENT_MAX_RUNTIME_SECONDS` | optional / Render | Render | Default `50` (soft) |
 | `FENN_X_AGENT_LEASE_KEY` | optional / Render | Render | Default `x_agent` |
@@ -137,6 +137,8 @@ Migration: `20260809200000_61_purse_p2a_executor.sql`.
 ---
 
 Never commit secret values. Blueprint uses `sync: false` for secrets (Dashboard prompts / Environment Groups).
+
+**Execution mode is also `sync: false`.** Do not put `value: disabled` (or `live`) under `FENN_X_AGENT_EXECUTION_MODE` in `render.yaml` — Render Blueprint sync applies hardcoded `value:` keys on every git deploy and will clobber a Dashboard `live` setting back to the YAML value. Operator enablement stays in the Dashboard only; the process still treats missing/invalid mode as `disabled`.
 
 # Execution modes
 
@@ -225,7 +227,7 @@ When nothing is queued after poll, the runtime **skips** OpenAI/judge and X writ
 | Symptom | Check |
 |---------|--------|
 | `X agent runtime environment incomplete` | Missing required env (names only in error). |
-| `mode=disabled` every minute | Expected until mode is changed. |
+| `mode=disabled` every minute | Expected until mode is changed in Dashboard. If you set `live` and it flips back after a git deploy, check `render.yaml` is not pinning `value: disabled` (must be `sync: false`). |
 | `result=lease_busy` often | Previous run still holding lease / TTL too short / stuck process. Wait for TTL or inspect `ops_runtime_leases`. |
 | Lease RPC errors | Apply migration `46_ops_runtime_leases`. |
 | Live run but no posts | OAuth unbound; authority denied; empty effects; mode dry_run. |

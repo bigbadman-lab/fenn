@@ -13,9 +13,11 @@ services:
     buildCommand: npm ci
     startCommand: npm run agent:run-x
     envVars:
-      # --- Execution gate (Render-only defaults; safe until explicitly enabled) ---
+      # --- Execution gate (Dashboard-owned). Do NOT set value: here —
+      # Blueprint sync with value: overwrites live/dry_run back to disabled on every deploy.
+      # Missing/invalid still resolves to disabled in code (never live).
       - key: FENN_X_AGENT_EXECUTION_MODE
-        value: disabled
+        sync: false
       - key: FENN_X_AGENT_BATCH_SIZE
         value: "1"
       - key: FENN_X_AGENT_MAX_RUNTIME_SECONDS
