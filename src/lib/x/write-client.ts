@@ -211,6 +211,46 @@ function failWrite(
   return result;
 }
 
+/** Known X copy when reply target tweet is gone / not visible to the user. */
+export const X_REPLY_TARGET_UNAVAILABLE_DETAIL =
+  "You attempted to reply to a Tweet that is deleted or not visible to you.";
+
+/**
+ * Detect X's inaccessible/deleted reply-target 403 (not auth expiry).
+ * Prefer detail field; tolerate minor whitespace/casing variance.
+ */
+export function isXReplyTargetUnavailableError(
+  json: unknown,
+  rawText: string,
+): boolean {
+  const normalize = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+  const needle = normalize(X_REPLY_TARGET_UNAVAILABLE_DETAIL);
+
+  const texts: string[] = [];
+  if (typeof json === "object" && json !== null && !Array.isArray(json)) {
+    const o = json as Record<string, unknown>;
+    for (const key of ["detail", "title", "error_description"] as const) {
+      if (typeof o[key] === "string") texts.push(o[key]);
+    }
+    if (Array.isArray(o.errors)) {
+      for (const e of o.errors) {
+        if (typeof e === "string") texts.push(e);
+        else if (e && typeof e === "object") {
+          const er = e as Record<string, unknown>;
+          if (typeof er.message === "string") texts.push(er.message);
+          if (typeof er.detail === "string") texts.push(er.detail);
+        }
+      }
+    }
+  }
+  if (rawText.trim()) texts.push(rawText);
+
+  return texts.some((t) => {
+    const n = normalize(t);
+    return n.includes(needle) || n.includes("deleted or not visible");
+  });
+}
+
 async function postReplyOnce(
   accessToken: string,
   input: { text: string; replyToXPostId: string },
@@ -259,13 +299,46 @@ async function postReplyOnce(
       }
     }
 
-    if (response.status === 401 || response.status === 403) {
+    // Auth path — only 401 triggers refresh/retry in createXReplyAsFenn.
+    if (response.status === 401) {
       return failWrite({
         ok: false,
         class: "retryable",
         code: "x_auth_expired",
         message: formatXWriteHttpFailureMessage({
           base: "access token rejected",
+          phase,
+          status: response.status,
+          statusText: response.statusText,
+          json,
+          rawText: text,
+        }),
+      });
+    }
+
+    // 403 is never treated as auth expiry (prevents refresh loops on permanent denials).
+    if (response.status === 403) {
+      if (isXReplyTargetUnavailableError(json, text)) {
+        return failWrite({
+          ok: false,
+          class: "terminal",
+          code: "x_reply_target_unavailable",
+          message: formatXWriteHttpFailureMessage({
+            base: "reply target deleted or not visible",
+            phase,
+            status: response.status,
+            statusText: response.statusText,
+            json,
+            rawText: text,
+          }),
+        });
+      }
+      return failWrite({
+        ok: false,
+        class: "terminal",
+        code: "x_forbidden",
+        message: formatXWriteHttpFailureMessage({
+          base: "write forbidden by X",
           phase,
           status: response.status,
           statusText: response.statusText,

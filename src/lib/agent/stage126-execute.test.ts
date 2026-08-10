@@ -27,6 +27,7 @@ import {
 import {
   createXReplyAsFenn,
   formatXWriteHttpFailureMessage,
+  isXReplyTargetUnavailableError,
   sanitizeXWriteErrorBody,
 } from "@/lib/x/write-client";
 import { XError } from "@/lib/x/errors";
@@ -412,9 +413,69 @@ describe("Stage 12.6 X write client", () => {
     }
   });
 
-  it("403 diagnostics include status and useful X JSON error body", async () => {
+  it("403 deleted/not-visible target is terminal x_reply_target_unavailable without refresh", async () => {
     setOauthEnv();
     try {
+      let posts = 0;
+      let refreshes = 0;
+      const accessToken = "valid-access-token-alive";
+      const result = await createXReplyAsFenn(
+        { text: "ghost reply", replyToXPostId: POST_ID },
+        {
+          loadCredentials: async () => ({
+            id: "c1",
+            xUserId: FENN_ID,
+            xUsername: "askfenn",
+            accessToken,
+            refreshToken: "valid-refresh-token-alive",
+            tokenType: "bearer",
+            scope: "tweet.write",
+            expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+          }),
+          saveCredentials: async () => {
+            throw new Error("must not save credentials");
+          },
+          refresh: async () => {
+            refreshes += 1;
+            throw new Error("must not refresh");
+          },
+          fetchFn: async () => {
+            posts += 1;
+            return new Response(
+              JSON.stringify({
+                title: "Forbidden",
+                detail:
+                  "You attempted to reply to a Tweet that is deleted or not visible to you.",
+                type: "about:blank",
+                status: 403,
+              }),
+              { status: 403, statusText: "Forbidden" },
+            );
+          },
+        },
+      );
+      assert.equal(posts, 1);
+      assert.equal(refreshes, 0);
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.equal(result.class, "terminal");
+        assert.equal(result.code, "x_reply_target_unavailable");
+        assert.match(result.message, /phase=initial_post/);
+        assert.match(result.message, /http_status=403/);
+        assert.match(result.message, /deleted or not visible/);
+        assert.doesNotMatch(result.message, /valid-access-token-alive/);
+        assert.doesNotMatch(result.message, /valid-refresh-token-alive/);
+      }
+    } finally {
+      restoreOauthEnv();
+    }
+  });
+
+  it("generic 403 is terminal x_forbidden without oauth refresh/retry", async () => {
+    setOauthEnv();
+    try {
+      let posts = 0;
+      let refreshes = 0;
       const result = await createXReplyAsFenn(
         { text: "forbidden", replyToXPostId: POST_ID },
         {
@@ -428,16 +489,16 @@ describe("Stage 12.6 X write client", () => {
             scope: "tweet.write",
             expiresAt: new Date(Date.now() + 3600_000).toISOString(),
           }),
-          saveCredentials: async () => {},
-          refresh: async () => ({
-            accessToken: "fresh-access-nope",
-            refreshToken: "fresh-refresh-nope",
-            tokenType: "bearer",
-            scope: null,
-            expiresAt: new Date(Date.now() + 3600_000),
-          }),
-          fetchFn: async () =>
-            new Response(
+          saveCredentials: async () => {
+            throw new Error("must not save");
+          },
+          refresh: async () => {
+            refreshes += 1;
+            throw new Error("must not refresh");
+          },
+          fetchFn: async () => {
+            posts += 1;
+            return new Response(
               JSON.stringify({
                 title: "Forbidden",
                 detail: "You are not permitted to perform this action.",
@@ -446,20 +507,21 @@ describe("Stage 12.6 X write client", () => {
                 errors: [{ message: "You cannot reply to this post" }],
               }),
               { status: 403, statusText: "Forbidden" },
-            ),
+            );
+          },
         },
       );
+      assert.equal(posts, 1);
+      assert.equal(refreshes, 0);
       assert.equal(result.ok, false);
       if (!result.ok) {
-        assert.equal(result.class, "retryable");
-        assert.equal(result.code, "x_auth_expired");
-        assert.match(result.message, /phase=post_refresh_retry/);
+        assert.equal(result.class, "terminal");
+        assert.equal(result.code, "x_forbidden");
+        assert.notEqual(result.code, "x_auth_expired");
+        assert.match(result.message, /phase=initial_post/);
         assert.match(result.message, /http_status=403/);
-        assert.match(result.message, /status_text=Forbidden/);
         assert.match(result.message, /You are not permitted/);
-        assert.match(result.message, /You cannot reply/);
         assert.doesNotMatch(result.message, /access-token-aaa|refresh-token-bbb/);
-        assert.doesNotMatch(result.message, /fresh-access-nope|fresh-refresh-nope/);
       }
     } finally {
       restoreOauthEnv();
@@ -483,14 +545,12 @@ describe("Stage 12.6 X write client", () => {
             scope: null,
             expiresAt: new Date(Date.now() + 3600_000).toISOString(),
           }),
-          saveCredentials: async () => {},
-          refresh: async () => ({
-            accessToken: "tok_rotated_should_not_appear",
-            refreshToken: "ref_rotated_should_not_appear",
-            tokenType: "bearer",
-            scope: null,
-            expiresAt: new Date(Date.now() + 3600_000),
-          }),
+          saveCredentials: async () => {
+            throw new Error("must not save");
+          },
+          refresh: async () => {
+            throw new Error("must not refresh");
+          },
           fetchFn: async () =>
             new Response(
               JSON.stringify({
@@ -505,12 +565,12 @@ describe("Stage 12.6 X write client", () => {
       );
       assert.equal(result.ok, false);
       if (!result.ok) {
-        assert.equal(result.code, "x_auth_expired");
+        assert.equal(result.code, "x_forbidden");
+        assert.equal(result.class, "terminal");
         assert.ok(result.message.length <= 500);
         assert.match(result.message, /…$/);
         assert.doesNotMatch(result.message, /tok_live_should_not_appear/);
         assert.doesNotMatch(result.message, /ref_live_should_not_appear/);
-        assert.doesNotMatch(result.message, /tok_rotated_should_not_appear/);
         assert.doesNotMatch(result.message, /Bearer tok_live/i);
       }
     } finally {
@@ -547,11 +607,11 @@ describe("Stage 12.6 X write client", () => {
             posts += 1;
             return new Response(
               JSON.stringify({
-                title: posts === 1 ? "Unauthorized" : "Forbidden",
-                detail: posts === 1 ? "first" : "still forbidden after refresh",
-                status: posts === 1 ? 401 : 403,
+                title: "Unauthorized",
+                detail: posts === 1 ? "first" : "still unauthorized after refresh",
+                status: 401,
               }),
-              { status: posts === 1 ? 401 : 403 },
+              { status: 401, statusText: "Unauthorized" },
             );
           },
         },
@@ -562,8 +622,8 @@ describe("Stage 12.6 X write client", () => {
         assert.equal(result.class, "retryable");
         assert.equal(result.code, "x_auth_expired");
         assert.match(result.message, /phase=post_refresh_retry/);
-        assert.match(result.message, /http_status=403/);
-        assert.match(result.message, /still forbidden after refresh/);
+        assert.match(result.message, /http_status=401/);
+        assert.match(result.message, /still unauthorized after refresh/);
         assert.doesNotMatch(result.message, /stale-access-token-111/);
         assert.doesNotMatch(result.message, /fresh-access-token-333/);
         assert.doesNotMatch(result.message, /stale-refresh-token-222/);
@@ -572,6 +632,28 @@ describe("Stage 12.6 X write client", () => {
     } finally {
       restoreOauthEnv();
     }
+  });
+
+  it("detects X reply-target unavailable detail copy", () => {
+    assert.equal(
+      isXReplyTargetUnavailableError(
+        {
+          title: "Forbidden",
+          detail:
+            "You attempted to reply to a Tweet that is deleted or not visible to you.",
+          status: 403,
+        },
+        "",
+      ),
+      true,
+    );
+    assert.equal(
+      isXReplyTargetUnavailableError(
+        { title: "Forbidden", detail: "You are not permitted." },
+        "",
+      ),
+      false,
+    );
   });
 
   it("sanitize helpers redact tokens and preserve X error fields", () => {
