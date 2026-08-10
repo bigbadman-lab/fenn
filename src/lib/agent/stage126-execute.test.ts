@@ -24,7 +24,11 @@ import {
   buildXAuthorizationUrl,
   resolveXOauthRedirectUri,
 } from "@/lib/x/oauth-config";
-import { createXReplyAsFenn } from "@/lib/x/write-client";
+import {
+  createXReplyAsFenn,
+  formatXWriteHttpFailureMessage,
+  sanitizeXWriteErrorBody,
+} from "@/lib/x/write-client";
 import { XError } from "@/lib/x/errors";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -336,6 +340,285 @@ describe("Stage 12.6 X write client", () => {
     } finally {
       restoreOauthEnv();
     }
+  });
+
+  it("401 diagnostics include status and keep retryable x_auth_expired after post-refresh still fails", async () => {
+    setOauthEnv();
+    try {
+      const accessToken = "secret-access-token-value-xyz";
+      const logs: string[] = [];
+      const originalLog = console.log;
+      console.log = (...args: unknown[]) => {
+        logs.push(args.map(String).join(" "));
+      };
+      try {
+        const result = await createXReplyAsFenn(
+          { text: "auth", replyToXPostId: POST_ID },
+          {
+            loadCredentials: async () => ({
+              id: "c1",
+              xUserId: FENN_ID,
+              xUsername: "askfenn",
+              accessToken,
+              refreshToken: "secret-refresh-token-value-xyz",
+              tokenType: "bearer",
+              scope: null,
+              expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+            }),
+            saveCredentials: async () => {},
+            refresh: async () => ({
+              accessToken: "rotated-access-token-zzz",
+              refreshToken: "rotated-refresh-token-zzz",
+              tokenType: "bearer",
+              scope: null,
+              expiresAt: new Date(Date.now() + 3600_000),
+            }),
+            fetchFn: async () =>
+              new Response(
+                JSON.stringify({
+                  title: "Unauthorized",
+                  detail: "Unauthorized",
+                  type: "about:blank",
+                  status: 401,
+                }),
+                { status: 401, statusText: "Unauthorized" },
+              ),
+          },
+        );
+        assert.equal(result.ok, false);
+        if (!result.ok) {
+          assert.equal(result.class, "retryable");
+          assert.equal(result.code, "x_auth_expired");
+          assert.match(result.message, /phase=post_refresh_retry/);
+          assert.match(result.message, /http_status=401/);
+          assert.match(result.message, /status_text=Unauthorized/);
+          assert.match(result.message, /x_error=/);
+          assert.match(result.message, /Unauthorized/);
+          assert.doesNotMatch(result.message, /secret-access-token-value-xyz/);
+          assert.doesNotMatch(result.message, /secret-refresh-token-value-xyz/);
+          assert.doesNotMatch(result.message, /rotated-access-token-zzz/);
+          assert.doesNotMatch(result.message, /Bearer\s+/i);
+        }
+        const joined = logs.join("\n");
+        assert.match(joined, /phase=initial_post/);
+        assert.match(joined, /phase=post_refresh_retry/);
+        assert.doesNotMatch(joined, /secret-access-token-value-xyz/);
+        assert.doesNotMatch(joined, /rotated-access-token-zzz/);
+      } finally {
+        console.log = originalLog;
+      }
+    } finally {
+      restoreOauthEnv();
+    }
+  });
+
+  it("403 diagnostics include status and useful X JSON error body", async () => {
+    setOauthEnv();
+    try {
+      const result = await createXReplyAsFenn(
+        { text: "forbidden", replyToXPostId: POST_ID },
+        {
+          loadCredentials: async () => ({
+            id: "c1",
+            xUserId: FENN_ID,
+            xUsername: "askfenn",
+            accessToken: "access-token-aaa",
+            refreshToken: "refresh-token-bbb",
+            tokenType: "bearer",
+            scope: "tweet.write",
+            expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+          }),
+          saveCredentials: async () => {},
+          refresh: async () => ({
+            accessToken: "fresh-access-nope",
+            refreshToken: "fresh-refresh-nope",
+            tokenType: "bearer",
+            scope: null,
+            expiresAt: new Date(Date.now() + 3600_000),
+          }),
+          fetchFn: async () =>
+            new Response(
+              JSON.stringify({
+                title: "Forbidden",
+                detail: "You are not permitted to perform this action.",
+                type: "about:blank",
+                status: 403,
+                errors: [{ message: "You cannot reply to this post" }],
+              }),
+              { status: 403, statusText: "Forbidden" },
+            ),
+        },
+      );
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.equal(result.class, "retryable");
+        assert.equal(result.code, "x_auth_expired");
+        assert.match(result.message, /phase=post_refresh_retry/);
+        assert.match(result.message, /http_status=403/);
+        assert.match(result.message, /status_text=Forbidden/);
+        assert.match(result.message, /You are not permitted/);
+        assert.match(result.message, /You cannot reply/);
+        assert.doesNotMatch(result.message, /access-token-aaa|refresh-token-bbb/);
+        assert.doesNotMatch(result.message, /fresh-access-nope|fresh-refresh-nope/);
+      }
+    } finally {
+      restoreOauthEnv();
+    }
+  });
+
+  it("long X error body is truncated and never includes Authorization tokens", async () => {
+    setOauthEnv();
+    try {
+      const longDetail = "x".repeat(2000);
+      const result = await createXReplyAsFenn(
+        { text: "long", replyToXPostId: POST_ID },
+        {
+          loadCredentials: async () => ({
+            id: "c1",
+            xUserId: FENN_ID,
+            xUsername: "askfenn",
+            accessToken: "tok_live_should_not_appear",
+            refreshToken: "ref_live_should_not_appear",
+            tokenType: "bearer",
+            scope: null,
+            expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+          }),
+          saveCredentials: async () => {},
+          refresh: async () => ({
+            accessToken: "tok_rotated_should_not_appear",
+            refreshToken: "ref_rotated_should_not_appear",
+            tokenType: "bearer",
+            scope: null,
+            expiresAt: new Date(Date.now() + 3600_000),
+          }),
+          fetchFn: async () =>
+            new Response(
+              JSON.stringify({
+                title: "Error",
+                detail: longDetail,
+                access_token: "tok_live_should_not_appear",
+                Authorization: "Bearer tok_live_should_not_appear",
+              }),
+              { status: 403 },
+            ),
+        },
+      );
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.equal(result.code, "x_auth_expired");
+        assert.ok(result.message.length <= 500);
+        assert.match(result.message, /…$/);
+        assert.doesNotMatch(result.message, /tok_live_should_not_appear/);
+        assert.doesNotMatch(result.message, /ref_live_should_not_appear/);
+        assert.doesNotMatch(result.message, /tok_rotated_should_not_appear/);
+        assert.doesNotMatch(result.message, /Bearer tok_live/i);
+      }
+    } finally {
+      restoreOauthEnv();
+    }
+  });
+
+  it("second POST after successful refresh is marked post_refresh_retry", async () => {
+    setOauthEnv();
+    try {
+      let posts = 0;
+      const result = await createXReplyAsFenn(
+        { text: "retry diag", replyToXPostId: POST_ID },
+        {
+          loadCredentials: async () => ({
+            id: "c1",
+            xUserId: FENN_ID,
+            xUsername: "askfenn",
+            accessToken: "stale-access-token-111",
+            refreshToken: "stale-refresh-token-222",
+            tokenType: "bearer",
+            scope: null,
+            expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+          }),
+          saveCredentials: async () => {},
+          refresh: async () => ({
+            accessToken: "fresh-access-token-333",
+            refreshToken: "fresh-refresh-token-444",
+            tokenType: "bearer",
+            scope: null,
+            expiresAt: new Date(Date.now() + 3600_000),
+          }),
+          fetchFn: async () => {
+            posts += 1;
+            return new Response(
+              JSON.stringify({
+                title: posts === 1 ? "Unauthorized" : "Forbidden",
+                detail: posts === 1 ? "first" : "still forbidden after refresh",
+                status: posts === 1 ? 401 : 403,
+              }),
+              { status: posts === 1 ? 401 : 403 },
+            );
+          },
+        },
+      );
+      assert.equal(posts, 2);
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.equal(result.class, "retryable");
+        assert.equal(result.code, "x_auth_expired");
+        assert.match(result.message, /phase=post_refresh_retry/);
+        assert.match(result.message, /http_status=403/);
+        assert.match(result.message, /still forbidden after refresh/);
+        assert.doesNotMatch(result.message, /stale-access-token-111/);
+        assert.doesNotMatch(result.message, /fresh-access-token-333/);
+        assert.doesNotMatch(result.message, /stale-refresh-token-222/);
+        assert.doesNotMatch(result.message, /fresh-refresh-token-444/);
+      }
+    } finally {
+      restoreOauthEnv();
+    }
+  });
+
+  it("sanitize helpers redact tokens and preserve X error fields", () => {
+    const body = {
+      title: "Forbidden",
+      detail: "Nope",
+      type: "about:blank",
+      status: 403,
+      access_token: "should-not-leak",
+      Authorization: "Bearer should-not-leak",
+    };
+    const sanitized = sanitizeXWriteErrorBody(body, "");
+    assert.match(sanitized, /Forbidden/);
+    assert.match(sanitized, /Nope/);
+    // Sensitive keys are dropped / redacted — never emitted as secret values.
+    assert.doesNotMatch(sanitized, /should-not-leak/);
+    assert.doesNotMatch(sanitized, /Bearer\s+should/i);
+
+    const withOnlySecrets = sanitizeXWriteErrorBody(
+      {
+        access_token: "should-not-leak",
+        Authorization: "Bearer should-not-leak",
+        other: "visible-ok",
+      },
+      "",
+    );
+    assert.match(withOnlySecrets, /visible-ok|\[redacted\]/);
+    assert.doesNotMatch(withOnlySecrets, /should-not-leak/);
+
+    const long = sanitizeXWriteErrorBody(
+      { detail: "y".repeat(1000) },
+      "",
+      80,
+    );
+    assert.ok(long.length <= 80);
+    assert.match(long, /…$/);
+
+    const msg = formatXWriteHttpFailureMessage({
+      base: "access token rejected",
+      phase: "initial_post",
+      status: 403,
+      statusText: "Forbidden",
+      json: body,
+    });
+    assert.match(msg, /phase=initial_post/);
+    assert.match(msg, /http_status=403/);
+    assert.doesNotMatch(msg, /should-not-leak/);
   });
 });
 

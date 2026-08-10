@@ -22,6 +22,139 @@ const createTweetResponseSchema = z.object({
   }),
 });
 
+/** Which POST /2/tweets attempt produced the failure (not a token phase). */
+export type XWritePostPhase = "initial_post" | "post_refresh_retry";
+
+/** Max length for failure `message` (incl. phase + status + x_error). */
+export const X_WRITE_FAILURE_MESSAGE_MAX = 500;
+
+const X_ERROR_KEEP_KEYS = [
+  "title",
+  "detail",
+  "type",
+  "status",
+  "error",
+  "error_description",
+  "errors",
+  "code",
+  "reason",
+] as const;
+
+const SENSITIVE_KEY =
+  /access[_-]?token|refresh[_-]?token|authorization|client[_-]?secret|code_verifier|pkce|password|cookie|bearer/i;
+
+/** Scrub credential-shaped material from diagnostic strings. */
+export function scrubCredentialMaterial(input: string): string {
+  return input
+    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(
+      /\b(access_token|refresh_token|client_secret|code_verifier)\s*[:=]\s*\S+/gi,
+      "$1=[redacted]",
+    )
+    .replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9._-]{10,}/g, "[redacted-jwt]")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function redactSensitiveKeys(value: unknown, depth = 0): unknown {
+  if (depth > 4) return "[truncated]";
+  if (value === null || value === undefined) return value;
+  if (typeof value === "string") return scrubCredentialMaterial(value);
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (Array.isArray(value)) {
+    return value.slice(0, 8).map((v) => redactSensitiveKeys(v, depth + 1));
+  }
+  if (typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (SENSITIVE_KEY.test(k)) {
+        out[k] = "[redacted]";
+        continue;
+      }
+      out[k] = redactSensitiveKeys(v, depth + 1);
+    }
+    return out;
+  }
+  return String(value);
+}
+
+/**
+ * Compact, credential-safe summary of an X API error body for operator logs.
+ * Prefer well-known error fields; never include Authorization / tokens.
+ */
+export function sanitizeXWriteErrorBody(
+  json: unknown,
+  rawText: string,
+  maxLen = 360,
+): string {
+  let summary = "";
+  if (json !== null && json !== undefined) {
+    if (typeof json === "object" && !Array.isArray(json)) {
+      const src = json as Record<string, unknown>;
+      const picked: Record<string, unknown> = {};
+      for (const key of X_ERROR_KEEP_KEYS) {
+        if (key in src && src[key] !== undefined) {
+          picked[key] = src[key];
+        }
+      }
+      const payload =
+        Object.keys(picked).length > 0 ? picked : (json as Record<string, unknown>);
+      try {
+        summary = JSON.stringify(redactSensitiveKeys(payload));
+      } catch {
+        summary = "";
+      }
+    } else if (typeof json === "string") {
+      summary = json;
+    } else {
+      try {
+        summary = JSON.stringify(redactSensitiveKeys(json));
+      } catch {
+        summary = String(json);
+      }
+    }
+  }
+  if (!summary && rawText.trim().length > 0) {
+    summary = rawText;
+  }
+  const scrubbed = scrubCredentialMaterial(summary);
+  if (scrubbed.length <= maxLen) return scrubbed;
+  return `${scrubbed.slice(0, Math.max(0, maxLen - 1))}…`;
+}
+
+/**
+ * Operator-facing failure message fragment. Safe for cron logs + last_error.
+ */
+export function formatXWriteHttpFailureMessage(input: {
+  base: string;
+  phase: XWritePostPhase;
+  status: number;
+  statusText?: string;
+  json?: unknown;
+  rawText?: string;
+}): string {
+  const statusText = (input.statusText ?? "").trim().slice(0, 80);
+  const xError = sanitizeXWriteErrorBody(
+    input.json ?? null,
+    input.rawText ?? "",
+  );
+  const parts = [
+    input.base,
+    `phase=${input.phase}`,
+    `http_status=${input.status}`,
+    statusText ? `status_text=${statusText}` : null,
+    xError ? `x_error=${xError}` : null,
+  ].filter(Boolean);
+  const line = parts.join("; ");
+  if (line.length <= X_WRITE_FAILURE_MESSAGE_MAX) return line;
+  return `${line.slice(0, X_WRITE_FAILURE_MESSAGE_MAX - 1)}…`;
+}
+
+function emitXWriteDiagnostic(message: string): void {
+  // stdout only — never tokens. Lands in Render cron logs.
+  console.log(`[x-write] ${message}`);
+}
+
 export type XReplyWriteResult =
   | { ok: true; tweetId: string }
   | {
@@ -71,10 +204,18 @@ async function ensureFreshAccessToken(
   };
 }
 
+function failWrite(
+  result: Extract<XReplyWriteResult, { ok: false }>,
+): Extract<XReplyWriteResult, { ok: false }> {
+  emitXWriteDiagnostic(`${result.code}: ${result.message}`);
+  return result;
+}
+
 async function postReplyOnce(
   accessToken: string,
   input: { text: string; replyToXPostId: string },
   deps: XWriteClientDeps,
+  phase: XWritePostPhase,
 ): Promise<XReplyWriteResult> {
   const fetchFn = deps.fetchFn ?? fetch;
   const timeoutMs = deps.timeoutMs ?? X_HTTP_TIMEOUT_MS;
@@ -103,59 +244,100 @@ async function postReplyOnce(
       try {
         json = JSON.parse(text) as unknown;
       } catch {
-        return {
+        return failWrite({
           ok: false,
           class: "ambiguous",
           code: "x_invalid_response",
-          message: "non-json reply response",
-        };
+          message: formatXWriteHttpFailureMessage({
+            base: "non-json reply response",
+            phase,
+            status: response.status,
+            statusText: response.statusText,
+            rawText: text,
+          }),
+        });
       }
     }
 
     if (response.status === 401 || response.status === 403) {
-      return {
+      return failWrite({
         ok: false,
         class: "retryable",
         code: "x_auth_expired",
-        message: "access token rejected",
-      };
+        message: formatXWriteHttpFailureMessage({
+          base: "access token rejected",
+          phase,
+          status: response.status,
+          statusText: response.statusText,
+          json,
+          rawText: text,
+        }),
+      });
     }
 
     if (response.status === 429) {
-      return {
+      return failWrite({
         ok: false,
         class: "retryable",
         code: "x_rate_limited",
-        message: "rate limited",
-      };
+        message: formatXWriteHttpFailureMessage({
+          base: "rate limited",
+          phase,
+          status: response.status,
+          statusText: response.statusText,
+          json,
+          rawText: text,
+        }),
+      });
     }
 
     if (response.status >= 500) {
-      return {
+      return failWrite({
         ok: false,
         class: "retryable",
         code: "x_server_error",
-        message: `HTTP ${response.status}`,
-      };
+        message: formatXWriteHttpFailureMessage({
+          base: `HTTP ${response.status}`,
+          phase,
+          status: response.status,
+          statusText: response.statusText,
+          json,
+          rawText: text,
+        }),
+      });
     }
 
     if (response.status < 200 || response.status >= 300) {
-      return {
+      return failWrite({
         ok: false,
         class: "terminal",
         code: "x_api_error",
-        message: `HTTP ${response.status}`,
-      };
+        message: formatXWriteHttpFailureMessage({
+          base: `HTTP ${response.status}`,
+          phase,
+          status: response.status,
+          statusText: response.statusText,
+          json,
+          rawText: text,
+        }),
+      });
     }
 
     const parsed = createTweetResponseSchema.safeParse(json);
     if (!parsed.success) {
-      return {
+      return failWrite({
         ok: false,
         class: "ambiguous",
         code: "x_invalid_response",
-        message: "success payload missing tweet id",
-      };
+        message: formatXWriteHttpFailureMessage({
+          base: "success payload missing tweet id",
+          phase,
+          status: response.status,
+          statusText: response.statusText,
+          json,
+          rawText: text,
+        }),
+      });
     }
 
     return { ok: true, tweetId: parsed.data.data.id };
@@ -165,20 +347,25 @@ async function postReplyOnce(
       (error.name === "AbortError" || error.message.includes("aborted"))
     ) {
       // Timeout after dispatch — reply may have been created. Do not auto-retry.
-      return {
+      return failWrite({
         ok: false,
         class: "ambiguous",
         code: "x_timeout_ambiguous",
-        message: "timeout after reply dispatch",
-      };
+        message: `timeout after reply dispatch; phase=${phase}`,
+      });
     }
     // Conservative: unknown network errors after POST started are ambiguous.
-    return {
+    const raw =
+      error instanceof Error ? error.message : "network failure";
+    return failWrite({
       ok: false,
       class: "ambiguous",
       code: "x_network_ambiguous",
-      message: error instanceof Error ? error.message : "network failure",
-    };
+      message: `${scrubCredentialMaterial(raw)}; phase=${phase}`.slice(
+        0,
+        X_WRITE_FAILURE_MESSAGE_MAX,
+      ),
+    });
   } finally {
     clearTimeout(timer);
   }
@@ -232,16 +419,30 @@ export async function createXReplyAsFenn(
 
   try {
     creds = await ensureFreshAccessToken(creds, deps);
-  } catch {
-    return {
+  } catch (error) {
+    const detail =
+      error instanceof Error
+        ? scrubCredentialMaterial(error.message)
+        : "token refresh failed";
+    const message =
+      `token refresh failed; phase=proactive_refresh; detail=${detail}`.slice(
+        0,
+        X_WRITE_FAILURE_MESSAGE_MAX,
+      );
+    return failWrite({
       ok: false,
       class: "terminal",
       code: "x_refresh_failed",
-      message: "token refresh failed",
-    };
+      message,
+    });
   }
 
-  const first = await postReplyOnce(creds.accessToken, input, deps);
+  const first = await postReplyOnce(
+    creds.accessToken,
+    input,
+    deps,
+    "initial_post",
+  );
   if (first.ok) return first;
   if (first.code !== "x_auth_expired") return first;
 
@@ -258,14 +459,28 @@ export async function createXReplyAsFenn(
       scope: rotated.scope,
       expiresAt: rotated.expiresAt,
     });
-    return await postReplyOnce(rotated.accessToken, input, deps);
-  } catch {
-    return {
+    return await postReplyOnce(
+      rotated.accessToken,
+      input,
+      deps,
+      "post_refresh_retry",
+    );
+  } catch (error) {
+    const detail =
+      error instanceof Error
+        ? scrubCredentialMaterial(error.message)
+        : "refresh after auth rejection failed";
+    const message =
+      `refresh after auth rejection failed; phase=forced_refresh; detail=${detail}`.slice(
+        0,
+        X_WRITE_FAILURE_MESSAGE_MAX,
+      );
+    return failWrite({
       ok: false,
       class: "terminal",
       code: "x_refresh_failed",
-      message: "refresh after auth rejection failed",
-    };
+      message,
+    });
   }
 }
 
@@ -293,7 +508,9 @@ export async function verifyBoundXOauthIdentity(
   } catch (error) {
     return {
       ok: false,
-      reason: error instanceof Error ? error.message : "verify failed",
+      reason: error instanceof Error
+        ? scrubCredentialMaterial(error.message)
+        : "verify failed",
     };
   }
 }
