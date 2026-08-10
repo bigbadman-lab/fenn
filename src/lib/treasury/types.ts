@@ -24,10 +24,14 @@ export type TreasuryTrackedAsset = {
   symbol: string;
   name: string | null;
   chainId: number;
-  /** null = chain-native asset */
+  /**
+   * null for native gas or a pre-launch dormancy placeholder without a CA.
+   * Only `isNative` means "read native balance" — null alone is not sufficient.
+   */
   contractAddress: string | null;
   decimals: number;
   displayOrder: number;
+  /** Canonical Robinhood native (ETH + null CA). Never true for dormant ERC-20. */
   isNative: boolean;
 };
 

@@ -30,6 +30,23 @@ function nativeRow(overrides: Partial<TreasuryAssetRow> = {}): TreasuryAssetRow 
   };
 }
 
+/** Pre-launch official FENN scaffold (null CA, tracked) — not native gas. */
+function dormantFennRow(
+  overrides: Partial<TreasuryAssetRow> = {},
+): TreasuryAssetRow {
+  return {
+    id: "fenn-dormant",
+    symbol: "FENN",
+    name: "FENN",
+    chain_id: ROBINHOOD_CHAIN_ID,
+    contract_address: null,
+    decimals: 18,
+    display_order: 1,
+    is_tracked: true,
+    ...overrides,
+  };
+}
+
 function erc20Row(overrides: Partial<TreasuryAssetRow> = {}): TreasuryAssetRow {
   return {
     id: "token",
@@ -160,6 +177,176 @@ describe("getPublicTreasurySnapshot", () => {
       assert.equal(asset.balance, "123456789.012345678901234567");
     }
     assert.deepEqual(holders, [TREASURY]);
+  });
+
+  it("dormant FENN (null CA) never reads native or ERC-20", async () => {
+    let nativeCalls = 0;
+    let erc20Calls = 0;
+    const snapshot = await getPublicTreasurySnapshot({
+      getConfig: async () => ({
+        configured: true,
+        walletAddress: TREASURY,
+      }),
+      listAssetRows: async () => [dormantFennRow()],
+      getContributions: async () => [],
+      createClient: () => ({}) as never,
+      readNative: async () => {
+        nativeCalls += 1;
+        return toTreasuryAmount(BigInt(9) * BigInt(10) ** BigInt(18), 18);
+      },
+      readErc20: async () => {
+        erc20Calls += 1;
+        throw new Error("should not run");
+      },
+      now: () => OBSERVED,
+      getOfficialToken: async () => null,
+    });
+    assert.equal(snapshot.state, "unavailable");
+    if (snapshot.state !== "unavailable") return;
+    assert.equal(snapshot.assets.length, 1);
+    assert.equal(snapshot.assets[0]?.symbol, "FENN");
+    assert.equal(snapshot.assets[0]?.state, "unavailable");
+    if (snapshot.assets[0]?.state === "unavailable") {
+      assert.equal(snapshot.assets[0].reason, "configuration_error");
+    }
+    assert.equal(nativeCalls, 0);
+    assert.equal(erc20Calls, 0);
+    assert.equal(snapshot.officialToken, null);
+  });
+
+  it("ETH + dormant FENN: native once for ETH only; FENN not ETH balance", async () => {
+    let nativeCalls = 0;
+    let erc20Calls = 0;
+    const ethRaw = BigInt(7) * BigInt(10) ** BigInt(18);
+    const snapshot = await getPublicTreasurySnapshot({
+      getConfig: async () => ({
+        configured: true,
+        walletAddress: TREASURY,
+      }),
+      listAssetRows: async () => [nativeRow(), dormantFennRow()],
+      getContributions: async () => [],
+      createClient: () => ({}) as never,
+      readNative: async () => {
+        nativeCalls += 1;
+        return toTreasuryAmount(ethRaw, 18);
+      },
+      readErc20: async () => {
+        erc20Calls += 1;
+        throw new Error("should not run pre-launch");
+      },
+      now: () => OBSERVED,
+      getOfficialToken: async () => null,
+    });
+    assert.equal(snapshot.state, "ready");
+    if (snapshot.state !== "ready") return;
+    assert.equal(nativeCalls, 1);
+    assert.equal(erc20Calls, 0);
+    assert.equal(snapshot.officialToken, null);
+
+    const eth = snapshot.assets.find((a) => a.symbol === "ETH");
+    const fenn = snapshot.assets.find((a) => a.symbol === "FENN");
+    assert.ok(eth);
+    assert.ok(fenn);
+    assert.equal(eth?.state, "available");
+    if (eth?.state === "available") {
+      assert.equal(eth.balance, "7");
+    }
+    assert.equal(fenn?.state, "unavailable");
+    if (fenn?.state === "unavailable") {
+      assert.equal(fenn.reason, "configuration_error");
+    }
+  });
+
+  it("live official FENN (non-null CA) uses ERC-20 balance read", async () => {
+    const fennCa = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let nativeCalls = 0;
+    let erc20Calls = 0;
+    const snapshot = await getPublicTreasurySnapshot({
+      getConfig: async () => ({
+        configured: true,
+        walletAddress: TREASURY,
+      }),
+      listAssetRows: async () => [
+        nativeRow(),
+        dormantFennRow({
+          id: "fenn-live",
+          contract_address: fennCa,
+          display_order: 1,
+        }),
+      ],
+      getContributions: async () => [],
+      createClient: () => ({}) as never,
+      readNative: async () => {
+        nativeCalls += 1;
+        return toTreasuryAmount(BigInt(1) * BigInt(10) ** BigInt(18), 18);
+      },
+      readErc20: async (input) => {
+        erc20Calls += 1;
+        assert.equal(input.tokenAddress.toLowerCase(), fennCa);
+        return toTreasuryAmount(BigInt("10000000000000000000"), 18);
+      },
+      now: () => OBSERVED,
+      getOfficialToken: async () => ({
+        symbol: "FENN",
+        chainId: ROBINHOOD_CHAIN_ID,
+        contractAddress: fennCa,
+        explorerUrl: "https://example.test/token",
+      }),
+    });
+    assert.equal(snapshot.state, "ready");
+    if (snapshot.state !== "ready") return;
+    assert.equal(nativeCalls, 1);
+    assert.equal(erc20Calls, 1);
+    const fenn = snapshot.assets.find((a) => a.symbol === "FENN");
+    assert.equal(fenn?.state, "available");
+    if (fenn?.state === "available") {
+      assert.equal(fenn.balance, "10");
+      assert.equal(fenn.contractAddress?.toLowerCase(), fennCa);
+    }
+    assert.equal(snapshot.officialToken?.contractAddress.toLowerCase(), fennCa);
+  });
+
+  it("arbitrary non-native null-CA asset is unavailable without chain reads", async () => {
+    let nativeCalls = 0;
+    let erc20Calls = 0;
+    const snapshot = await getPublicTreasurySnapshot({
+      getConfig: async () => ({
+        configured: true,
+        walletAddress: TREASURY,
+      }),
+      listAssetRows: async () => [
+        {
+          id: "mystery",
+          symbol: "NOTETH",
+          name: null,
+          chain_id: ROBINHOOD_CHAIN_ID,
+          contract_address: null,
+          decimals: 18,
+          display_order: 0,
+          is_tracked: true,
+        },
+      ],
+      getContributions: async () => [],
+      createClient: () => ({}) as never,
+      readNative: async () => {
+        nativeCalls += 1;
+        return toTreasuryAmount(BigInt(1), 18);
+      },
+      readErc20: async () => {
+        erc20Calls += 1;
+        throw new Error("no");
+      },
+      now: () => OBSERVED,
+      getOfficialToken: async () => null,
+    });
+    assert.equal(snapshot.state, "unavailable");
+    if (snapshot.state !== "unavailable") return;
+    assert.equal(snapshot.assets[0]?.state, "unavailable");
+    if (snapshot.assets[0]?.state === "unavailable") {
+      assert.equal(snapshot.assets[0].reason, "configuration_error");
+    }
+    assert.equal(nativeCalls, 0);
+    assert.equal(erc20Calls, 0);
   });
 
   it("returns multiple assets in display order", async () => {

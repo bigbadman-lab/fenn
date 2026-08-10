@@ -137,16 +137,32 @@ async function readOneAsset(
     return unavailableAsset(asset, "configuration_error");
   }
 
+  // Native gas only: null contract + canonical ETH symbol (via isNative).
+  // Dormant ERC-20 (e.g. pre-launch FENN with null CA) must not read native balance.
+  if (asset.isNative) {
+    try {
+      const amount = await deps.readNative(treasuryAddress, client);
+      return {
+        ...baseAssetFields(asset),
+        state: "available",
+        balance: amount.formatted,
+      };
+    } catch {
+      return unavailableAsset(asset, "rpc_failed");
+    }
+  }
+
+  if (asset.contractAddress == null) {
+    return unavailableAsset(asset, "configuration_error");
+  }
+
   try {
-    const amount =
-      asset.contractAddress == null
-        ? await deps.readNative(treasuryAddress, client)
-        : await deps.readErc20({
-            tokenAddress: asset.contractAddress,
-            holder: treasuryAddress,
-            decimals: asset.decimals,
-            client,
-          });
+    const amount = await deps.readErc20({
+      tokenAddress: asset.contractAddress,
+      holder: treasuryAddress,
+      decimals: asset.decimals,
+      client,
+    });
 
     return {
       ...baseAssetFields(asset),

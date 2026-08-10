@@ -1,4 +1,7 @@
-import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
+import {
+  ROBINHOOD_CHAIN_ID,
+  ROBINHOOD_NATIVE_CURRENCY,
+} from "@/lib/treasury/chain-definition";
 import { TreasuryError } from "@/lib/treasury/errors";
 import type { TreasuryTrackedAsset } from "@/lib/treasury/types";
 import {
@@ -16,6 +19,21 @@ export type TreasuryAssetRow = {
   display_order: number;
   is_tracked: boolean;
 };
+
+/**
+ * True only for chain-native gas (Robinhood ETH), never for dormant ERC-20
+ * placeholders that also use a null contract_address.
+ */
+export function isTreasuryNativeAsset(input: {
+  contractAddress: string | null;
+  symbol: string;
+}): boolean {
+  if (input.contractAddress != null) return false;
+  return (
+    input.symbol.trim().toUpperCase() ===
+    ROBINHOOD_NATIVE_CURRENCY.symbol.toUpperCase()
+  );
+}
 
 export function toTrackedAsset(row: TreasuryAssetRow): TreasuryTrackedAsset {
   if (row.chain_id !== ROBINHOOD_CHAIN_ID) {
@@ -59,7 +77,10 @@ export function toTrackedAsset(row: TreasuryAssetRow): TreasuryTrackedAsset {
     contractAddress,
     decimals: row.decimals,
     displayOrder: row.display_order,
-    isNative: contractAddress == null,
+    isNative: isTreasuryNativeAsset({
+      contractAddress,
+      symbol: row.symbol,
+    }),
   };
 }
 

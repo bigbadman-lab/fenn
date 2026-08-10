@@ -49,5 +49,9 @@ export async function getTrackedTreasuryAssets(
   return rows.map(toTrackedAsset);
 }
 
-export { assertAssetOnRobinhoodChain, toTrackedAsset } from "@/lib/treasury/asset-map";
+export {
+  assertAssetOnRobinhoodChain,
+  toTrackedAsset,
+  isTreasuryNativeAsset,
+} from "@/lib/treasury/asset-map";
 export type { TreasuryAssetRow } from "@/lib/treasury/asset-map";

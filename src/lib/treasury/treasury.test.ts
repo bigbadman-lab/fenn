@@ -139,6 +139,21 @@ describe("toTrackedAsset", () => {
     assert.equal(asset.chainId, 4663);
   });
 
+  it("null contract alone does not mark dormant FENN as native", () => {
+    const asset = toTrackedAsset({
+      id: "fenn",
+      symbol: "FENN",
+      name: "FENN",
+      chain_id: ROBINHOOD_CHAIN_ID,
+      contract_address: null,
+      decimals: 18,
+      display_order: 1,
+      is_tracked: true,
+    });
+    assert.equal(asset.isNative, false);
+    assert.equal(asset.contractAddress, null);
+  });
+
   it("normalizes ERC-20 contract addresses", () => {
     const asset = toTrackedAsset({
       id: "a2",

@@ -28,6 +28,7 @@ export { toPublicTreasuryContribution } from "@/lib/treasury/contributions";
 export {
   assertAssetOnRobinhoodChain,
   toTrackedAsset,
+  isTreasuryNativeAsset,
 } from "@/lib/treasury/asset-map";
 
 // Server-only: config / assets / chain — import those modules directly from trusted server code.
