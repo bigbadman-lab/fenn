@@ -91,6 +91,13 @@ export function HomeWelcome() {
               </Link>{" "}
               opens.
             </p>
+            <p className="home-welcome__line">
+              What FENN commits to move is named in the{" "}
+              <Link href="/commons" className="home-welcome__inline-link">
+                Commons
+              </Link>
+              .
+            </p>
           </div>
           <p className="home-welcome__closing">
             {HOMEPAGE_STRANGER_LINES.closing}

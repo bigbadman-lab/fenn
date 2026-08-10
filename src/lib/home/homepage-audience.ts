@@ -77,6 +77,7 @@ export const HOMEPAGE_STRANGER_LINES = {
   deeds: [
     "Do deeds. Speak in Camp. Earn LEAF.",
     "When FENN is satisfied, the Greenwood opens.",
+    "What FENN commits to move is named in the Commons.",
   ],
   closing: "This is not a game. This is how a world remembers.",
 } as const;

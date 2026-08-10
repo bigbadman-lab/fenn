@@ -160,16 +160,18 @@ describe("homepage V2 structure and wiring", () => {
     assert.doesNotMatch(welcome, /ENTER THE MAP/);
   });
 
-  it("stranger welcome links deeds, Camp, and Greenwood with underlines", () => {
+  it("stranger welcome links deeds, Camp, Greenwood, and Commons with underlines", () => {
     const welcome = read("src/components/home/home-welcome.tsx");
     const css = read("src/app/globals.css");
     assert.match(welcome, /href="\/deeds"/);
     assert.match(welcome, /href="\/camp"/);
     assert.match(welcome, /href="\/greenwood\?crossing=1"/);
+    assert.match(welcome, /href="\/commons"/);
     assert.match(welcome, /home-welcome__inline-link/);
     assert.match(welcome, /href="\/deeds"[\s\S]*?deeds/);
     assert.match(welcome, /href="\/camp"[\s\S]*?Camp/);
     assert.match(welcome, /href="\/greenwood\?crossing=1"[\s\S]*?Greenwood/);
+    assert.match(welcome, /href="\/commons"[\s\S]*?Commons/);
     assert.match(css, /a\.home-welcome__inline-link/);
     assert.match(
       css.slice(css.indexOf("a.home-welcome__inline-link")),
