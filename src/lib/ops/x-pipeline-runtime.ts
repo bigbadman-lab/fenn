@@ -224,16 +224,17 @@ export async function runXAgentPipeline(
         hardFailed: failed,
         durationMs,
       });
-      if (!quiet) {
-        log(`[agent:run-x] ${stage} done (${durationMs}ms)`);
-      }
       if (failed) {
+        // Keep stage aggregate for the production summary (quiet mode drops stage reports).
         ok = false;
         stoppedAtStage = stage;
-        if (!quiet) {
-          log(`[agent:run-x] STOP after ${stage} (hard failure)`);
-        }
-        return null;
+        log(
+          `[agent:run-x] ${stage} hard_failure (${durationMs}ms) — ${report(result)}`,
+        );
+        return result;
+      }
+      if (!quiet) {
+        log(`[agent:run-x] ${stage} done (${durationMs}ms)`);
       }
       return result;
     } catch (error) {
@@ -257,9 +258,12 @@ export async function runXAgentPipeline(
     }
   };
 
-  stageResults.poll =
-    (await runStage("POLL", poll, formatXPollReport, pollStageHardFailed)) ??
-    undefined;
+  stageResults.poll = await runStage(
+    "POLL",
+    poll,
+    formatXPollReport,
+    pollStageHardFailed,
+  ).then((r) => r ?? undefined);
   if (stoppedAtStage) {
     return finish();
   }
@@ -282,46 +286,42 @@ export async function runXAgentPipeline(
 
   const limit = stageLimit();
 
-  stageResults.judge =
-    (await runStage(
-      "JUDGE",
-      () => judge(limit),
-      formatJudgeBatchReport,
-      judgeStageHardFailed,
-    )) ?? undefined;
+  stageResults.judge = await runStage(
+    "JUDGE",
+    () => judge(limit),
+    formatJudgeBatchReport,
+    judgeStageHardFailed,
+  ).then((r) => r ?? undefined);
   if (stoppedAtStage || budgetExhausted) {
     return finish();
   }
 
-  stageResults.sight =
-    (await runStage(
-      "SIGHT",
-      () => sight(limit),
-      formatSightBatchReport,
-      sightStageHardFailed,
-    )) ?? undefined;
+  stageResults.sight = await runStage(
+    "SIGHT",
+    () => sight(limit),
+    formatSightBatchReport,
+    sightStageHardFailed,
+  ).then((r) => r ?? undefined);
   if (stoppedAtStage || budgetExhausted) {
     return finish();
   }
 
-  stageResults.authorize =
-    (await runStage(
-      "AUTHORIZE",
-      () => authorize(limit),
-      formatAuthorizeBatchReport,
-      authorizeStageHardFailed,
-    )) ?? undefined;
+  stageResults.authorize = await runStage(
+    "AUTHORIZE",
+    () => authorize(limit),
+    formatAuthorizeBatchReport,
+    authorizeStageHardFailed,
+  ).then((r) => r ?? undefined);
   if (stoppedAtStage || budgetExhausted) {
     return finish();
   }
 
-  stageResults.execute =
-    (await runStage(
-      "EXECUTE",
-      () => execute(limit, executeDryRun),
-      formatExecuteBatchReport,
-      executeStageHardFailed,
-    )) ?? undefined;
+  stageResults.execute = await runStage(
+    "EXECUTE",
+    () => execute(limit, executeDryRun),
+    formatExecuteBatchReport,
+    executeStageHardFailed,
+  ).then((r) => r ?? undefined);
 
   return finish();
 

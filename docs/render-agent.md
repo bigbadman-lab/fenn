@@ -228,6 +228,8 @@ When nothing is queued after poll, the runtime **skips** OpenAI/judge and X writ
 |---------|--------|
 | `X agent runtime environment incomplete` | Missing required env (names only in error). |
 | `mode=disabled` every minute | Expected until mode is changed in Dashboard. If you set `live` and it flips back after a git deploy, check `render.yaml` is not pinning `value: disabled` (must be `sync: false`). |
+| `result=failed` (exit 1) | Pipeline hard-fail or stage throw. Summary includes `stage=` and optional `error=`. Also look for `[agent:run-x] POLL\|JUDGE\|… hard_failure` / `failed (` lines. Common causes: X poll API errors (all fetches fail), OpenAI judge outage, OAuth unbound/expired on execute, Supabase RLS/RPC errors. |
+| `result=failed` + `perceptions=0` | No new mentions this tick, but internal queue work existed and a later stage hard-failed (sight/authorize/execute). |
 | `result=lease_busy` often | Previous run still holding lease / TTL too short / stuck process. Wait for TTL or inspect `ops_runtime_leases`. |
 | Lease RPC errors | Apply migration `46_ops_runtime_leases`. |
 | Live run but no posts | OAuth unbound; authority denied; empty effects; mode dry_run. |

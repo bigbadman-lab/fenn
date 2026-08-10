@@ -196,10 +196,28 @@ export function formatXAgentRunSummary(input: XAgentRunSummaryInput): string {
       ? `reply_generation_failed=${pipeline.authorize.replyGenerationFailed}`
       : null;
 
+  const failedStage =
+    input.result === "failed" && pipeline?.stoppedAtStage
+      ? `stage=${pipeline.stoppedAtStage}`
+      : null;
+  const failedStageError =
+    input.result === "failed" && pipeline
+      ? pipeline.stages.find(
+          (s) => s.stage === pipeline.stoppedAtStage && s.errorMessage,
+        )?.errorMessage
+      : undefined;
+  // Keep operator-readable; never log large/sensitive payloads.
+  const stageError =
+    failedStageError && failedStageError.length > 0
+      ? `error=${failedStageError.replace(/\s+/g, " ").slice(0, 160)}`
+      : null;
+
   return kv([
     `mode=${input.mode}`,
     `result=${input.result}`,
     duration,
+    failedStage,
+    stageError,
     perceptions !== undefined ? `perceptions=${perceptions}` : null,
     judgements !== undefined ? `judgements=${judgements}` : null,
     effects !== undefined ? `effects=${effects}` : null,

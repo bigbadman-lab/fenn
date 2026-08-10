@@ -290,6 +290,8 @@ describe("x-pipeline-runtime", () => {
     assert.deepEqual(order, ["POLL"]);
     assert.equal(result.ok, false);
     assert.equal(result.stoppedAtStage, "POLL");
+    assert.equal(result.poll?.failed, 2);
+    assert.equal(result.poll?.created, 0);
   });
 
   it("package exposes agent:run-x without .env.local hardcoding", () => {
