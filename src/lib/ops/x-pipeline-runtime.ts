@@ -151,6 +151,18 @@ export function executeCompletedWithTerminalEffects(
   );
 }
 
+function isExecuteBatchAggregate(value: unknown): value is ExecuteBatchAggregate {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.scanned === "number" &&
+    typeof v.completed === "number" &&
+    typeof v.failed === "number" &&
+    typeof v.dryRun === "number" &&
+    Array.isArray(v.results)
+  );
+}
+
 function defaultLog(line: string): void {
   console.log(line);
 }
@@ -274,12 +286,8 @@ export async function runXAgentPipeline(
       if (
         quiet &&
         stage === "EXECUTE" &&
-        result &&
-        typeof result === "object" &&
-        "results" in result &&
-        executeCompletedWithTerminalEffects(
-          result as ExecuteBatchAggregate,
-        )
+        isExecuteBatchAggregate(result) &&
+        executeCompletedWithTerminalEffects(result)
       ) {
         log(
           `[agent:run-x] EXECUTE completed_with_terminal_effects (${durationMs}ms) — ${report(result)}`,
