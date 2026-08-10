@@ -210,6 +210,235 @@ describe("x-agent-production-runtime", () => {
     assert.match(logs.join("\n"), /result=no_work/);
   });
 
+  function emptyPostPollStages() {
+    return {
+      judge: async () => ({
+        scanned: 0,
+        judged: 0,
+        alreadyJudged: 0,
+        failed: 0,
+        empty: true,
+        results: [],
+      }),
+      sight: async () => ({
+        scanned: 0,
+        finalized: 0,
+        alreadyFinalized: 0,
+        failed: 0,
+        results: [],
+      }),
+      authorize: async () => ({
+        scanned: 0,
+        authorised: 0,
+        alreadyAuthorised: 0,
+        failed: 0,
+        results: [],
+      }),
+    };
+  }
+
+  function liveTerminalEffectCycle(opts: {
+    errorCode: string;
+    logs: string[];
+  }) {
+    return runXAgentProductionCycle({
+      config: {
+        mode: "live",
+        batchSize: 1,
+        maxRuntimeSeconds: 50,
+        leaseKey: "x_agent",
+        leaseTtlSeconds: 65,
+      },
+      log: (line) => opts.logs.push(line),
+      lease: leaseMock([true]),
+      probeInternalWork: async () => true,
+      pipeline: {
+        poll: async () => ({
+          fetched: 0,
+          created: 0,
+          existing: 0,
+          failed: 0,
+          pagesFetched: 0,
+          sinceIdBefore: null,
+          sinceIdAfter: null,
+          fennXUserId: "1",
+        }),
+        ...emptyPostPollStages(),
+        execute: async () => ({
+          scanned: 1,
+          completed: 0,
+          failed: 1,
+          dryRun: 0,
+          results: [
+            {
+              status: "failed" as const,
+              effectType: "reply_on_x",
+              xPostId: "9004144782956841301",
+              attemptCount: 1,
+              failureClass: "terminal" as const,
+              errorCode: opts.errorCode,
+            },
+          ],
+        }),
+      },
+    });
+  }
+
+  it("live terminal x_reply_target_unavailable exits ok (cron exit 0)", async () => {
+    const logs: string[] = [];
+    const result = await liveTerminalEffectCycle({
+      errorCode: "x_reply_target_unavailable",
+      logs,
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.result, "completed_with_terminal_effects");
+    assert.doesNotMatch(logs.join("\n"), /hard_failure/);
+    assert.match(logs.join("\n"), /completed_with_terminal_effects/);
+    assert.match(logs.join("\n"), /x_reply_target_unavailable|class=terminal/);
+    assert.match(logs.join("\n"), /reply_on_x/);
+  });
+
+  it("live terminal x_forbidden exits ok (cron exit 0)", async () => {
+    const logs: string[] = [];
+    const result = await liveTerminalEffectCycle({
+      errorCode: "x_forbidden",
+      logs,
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.result, "completed_with_terminal_effects");
+    assert.doesNotMatch(logs.join("\n"), /hard_failure/);
+    assert.match(logs.join("\n"), /x_forbidden|class=terminal/);
+  });
+
+  it("live retryable execute failure still hard-fails the cycle", async () => {
+    const logs: string[] = [];
+    const result = await runXAgentProductionCycle({
+      config: {
+        mode: "live",
+        batchSize: 1,
+        maxRuntimeSeconds: 50,
+        leaseKey: "x_agent",
+        leaseTtlSeconds: 65,
+      },
+      log: (line) => logs.push(line),
+      lease: leaseMock([true]),
+      probeInternalWork: async () => true,
+      pipeline: {
+        poll: async () => ({
+          fetched: 0,
+          created: 0,
+          existing: 0,
+          failed: 0,
+          pagesFetched: 0,
+          sinceIdBefore: null,
+          sinceIdAfter: null,
+          fennXUserId: "1",
+        }),
+        ...emptyPostPollStages(),
+        execute: async () => ({
+          scanned: 1,
+          completed: 0,
+          failed: 1,
+          dryRun: 0,
+          results: [
+            {
+              status: "failed",
+              effectType: "reply_on_x",
+              failureClass: "retryable",
+              errorCode: "x_rate_limited",
+            },
+          ],
+        }),
+      },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.result, "failed");
+    assert.match(logs.join("\n"), /hard_failure/);
+    assert.match(logs.join("\n"), /x_rate_limited/);
+  });
+
+  it("live infrastructure throw on execute exits failed", async () => {
+    const logs: string[] = [];
+    const result = await runXAgentProductionCycle({
+      config: {
+        mode: "live",
+        batchSize: 1,
+        maxRuntimeSeconds: 50,
+        leaseKey: "x_agent",
+        leaseTtlSeconds: 65,
+      },
+      log: (line) => logs.push(line),
+      lease: leaseMock([true]),
+      probeInternalWork: async () => true,
+      pipeline: {
+        poll: async () => ({
+          fetched: 0,
+          created: 0,
+          existing: 0,
+          failed: 0,
+          pagesFetched: 0,
+          sinceIdBefore: null,
+          sinceIdAfter: null,
+          fennXUserId: "1",
+        }),
+        ...emptyPostPollStages(),
+        execute: async () => {
+          throw new Error("claim failed: database unavailable");
+        },
+      },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.result, "failed");
+    assert.match(logs.join("\n"), /EXECUTE failed/);
+    assert.match(logs.join("\n"), /database unavailable/);
+  });
+
+  it("live successful execute exits ok", async () => {
+    const logs: string[] = [];
+    const result = await runXAgentProductionCycle({
+      config: {
+        mode: "live",
+        batchSize: 1,
+        maxRuntimeSeconds: 50,
+        leaseKey: "x_agent",
+        leaseTtlSeconds: 65,
+      },
+      log: (line) => logs.push(line),
+      lease: leaseMock([true]),
+      probeInternalWork: async () => true,
+      pipeline: {
+        poll: async () => ({
+          fetched: 0,
+          created: 0,
+          existing: 0,
+          failed: 0,
+          pagesFetched: 0,
+          sinceIdBefore: null,
+          sinceIdAfter: null,
+          fennXUserId: "1",
+        }),
+        ...emptyPostPollStages(),
+        execute: async () => ({
+          scanned: 1,
+          completed: 1,
+          failed: 0,
+          dryRun: 0,
+          results: [
+            {
+              status: "completed",
+              effectType: "reply_on_x",
+              externalResultId: "99",
+            },
+          ],
+        }),
+      },
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.result, "ok");
+    assert.doesNotMatch(logs.join("\n"), /hard_failure/);
+    assert.match(logs.join("\n"), /result=ok/);
+  });
+
   it("live respects batch size on stages", async () => {
     const limits: number[] = [];
     await runXAgentProductionCycle({

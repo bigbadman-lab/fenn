@@ -39,6 +39,40 @@ describe("x-agent-summary", () => {
     );
   });
 
+  it("formats completed_with_terminal_effects counter line", () => {
+    const line = formatXAgentRunSummary({
+      mode: "live",
+      result: "completed_with_terminal_effects",
+      durationMs: 1200,
+      pipeline: {
+        ok: true,
+        startedAt: "2026-01-01T00:00:00.000Z",
+        finishedAt: "2026-01-01T00:00:01.000Z",
+        durationMs: 1200,
+        stoppedAtStage: null,
+        budgetExhausted: false,
+        skippedDueToNoWork: false,
+        stages: [],
+        execute: {
+          scanned: 1,
+          completed: 0,
+          failed: 1,
+          dryRun: 0,
+          results: [
+            {
+              status: "failed",
+              effectType: "reply_on_x",
+              failureClass: "terminal",
+              errorCode: "x_reply_target_unavailable",
+            },
+          ],
+        },
+      },
+    });
+    assert.match(line, /result=completed_with_terminal_effects/);
+    assert.match(line, /effects=1/);
+  });
+
   it("formats failed runs with stopped stage and safe error fragment", () => {
     const line = formatXAgentRunSummary({
       mode: "live",

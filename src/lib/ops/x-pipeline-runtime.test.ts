@@ -85,6 +85,57 @@ describe("x-pipeline-runtime", () => {
       }),
       true,
     );
+    assert.equal(
+      executeStageHardFailed({
+        scanned: 1,
+        completed: 0,
+        failed: 1,
+        dryRun: 0,
+        results: [
+          {
+            status: "failed",
+            failureClass: "terminal",
+            errorCode: "x_reply_target_unavailable",
+            effectType: "reply_on_x",
+          },
+        ],
+      }),
+      false,
+    );
+    assert.equal(
+      executeStageHardFailed({
+        scanned: 1,
+        completed: 0,
+        failed: 1,
+        dryRun: 0,
+        results: [
+          {
+            status: "failed",
+            failureClass: "terminal",
+            errorCode: "x_forbidden",
+            effectType: "reply_on_x",
+          },
+        ],
+      }),
+      false,
+    );
+    assert.equal(
+      executeStageHardFailed({
+        scanned: 1,
+        completed: 0,
+        failed: 1,
+        dryRun: 0,
+        results: [
+          {
+            status: "failed",
+            failureClass: "retryable",
+            errorCode: "x_rate_limited",
+            effectType: "reply_on_x",
+          },
+        ],
+      }),
+      true,
+    );
   });
 
   it("runs stages in order and completes when all succeed", async () => {

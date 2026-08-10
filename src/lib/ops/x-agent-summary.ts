@@ -19,6 +19,8 @@ export type XAgentRunSummaryResultCode =
   | "ok"
   | "failed"
   | "dry_run"
+  /** Execute produced only correctly persisted terminal effect outcomes. */
+  | "completed_with_terminal_effects"
   /** Eligible work finished with zero planned effects — not idle. */
   | "policy_invariant_violation";
 
@@ -120,7 +122,9 @@ export function formatXAgentRunSummary(input: XAgentRunSummaryInput): string {
     return kv([`mode=${input.mode}`, "result=budget", duration]);
   }
 
-  if (input.result === "policy_invariant_violation") {
+  if (input.result === "completed_with_terminal_effects") {
+    // Fall through to full counter line so failed effects stay visible.
+  } else if (input.result === "policy_invariant_violation") {
     return kv([
       `mode=${input.mode}`,
       "result=policy_invariant_violation",

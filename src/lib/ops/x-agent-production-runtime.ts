@@ -21,6 +21,7 @@ import {
 } from "@/lib/ops/x-agent-summary";
 import { probeXAgentInternalWork } from "@/lib/ops/x-agent-work-probe";
 import {
+  executeCompletedWithTerminalEffects,
   runXAgentPipeline,
   type XPipelineRunResult,
   type XPipelineRuntimeDeps,
@@ -235,6 +236,11 @@ async function runLive(
     resultCode = "budget";
   } else if (pipeline.skippedDueToNoWork) {
     resultCode = "no_work";
+  } else if (
+    pipeline.execute &&
+    executeCompletedWithTerminalEffects(pipeline.execute)
+  ) {
+    resultCode = "completed_with_terminal_effects";
   }
 
   const summary = formatXAgentRunSummary({
@@ -246,6 +252,7 @@ async function runLive(
   log(summary);
 
   return {
+    // Handled terminal effects leave pipeline.ok true — cron exits 0.
     ok: pipeline.ok,
     mode: "live",
     result: resultCode,

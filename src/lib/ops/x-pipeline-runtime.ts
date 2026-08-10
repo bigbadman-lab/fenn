@@ -109,9 +109,46 @@ export function authorizeStageHardFailed(
   return result.failed > 0 && result.authorised === 0;
 }
 
-/** Mirrors scripts/agent-execute-x.ts hard-fail exit condition. */
+/**
+ * Whether every failed execute result was a handled effect-level terminal
+ * (e.g. x_reply_target_unavailable). Infrastructure / retryable / ambiguous
+ * failures do not qualify.
+ */
+export function executeFailuresAreHandledTerminal(
+  result: ExecuteBatchAggregate,
+): boolean {
+  if (result.failed <= 0) return false;
+  const failed = result.results.filter((r) => r.status === "failed");
+  if (failed.length === 0) return false;
+  // Must account for full failed count when classes are present.
+  if (failed.length < result.failed) return false;
+  return failed.every((r) => r.failureClass === "terminal");
+}
+
+/**
+ * Cron/CLI hard-fail: only when execution failed *without* a durable handled
+ * completion, and not solely due to correctly persisted terminal effects.
+ * Handled terminal outcomes (deleted/not-visible reply, x_forbidden) must not
+ * page the production cron.
+ */
 export function executeStageHardFailed(result: ExecuteBatchAggregate): boolean {
-  return result.failed > 0 && result.completed === 0 && result.dryRun === 0;
+  if (result.completed > 0 || result.dryRun > 0) return false;
+  if (result.failed <= 0) return false;
+  if (executeFailuresAreHandledTerminal(result)) return false;
+  return true;
+}
+
+/**
+ * Quiet production: surface handled terminal effects without hard_failure wording.
+ */
+export function executeCompletedWithTerminalEffects(
+  result: ExecuteBatchAggregate,
+): boolean {
+  return (
+    result.failed > 0 &&
+    executeFailuresAreHandledTerminal(result) &&
+    !executeStageHardFailed(result)
+  );
 }
 
 function defaultLog(line: string): void {
@@ -232,6 +269,21 @@ export async function runXAgentPipeline(
           `[agent:run-x] ${stage} hard_failure (${durationMs}ms) — ${report(result)}`,
         );
         return result;
+      }
+      // Quiet production: log handled terminal effect outcomes without hard_failure / !ok.
+      if (
+        quiet &&
+        stage === "EXECUTE" &&
+        result &&
+        typeof result === "object" &&
+        "results" in result &&
+        executeCompletedWithTerminalEffects(
+          result as ExecuteBatchAggregate,
+        )
+      ) {
+        log(
+          `[agent:run-x] EXECUTE completed_with_terminal_effects (${durationMs}ms) — ${report(result)}`,
+        );
       }
       if (!quiet) {
         log(`[agent:run-x] ${stage} done (${durationMs}ms)`);

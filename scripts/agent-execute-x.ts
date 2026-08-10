@@ -23,6 +23,7 @@ import {
   STAGE126_EXECUTE_BATCH_DEFAULT,
   STAGE126_SPEECH_EFFECT_TYPES,
 } from "@/lib/agent/execute-config";
+import { executeStageHardFailed } from "@/lib/ops/x-pipeline-runtime";
 
 function parseLimit(argv: string[]): number {
   const flag = argv.find((a) => a.startsWith("--limit="));
@@ -65,7 +66,7 @@ async function main() {
     effectTypes,
   });
   console.log(formatExecuteBatchReport(result));
-  if (result.failed > 0 && result.completed === 0 && result.dryRun === 0) {
+  if (executeStageHardFailed(result)) {
     process.exitCode = 1;
   }
 }
