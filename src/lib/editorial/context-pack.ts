@@ -205,6 +205,8 @@ function buildWorldState(input: {
 export async function buildEditorialContextPack(options?: {
   coveredDate?: string;
   whatMattersToday?: string | null;
+  /** Untrusted Keeper speak-once context — never promoted to protectedFacts. */
+  keeperSituationalContext?: string | null;
   admin?: SupabaseClient;
   nowMs?: number;
 }): Promise<EditorialContextPack> {
@@ -227,6 +229,8 @@ export async function buildEditorialContextPack(options?: {
 
   const admin = options?.admin ?? (await defaultAdmin());
   const whatMattersToday = options?.whatMattersToday?.trim() || null;
+  const keeperSituationalContext =
+    options?.keeperSituationalContext?.trim() || null;
 
   const [
     snapshot,
@@ -667,7 +671,10 @@ export async function buildEditorialContextPack(options?: {
     worldState,
     protectedFacts,
     recentWriting: boundedWriting,
-    editorialFocus: { whatMattersToday },
+    editorialFocus: {
+      whatMattersToday,
+      keeperSituationalContext,
+    },
     world,
     robinhood,
   };

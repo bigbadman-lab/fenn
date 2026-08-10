@@ -224,6 +224,14 @@ export function DeskEditorialPanel() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [whatMattersToday, setWhatMattersToday] = useState("");
+  const [keeperContext, setKeeperContext] = useState("");
+  const [keeperBusy, setKeeperBusy] = useState(false);
+  const [keeperError, setKeeperError] = useState<string | null>(null);
+  const [keeperResult, setKeeperResult] = useState<{
+    body: string;
+    title: string;
+    recoveryUsed: boolean;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -423,6 +431,52 @@ export function DeskEditorialPanel() {
     }
   }
 
+  async function speakOnce() {
+    if (keeperBusy) return;
+    setKeeperBusy(true);
+    setKeeperError(null);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        setKeeperError("Could not open The Editorial Room.");
+        return;
+      }
+      const response = await fetch("/api/desk/editorial/speak-once", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ keeperContext: keeperContext.trim() }),
+        cache: "no-store",
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        transmission?: { body?: string; title?: string };
+        recoveryUsed?: boolean;
+        error?: string;
+      };
+      if (!response.ok || !data.transmission?.body) {
+        setKeeperError(data.error ?? "Generation failed.");
+        return;
+      }
+      setKeeperResult({
+        body: data.transmission.body,
+        title:
+          typeof data.transmission.title === "string"
+            ? data.transmission.title
+            : "",
+        recoveryUsed: Boolean(data.recoveryUsed),
+      });
+    } finally {
+      setKeeperBusy(false);
+    }
+  }
+
+  async function copyKeeperBody() {
+    if (!keeperResult?.body) return;
+    const ok = await copyText(keeperResult.body);
+    setFeedback(ok ? "copied." : "could not copy.");
+    window.setTimeout(() => setFeedback(""), 2000);
+  }
+
   return (
     <section className="desk-editorial" aria-label="The Editorial Room">
       <div className="desk-hollow__head">
@@ -474,6 +528,74 @@ export function DeskEditorialPanel() {
               <p className="muted">
                 Last prepared {new Date(run.createdAt).toLocaleString()}
               </p>
+            ) : null}
+          </div>
+
+          <div className="desk-editorial__prepare desk-editorial__keeper">
+            <h3 className="desk-overview__group-title">
+              ONE WORD FROM THE KEEPER
+            </h3>
+            <p className="muted">Give FENN something to speak about.</p>
+            <label className="desk-editorial__intent">
+              <span className="muted">SITUATION</span>
+              <textarea
+                className="desk-editorial__editor"
+                value={keeperContext}
+                onChange={(e) => setKeeperContext(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="A situation, atmosphere, or direction — not trusted as fact."
+                aria-label="Keeper situational context"
+                disabled={keeperBusy}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn-text"
+              disabled={keeperBusy || !keeperContext.trim()}
+              onClick={() => void speakOnce()}
+            >
+              {keeperBusy ? "[ WRITING… ]" : "[ GENERATE ]"}
+            </button>
+            {keeperBusy ? (
+              <p className="muted">FENN is writing one transmission.</p>
+            ) : null}
+            {keeperError ? <p className="muted">{keeperError}</p> : null}
+            {keeperResult ? (
+              <article
+                className="desk-editorial__tx"
+                aria-label="Keeper transmission"
+              >
+                {keeperResult.title ? (
+                  <p className="desk-editorial__tx-title muted">
+                    {keeperResult.title}
+                  </p>
+                ) : null}
+                <pre className="desk-editorial__body ascii">
+                  {keeperResult.body}
+                </pre>
+                <div className="desk-editorial__actions">
+                  <button
+                    type="button"
+                    className="btn-text"
+                    disabled={keeperBusy}
+                    onClick={() => void copyKeeperBody()}
+                  >
+                    [ COPY ]
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-text"
+                    disabled={keeperBusy || !keeperContext.trim()}
+                    onClick={() => void speakOnce()}
+                  >
+                    [ GENERATE AGAIN ]
+                  </button>
+                </div>
+                {keeperResult.recoveryUsed ? (
+                  <p className="muted">Rewritten once for quality.</p>
+                ) : null}
+              </article>
             ) : null}
           </div>
 

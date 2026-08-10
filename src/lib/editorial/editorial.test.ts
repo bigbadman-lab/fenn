@@ -4,22 +4,18 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { buildEditorialBrief, buildEditorialBriefFromPack } from "@/lib/editorial/brief";
-import {
-  EDITORIAL_CATEGORY_QUOTAS,
-  EDITORIAL_MODE_QUOTAS,
-  EDITORIAL_PACKAGE_SIZE,
-  categoryForMode,
-  orderedCategorySlots,
-  orderedModeSlots,
-} from "@/lib/editorial/categories";
 import {
   buildEditorialPackageSystemPrompt,
   buildEditorialPackageUserPayload,
   buildEditorialRecoverySystemPrompt,
   buildEditorialRegenerateUserPayload,
+  buildEditorialKeeperSpeakSystemPrompt,
+  buildEditorialKeeperSpeakUserPayload,
 } from "@/lib/editorial/generate-prompt";
-import { generateEditorialPackage } from "@/lib/editorial/generate";
+import {
+  generateEditorialPackage,
+  generateEditorialKeeperSpeak,
+} from "@/lib/editorial/generate";
 import { buildEditorialRobinhoodContext } from "@/lib/editorial/robinhood-context";
 import type {
   EditorialContextPack,
@@ -29,24 +25,37 @@ import type {
 import {
   EDITORIAL_CONTEXT_CAPS,
   EDITORIAL_GENERATOR_VERSION,
+  EDITORIAL_KEEPER_CONTEXT_MAX_CHARS,
   EDITORIAL_PROMPT_VERSION,
   encodeEditorialMetaSignals,
   decodeEditorialMetaSignals,
 } from "@/lib/editorial/types";
 import {
+  assertNoConflictingOfficialContract,
   assertNoInventedStats,
   assessEditorialPackage,
   detectBannedMarketing,
   EDITORIAL_BAD_FIXTURES,
   EDITORIAL_GOOD_FIXTURES,
   looksLikeAsciiStructure,
+  softQualityReasonsForSingle,
   validateEditorialPackage,
   validateSingleTransmission,
-} from "@/lib/editorial/validate";
+} from "@/lib/editorial/quality";
 import {
   BOOK_OF_SPEECH_VERSION,
   buildBookOfSpeechCanonBlock,
 } from "@/lib/fenn-voice/book-of-speech";
+import { EditorialError } from "@/lib/editorial/errors";
+import { buildEditorialBrief, buildEditorialBriefFromPack } from "@/lib/editorial/brief";
+import {
+  EDITORIAL_CATEGORY_QUOTAS,
+  EDITORIAL_MODE_QUOTAS,
+  EDITORIAL_PACKAGE_SIZE,
+  categoryForMode,
+  orderedCategorySlots,
+  orderedModeSlots,
+} from "@/lib/editorial/categories";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "../../..");
@@ -147,7 +156,7 @@ function mockPack(
       quietDay: true,
     },
     recentWriting: [],
-    editorialFocus: { whatMattersToday: null },
+    editorialFocus: { whatMattersToday: null, keeperSituationalContext: null },
     world,
     robinhood: buildEditorialRobinhoodContext(world),
     ...partial,
@@ -252,7 +261,10 @@ describe("Editorial brief (no slogan conversion)", () => {
 
   it("brief from pack carries keeper intent", () => {
     const pack = mockPack({
-      editorialFocus: { whatMattersToday: "explain LEAF" },
+      editorialFocus: {
+        whatMattersToday: "explain LEAF",
+        keeperSituationalContext: null,
+      },
       newsroom: {
         headlines: [
           {
@@ -277,7 +289,10 @@ describe("Editorial brief (no slogan conversion)", () => {
 describe("Prompt payload structure", () => {
   it("separates NEWSROOM, WORLD STATE, PROTECTED FACTS, RECENT WRITING, WHAT MATTERS TODAY", () => {
     const pack = mockPack({
-      editorialFocus: { whatMattersToday: "push people into Camp" },
+      editorialFocus: {
+        whatMattersToday: "push people into Camp",
+        keeperSituationalContext: null,
+      },
       recentWriting: [
         { source: "wall", text: "prior wall", createdAt: "2026-08-06T00:00:00Z" },
       ],
@@ -296,7 +311,12 @@ describe("Prompt payload structure", () => {
   });
 
   it("blank keeper intent is valid", () => {
-    const pack = mockPack({ editorialFocus: { whatMattersToday: null } });
+    const pack = mockPack({
+      editorialFocus: {
+        whatMattersToday: null,
+        keeperSituationalContext: null,
+      },
+    });
     const user = buildEditorialPackageUserPayload({
       pack,
       brief: buildEditorialBriefFromPack(pack),
@@ -708,6 +728,7 @@ describe("Editorial Room surface and security (source)", () => {
     const routes = [
       "src/app/api/desk/editorial/route.ts",
       "src/app/api/desk/editorial/generate/route.ts",
+      "src/app/api/desk/editorial/speak-once/route.ts",
       "src/app/api/desk/editorial/transmissions/[id]/route.ts",
       "src/app/api/desk/editorial/transmissions/[id]/regenerate/route.ts",
       "src/app/api/desk/editorial/transmissions/[id]/approve/route.ts",
@@ -723,12 +744,21 @@ describe("Editorial Room surface and security (source)", () => {
     assert.match(generate, /confirm: z\.literal\(true\)/);
     assert.match(generate, /desk\.editorial\.generate/);
     assert.match(generate, /whatMattersToday/);
+    assert.doesNotMatch(generate, /speakOnceForKeeper|generateEditorialKeeperSpeak/);
+
+    const speakOnce = read("src/app/api/desk/editorial/speak-once/route.ts");
+    assert.match(speakOnce, /speakOnceForKeeper/);
+    assert.match(speakOnce, /keeperContext/);
+    assert.match(speakOnce, /EDITORIAL_KEEPER_CONTEXT_MAX_CHARS/);
+    assert.doesNotMatch(speakOnce, /persistEditorialRun|prepareTodaysEditorialPackage/);
+    assert.doesNotMatch(speakOnce, /postTweet|runXAgentPipeline|twitter/i);
   });
 
-  it("generation supports package, single, recovery; no private keys", () => {
+  it("generation supports package, single, recovery, keeper speak; no private keys", () => {
     const gen = read("src/lib/editorial/generate.ts");
     assert.match(gen, /generateEditorialPackage/);
     assert.match(gen, /generateEditorialSingle/);
+    assert.match(gen, /generateEditorialKeeperSpeak/);
     assert.match(gen, /mode: "package"/);
     assert.match(gen, /mode: "single"/);
     assert.match(gen, /mode: "recovery"/);
@@ -743,14 +773,25 @@ describe("Editorial Room surface and security (source)", () => {
     assert.match(pack, /listPublicWallEntries/);
     assert.match(pack, /listPublicDeeds/);
     assert.match(pack, /getCurrentPublishedFireMessage/);
+    assert.match(pack, /keeperSituationalContext/);
+    assert.match(
+      pack,
+      /Untrusted Keeper speak-once context — never promoted to protectedFacts/,
+    );
   });
 
-  it("UI has newsroom, intent, thirty posts, ASCII mode without auto-post", () => {
+  it("UI has newsroom, intent, thirty posts, Keeper speak-once without auto-post", () => {
     const ui = read("src/components/desk/desk-editorial-panel.tsx");
     const page = read("src/app/desk/editorial/page.tsx");
     assert.match(page, /DeskEditorialPanel/);
     assert.match(ui, /PREPARE TODAY/);
     assert.match(ui, /WHAT MATTERS TODAY/);
+    assert.match(ui, /ONE WORD FROM THE KEEPER/);
+    assert.match(ui, /Give FENN something to speak about/);
+    assert.match(ui, /\/api\/desk\/editorial\/speak-once/);
+    assert.match(ui, /\[ GENERATE \]/);
+    assert.match(ui, /\[ GENERATE AGAIN \]/);
+    assert.match(ui, /keeperContext/);
     assert.match(ui, /TODAY IN THE WOOD/);
     assert.match(ui, /FROM TODAY/);
     assert.match(ui, /Thirty transmissions prepared/);
@@ -760,6 +801,7 @@ describe("Editorial Room surface and security (source)", () => {
     assert.match(ui, /\[ REGENERATE \]/);
     assert.match(ui, /\[ APPROVE \]/);
     assert.match(ui, /Manual posting only/);
+    assert.match(ui, /TODAY.*PACKAGE/);
     assert.doesNotMatch(ui, /schedule|analytics|auto.?post|publish to x/i);
     const categories = read("src/lib/editorial/categories.ts");
     assert.match(categories, /ascii: 3/);
@@ -778,6 +820,288 @@ describe("Editorial Room surface and security (source)", () => {
     const index = read("src/lib/editorial/index.ts");
     assert.doesNotMatch(index, /generate-prompt|openai|system prompt/i);
     assert.match(index, /SafeEditorialRun|prepareTodaysEditorialPackage/);
+    assert.match(index, /speakOnceForKeeper/);
+  });
+});
+
+describe("Keeper speak-once (single transmission)", () => {
+  const OFFICIAL =
+    "0x1111111111111111111111111111111111111111";
+  const WRONG =
+    "0x2222222222222222222222222222222222222222";
+
+  function singleRaw(body: string, mode = "direct") {
+    return {
+      transmission: {
+        mode,
+        title: "desk",
+        body,
+        operatorRationale: "keeper",
+        sourceSignals: [] as string[],
+        confidence: "medium" as const,
+        grounded: false,
+      },
+    };
+  }
+
+  it("prompt places Keeper context in situational field and not protected facts", () => {
+    const pack = mockPack({
+      editorialFocus: {
+        whatMattersToday: null,
+        keeperSituationalContext: "it's raining this Tuesday",
+      },
+      protectedFacts: {
+        ...mockPack().protectedFacts,
+        officialToken: {
+          symbol: "FENN",
+          chainId: 4663,
+          contractAddress: OFFICIAL,
+          explorerUrl: "https://example.invalid",
+        },
+      },
+    });
+    const brief = buildEditorialBriefFromPack(pack);
+    const system = buildEditorialKeeperSpeakSystemPrompt();
+    const user = buildEditorialKeeperSpeakUserPayload({
+      pack,
+      brief,
+      avoidBodies: ["prior post"],
+    });
+    assert.match(system, /book-of-speech-v2/);
+    assert.match(system, /PROTECTED_FACTS/);
+    assert.match(system, /KEEPER_SITUATIONAL_CONTEXT/);
+    assert.match(system, /PROTECTED_FACTS win/i);
+    assert.ok(system.includes(buildBookOfSpeechCanonBlock().slice(0, 40)));
+    const parsed = JSON.parse(user) as {
+      KEEPER_SITUATIONAL_CONTEXT: string;
+      PROTECTED_FACTS: { officialToken: { contractAddress: string } | null };
+      avoidBodies: string[];
+      mode: string;
+    };
+    assert.equal(parsed.KEEPER_SITUATIONAL_CONTEXT, "it's raining this Tuesday");
+    assert.equal(parsed.mode, "direct");
+    assert.deepEqual(parsed.avoidBodies, ["prior post"]);
+    assert.equal(
+      parsed.PROTECTED_FACTS.officialToken?.contractAddress,
+      OFFICIAL,
+    );
+    assert.doesNotMatch(user, /"keeperSituationalContext"\s*:/);
+    const protectedBlob = JSON.stringify(parsed.PROTECTED_FACTS);
+    assert.doesNotMatch(protectedBlob, /raining/);
+  });
+
+  it("service refuse empty/oversized; max chars match UI convention", () => {
+    assert.equal(EDITORIAL_KEEPER_CONTEXT_MAX_CHARS, 2000);
+    const svc = read("src/lib/editorial/service.ts");
+    assert.match(svc, /speakOnceForKeeper/);
+    assert.match(svc, /keeperSituationalContext/);
+    assert.match(svc, /persistEditorialRun/);
+    assert.doesNotMatch(
+      svc,
+      /speakOnceForKeeper[\s\S]{0,800}persistEditorialRun/,
+    );
+    assert.match(svc, /generateEditorialKeeperSpeak/);
+    assert.doesNotMatch(
+      svc,
+      /speakOnceForKeeper[\s\S]{0,600}generateEditorialPackage/,
+    );
+  });
+
+  it("defaults mode to direct, uses single schema path, avoids bodies", async () => {
+    const pack = mockPack({
+      editorialFocus: {
+        whatMattersToday: null,
+        keeperSituationalContext: "mist on the road",
+      },
+    });
+    const brief = buildEditorialBriefFromPack(pack);
+    let calls = 0;
+    let seenUser = "";
+    const result = await generateEditorialKeeperSpeak({
+      pack,
+      brief,
+      avoidBodies: ["do not reuse this exact post body."],
+      caller: async (args) => {
+        calls += 1;
+        assert.equal(args.mode, "single");
+        seenUser = args.user;
+        return singleRaw(
+          "Mist holds the road. Names wait under canopy tonight.",
+        );
+      },
+    });
+    assert.equal(calls, 1);
+    assert.equal(result.recoveryUsed, false);
+    assert.equal(result.draft.mode, "direct");
+    assert.equal(result.draft.category, "founder_note");
+    assert.match(seenUser, /KEEPER_SITUATIONAL_CONTEXT/);
+    assert.match(seenUser, /do not reuse this exact post body/);
+  });
+
+  it("soft quality failure allows one recovery and sets recoveryUsed", async () => {
+    const pack = mockPack({
+      editorialFocus: {
+        whatMattersToday: null,
+        keeperSituationalContext: "market noise",
+      },
+    });
+    const brief = buildEditorialBriefFromPack(pack);
+    let calls = 0;
+    const result = await generateEditorialKeeperSpeak({
+      pack,
+      brief,
+      avoidBodies: [],
+      caller: async () => {
+        calls += 1;
+        if (calls === 1) {
+          return singleRaw(
+            "Roadside hype only — no names worth speaking tonight.",
+          );
+        }
+        return singleRaw(
+          "Noise on the road. Names keep walking without coins as scripture.",
+        );
+      },
+    });
+    assert.equal(calls, 2);
+    assert.equal(result.recoveryUsed, true);
+    assert.match(result.draft.body, /Noise on the road/);
+  });
+
+  it("hard structural fail fails closed without recovery call", async () => {
+    const pack = mockPack({
+      editorialFocus: {
+        whatMattersToday: null,
+        keeperSituationalContext: "try inventing a contract",
+      },
+      protectedFacts: {
+        ...mockPack().protectedFacts,
+        officialToken: {
+          symbol: "FENN",
+          chainId: 4663,
+          contractAddress: OFFICIAL,
+          explorerUrl: "https://example.invalid",
+        },
+      },
+    });
+    const brief = buildEditorialBriefFromPack(pack);
+    let calls = 0;
+    await assert.rejects(
+      () =>
+        generateEditorialKeeperSpeak({
+          pack,
+          brief,
+          avoidBodies: [],
+          caller: async () => {
+            calls += 1;
+            return singleRaw(
+              `Official FENN at ${WRONG} wait under the trees.`,
+            );
+          },
+        }),
+      (err: unknown) =>
+        err instanceof EditorialError &&
+        err.code === "editorial_validation_failed",
+    );
+    assert.equal(calls, 1);
+  });
+
+  it("matching official contract may pass; conflicting fails quality helper", () => {
+    assert.doesNotThrow(() =>
+      assertNoConflictingOfficialContract(
+        `token ${OFFICIAL} under protected identity only.`,
+        OFFICIAL,
+      ),
+    );
+    assert.throws(
+      () =>
+        assertNoConflictingOfficialContract(
+          `token ${WRONG} claimed as FENN.`,
+          OFFICIAL,
+        ),
+      (err: unknown) =>
+        err instanceof EditorialError &&
+        /conflicts with protected/i.test(err.message),
+    );
+    assert.throws(
+      () =>
+        validateSingleTransmission(
+          draft(
+            "direct",
+            `Official at ${WRONG} on the road.`,
+          ),
+          "direct",
+          quietWorld({ officialContractAddress: OFFICIAL }),
+          [],
+          { officialContractAddress: OFFICIAL },
+        ),
+      (err: unknown) => err instanceof EditorialError,
+    );
+    assert.doesNotThrow(() =>
+      validateSingleTransmission(
+        draft(
+          "direct",
+          `Official at ${OFFICIAL} when stated.`,
+        ),
+        "direct",
+        quietWorld({ officialContractAddress: OFFICIAL }),
+        [],
+        { officialContractAddress: OFFICIAL },
+      ),
+    );
+  });
+
+  it("softQualityReasonsForSingle flags generic crypto only", () => {
+    const bad = softQualityReasonsForSingle(
+      draft(
+        "direct",
+        "dyor nfa hype only.",
+      ),
+    );
+    assert.ok(bad.length > 0);
+    const good = softQualityReasonsForSingle(
+      draft("direct", "Rain on oak. Road still open."),
+    );
+    assert.equal(good.length, 0);
+  });
+
+  it("failed recovery after soft first returns failure when second is hard invalid", async () => {
+    const pack = mockPack({
+      editorialFocus: {
+        whatMattersToday: null,
+        keeperSituationalContext: "noise",
+      },
+      protectedFacts: {
+        ...mockPack().protectedFacts,
+        officialToken: {
+          symbol: "FENN",
+          chainId: 4663,
+          contractAddress: OFFICIAL,
+          explorerUrl: "https://example.invalid",
+        },
+      },
+    });
+    const brief = buildEditorialBriefFromPack(pack);
+    let calls = 0;
+    await assert.rejects(
+      () =>
+        generateEditorialKeeperSpeak({
+          pack,
+          brief,
+          avoidBodies: [],
+          caller: async () => {
+            calls += 1;
+            if (calls === 1) {
+              return singleRaw(
+                "Empty hype for markets that are not scripture.",
+              );
+            }
+            return singleRaw(`Bad address ${WRONG} is FENN.`);
+          },
+        }),
+      (err: unknown) => err instanceof EditorialError,
+    );
+    assert.equal(calls, 2);
   });
 });
 

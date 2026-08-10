@@ -15,6 +15,7 @@ export {
   getEditorialRoomSnapshot,
   prepareTodaysEditorialPackage,
   regenerateEditorialTransmission,
+  speakOnceForKeeper,
 } from "@/lib/editorial/service";
 export {
   approveTransmission,
@@ -28,3 +29,4 @@ export type {
   SafeEditorialRun,
   SafeEditorialTransmission,
 } from "@/lib/editorial/types";
+export { EDITORIAL_KEEPER_CONTEXT_MAX_CHARS } from "@/lib/editorial/types";

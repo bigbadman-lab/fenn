@@ -11,6 +11,10 @@ import {
   buildEditorialRecoveryUserPayload,
   buildEditorialRegenerateSystemPrompt,
   buildEditorialRegenerateUserPayload,
+  buildEditorialKeeperSpeakSystemPrompt,
+  buildEditorialKeeperSpeakUserPayload,
+  buildEditorialKeeperSpeakRecoverySystemPrompt,
+  buildEditorialKeeperSpeakRecoveryUserPayload,
 } from "@/lib/editorial/generate-prompt";
 import {
   assertNoAuthorityFields,
@@ -23,6 +27,7 @@ import {
 } from "@/lib/editorial/generate-schema";
 import {
   assessEditorialPackage,
+  softQualityReasonsForSingle,
   validateEditorialPackageStructure,
   validateSingleTransmission,
 } from "@/lib/editorial/quality";
@@ -329,4 +334,109 @@ export async function generateEditorialSingle(input: {
     input.avoidBodies,
   );
   return draft;
+}
+
+/**
+ * One Keeper-directed transmission (default mode: direct).
+ * At most one soft-quality recovery rewrite. No package persistence.
+ */
+export async function generateEditorialKeeperSpeak(input: {
+  pack: EditorialContextPack;
+  brief: EditorialBrief;
+  avoidBodies: string[];
+  caller?: EditorialModelCaller;
+}): Promise<{
+  draft: EditorialDraftTransmission;
+  recoveryUsed: boolean;
+}> {
+  const mode = "direct" as const;
+  const officialContract =
+    input.pack.protectedFacts.officialToken?.contractAddress ?? null;
+  const caller = input.caller ?? defaultCaller;
+
+  async function callOnce(
+    which: "generate" | "recover",
+    prior?: { body: string; reasons: string[] },
+  ): Promise<EditorialDraftTransmission> {
+    let raw: unknown;
+    try {
+      if (which === "generate") {
+        raw = await caller({
+          model: EDITORIAL_OPENAI_MODEL,
+          system: buildEditorialKeeperSpeakSystemPrompt(),
+          user: buildEditorialKeeperSpeakUserPayload({
+            pack: input.pack,
+            brief: input.brief,
+            avoidBodies: input.avoidBodies,
+          }),
+          maxCompletionTokens: EDITORIAL_SINGLE_MAX_COMPLETION_TOKENS,
+          mode: "single",
+        });
+      } else {
+        raw = await caller({
+          model: EDITORIAL_OPENAI_MODEL,
+          system: buildEditorialKeeperSpeakRecoverySystemPrompt(),
+          user: buildEditorialKeeperSpeakRecoveryUserPayload({
+            pack: input.pack,
+            brief: input.brief,
+            failedBody: prior?.body ?? "",
+            reasons: prior?.reasons ?? [],
+            avoidBodies: input.avoidBodies,
+          }),
+          maxCompletionTokens: EDITORIAL_SINGLE_MAX_COMPLETION_TOKENS,
+          mode: "single",
+        });
+      }
+    } catch (error) {
+      if (error instanceof EditorialError) throw error;
+      throw new EditorialError(
+        "editorial_generation_failed",
+        which === "generate"
+          ? "Keeper transmission generation failed"
+          : "Keeper transmission recovery failed",
+        502,
+      );
+    }
+
+    let draft: EditorialDraftTransmission;
+    try {
+      draft = parseSingleModelOutput(raw);
+    } catch {
+      throw new EditorialError(
+        "editorial_generation_failed",
+        which === "generate"
+          ? "Keeper transmission could not be parsed"
+          : "Keeper recovery could not be parsed",
+        502,
+      );
+    }
+
+    draft = {
+      ...draft,
+      mode,
+      category: categoryForMode(mode),
+    };
+
+    // Structural / safety — fail closed (no recovery for these).
+    validateSingleTransmission(draft, mode, input.pack.world, input.avoidBodies, {
+      officialContractAddress: officialContract,
+    });
+    return draft;
+  }
+
+  const first = await callOnce("generate");
+  const soft = softQualityReasonsForSingle(first);
+  if (soft.length === 0) {
+    return { draft: first, recoveryUsed: false };
+  }
+
+  // One soft recovery only.
+  const recovered = await callOnce("recover", {
+    body: first.body,
+    reasons: soft,
+  });
+  // Soft reasons after recovery: accept if structural already validated.
+  // Re-check soft only to surface if still marketing-level soft fails...
+  // Accept recovery if structural passed (package recovery does not re-soft-loop).
+  return { draft: recovered, recoveryUsed: true };
 }

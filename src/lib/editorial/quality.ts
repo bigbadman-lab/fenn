@@ -486,6 +486,9 @@ export function validateSingleTransmission(
   expectedMode: EditorialMode,
   world: EditorialWorldContext,
   avoidBodies: string[],
+  options?: {
+    officialContractAddress?: string | null;
+  },
 ): void {
   if (draft.mode !== expectedMode) {
     throw new EditorialError(
@@ -541,6 +544,13 @@ export function validateSingleTransmission(
     );
   }
 
+  if (options?.officialContractAddress !== undefined) {
+    assertNoConflictingOfficialContract(
+      draft.body,
+      options.officialContractAddress,
+    );
+  }
+
   if (expectedMode === "ascii" && !looksLikeAsciiStructure(draft.body)) {
     throw new EditorialError(
       "editorial_validation_failed",
@@ -548,6 +558,54 @@ export function validateSingleTransmission(
       422,
     );
   }
+}
+
+const EVM_ADDRESS_RE = /\b0x[a-fA-F0-9]{40}\b/g;
+
+/**
+ * When protected official FENN contract is known, no conflicting 0x address
+ * may appear in a transmission body as a competing identity.
+ */
+export function assertNoConflictingOfficialContract(
+  body: string,
+  officialContractAddress: string | null | undefined,
+): void {
+  if (!officialContractAddress) return;
+  const expected = officialContractAddress.trim().toLowerCase();
+  if (!/^0x[a-f0-9]{40}$/.test(expected)) return;
+
+  const found = body.match(EVM_ADDRESS_RE) ?? [];
+  for (const raw of found) {
+    if (raw.toLowerCase() !== expected) {
+      throw new EditorialError(
+        "editorial_validation_failed",
+        "Transmission claims a contract address that conflicts with protected official FENN",
+        422,
+      );
+    }
+  }
+}
+
+/**
+ * Soft quality reasons that may trigger one single-transmission recovery.
+ * Marketing / invented stats / bad signals remain hard fails via validateSingle.
+ */
+export function softQualityReasonsForSingle(
+  draft: EditorialDraftTransmission,
+): string[] {
+  const reasons: string[] = [];
+  const crypto = detectGenericCrypto(draft.body);
+  if (crypto) {
+    reasons.push("Generic crypto/cliché language");
+  }
+  if (
+    draft.mode === "direct" &&
+    draft.grounded &&
+    draft.sourceSignals.filter((s) => !isEditorialMetaSignal(s)).length === 0
+  ) {
+    // not hard-fail; optional soft
+  }
+  return reasons;
 }
 
 /** Test fixture helpers */

@@ -13,6 +13,8 @@ export const EDITORIAL_OPENAI_MODEL = "gpt-4o-mini";
 export const EDITORIAL_PACKAGE_MAX_COMPLETION_TOKENS = 16_000;
 export const EDITORIAL_SINGLE_MAX_COMPLETION_TOKENS = 1_200;
 export const EDITORIAL_RECOVERY_MAX_COMPLETION_TOKENS = 8_000;
+/** Max Keeper free-text for speak-once (aligned with WHAT MATTERS textarea). */
+export const EDITORIAL_KEEPER_CONTEXT_MAX_CHARS = 2000;
 
 /** Hard caps for context pack assembly. */
 export const EDITORIAL_CONTEXT_CAPS = {
@@ -191,6 +193,11 @@ export type EditorialWorldState = {
 
 export type EditorialFocus = {
   whatMattersToday: string | null;
+  /**
+   * Keeper free-text for single-transmission speak-once (untrusted for facts).
+   * Never treated as protected evidence.
+   */
+  keeperSituationalContext: string | null;
 };
 
 /** Full newsroom context pack for generation (never includes private data). */

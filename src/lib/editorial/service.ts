@@ -14,6 +14,7 @@ import { EditorialError } from "@/lib/editorial/errors";
 import {
   generateEditorialPackage,
   generateEditorialSingle,
+  generateEditorialKeeperSpeak,
   type EditorialModelCaller,
 } from "@/lib/editorial/generate";
 import {
@@ -24,10 +25,12 @@ import {
 } from "@/lib/editorial/store";
 import type {
   EditorialDailyOverview,
+  EditorialDraftTransmission,
   EditorialRoomSnapshot,
   SafeEditorialRun,
   SafeEditorialTransmission,
 } from "@/lib/editorial/types";
+import { EDITORIAL_KEEPER_CONTEXT_MAX_CHARS } from "@/lib/editorial/types";
 import {
   buildEditorialDailyOverview,
   editorialCoveredDateToday,
@@ -185,6 +188,54 @@ export async function regenerateEditorialTransmission(input: {
     transmissionId: input.transmissionId,
     draft: finalDraft,
   });
+}
+
+/**
+ * Speak-once for the Keeper: one draft, no run/package persistence, no X post.
+ */
+export async function speakOnceForKeeper(input: {
+  keeperContext: string;
+  caller?: EditorialModelCaller;
+  now?: Date;
+}): Promise<{
+  transmission: EditorialDraftTransmission;
+  recoveryUsed: boolean;
+}> {
+  const trimmed = input.keeperContext.trim();
+  if (!trimmed) {
+    throw new EditorialError(
+      "editorial_invalid_input",
+      "Keeper context is required",
+      400,
+    );
+  }
+  if (trimmed.length > EDITORIAL_KEEPER_CONTEXT_MAX_CHARS) {
+    throw new EditorialError(
+      "editorial_invalid_input",
+      `Keeper context must be at most ${EDITORIAL_KEEPER_CONTEXT_MAX_CHARS} characters`,
+      400,
+    );
+  }
+
+  const now = input.now ?? new Date();
+  const pack = await buildEditorialContextPack({
+    keeperSituationalContext: trimmed,
+    nowMs: now.getTime(),
+  });
+  const brief = buildEditorialBriefFromPack(pack);
+
+  const avoidBodies = pack.recentWriting
+    .map((w) => w.text)
+    .filter((b) => b.trim().length > 0);
+
+  const { draft, recoveryUsed } = await generateEditorialKeeperSpeak({
+    pack,
+    brief,
+    avoidBodies,
+    caller: input.caller,
+  });
+
+  return { transmission: draft, recoveryUsed };
 }
 
 export function assertEditorialConfiguredOrExplain(error: unknown): never {
