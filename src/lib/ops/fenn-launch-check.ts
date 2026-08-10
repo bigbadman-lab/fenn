@@ -75,6 +75,10 @@ export type FennLaunchCheckReport = {
     expectedLaunchAllocation: typeof EXPECTED_INITIAL_PURSE_ALLOCATION_FORMATTED;
     allocationSatisfied: boolean | null;
     hasConfirmedOfficialMovements: boolean | null;
+    /** Durable Treasury→Purse launch fund op status, if any. */
+    launchFundingStatus: string | null;
+    launchFundingTxHash: string | null;
+    launchFundingConfirmed: boolean;
   };
   limits: {
     maxSingleTransfer: string;
@@ -105,6 +109,11 @@ export type FennLaunchCheckDeps = {
     decimals: number;
   }) => Promise<string | null>;
   countConfirmedOfficialMovements?: () => Promise<number>;
+  /** Durable launch ceremony row (historical fund), not live balances. */
+  loadLaunchFundingOperation?: () => Promise<{
+    status: string;
+    txHash: string | null;
+  } | null>;
   loadLimits?: typeof loadProductionEconomicAuthorityLimits;
   env?: NodeJS.ProcessEnv;
 };
@@ -554,6 +563,45 @@ export async function runFennLaunchCheck(
     }
   }
 
+  let launchFundingStatus: string | null = null;
+  let launchFundingTxHash: string | null = null;
+  let launchFundingConfirmed = false;
+  try {
+    const loadFunding =
+      deps.loadLaunchFundingOperation ??
+      (async () => {
+        const { getLaunchOperationById } = await import(
+          "@/lib/ops/fenn-launch-fund-store"
+        );
+        const { FENN_LAUNCH_PURSE_FUNDING_OPERATION_ID } = await import(
+          "@/lib/ops/fenn-launch-fund-constants"
+        );
+        const op = await getLaunchOperationById(
+          FENN_LAUNCH_PURSE_FUNDING_OPERATION_ID,
+        );
+        if (!op) return null;
+        return { status: op.status, txHash: op.txHash };
+      });
+    const op = await loadFunding();
+    if (op) {
+      launchFundingStatus = op.status;
+      launchFundingTxHash = op.txHash;
+      launchFundingConfirmed = op.status === "confirmed";
+      if (launchFundingConfirmed) {
+        preNotes.push(
+          "durable_launch_funding=confirmed (historical; independent of live Purse balance)",
+        );
+      } else {
+        preNotes.push(`durable_launch_funding=${op.status}`);
+      }
+    } else {
+      launchFundingStatus = null;
+      preNotes.push("durable_launch_funding=absent");
+    }
+  } catch {
+    preNotes.push("durable_launch_funding_unread");
+  }
+
   const classified = classifyFennLaunchStatus({
     flaggedRows,
     lookup,
@@ -564,7 +612,25 @@ export async function runFennLaunchCheck(
     confirmedOfficialMovements: confirmedMovements,
   });
 
+  // After durable confirmed funding, treat allocation as satisfied for LIVE_READY
+  // even if live balance later declines — historical proof of ceremony.
   let status = classified.status;
+  let allocationSatisfied = classified.allocationSatisfied;
+  if (launchFundingConfirmed && allocationSatisfied !== true) {
+    allocationSatisfied = true;
+    if (
+      status === "TOKEN_CONFIGURED_AWAITING_PURSE_FUNDING" &&
+      purse.configured &&
+      purse.economicSettlementEnabled === true &&
+      purse.officialSettlementActivatedAt
+    ) {
+      status = "LIVE_READY";
+      preNotes.push(
+        "LIVE_READY via durable launch funding (live balance may be below 10m after spend)",
+      );
+    }
+  }
+
   const allErrors = [...preErrors, ...classified.errors];
   if (preErrors.length > 0 && status !== "BRAKED") {
     status = "CONFIG_ERROR";
@@ -599,9 +665,12 @@ export async function runFennLaunchCheck(
       purseAddress: purse.configured ? purse.walletAddress : null,
       officialFennBalance: officialBalance,
       expectedLaunchAllocation: EXPECTED_INITIAL_PURSE_ALLOCATION_FORMATTED,
-      allocationSatisfied: classified.allocationSatisfied,
+      allocationSatisfied,
       hasConfirmedOfficialMovements:
         confirmedMovements == null ? null : confirmedMovements > 0,
+      launchFundingStatus,
+      launchFundingTxHash,
+      launchFundingConfirmed,
     },
     limits: {
       maxSingleTransfer: maxTransfer,
@@ -642,6 +711,9 @@ export function formatFennLaunchCheckReport(
     `expectedLaunchAllocation=${report.purse.expectedLaunchAllocation}`,
     `allocationSatisfied=${report.purse.allocationSatisfied}`,
     `hasConfirmedOfficialMovements=${report.purse.hasConfirmedOfficialMovements}`,
+    `launchFundingStatus=${report.purse.launchFundingStatus ?? "null"}`,
+    `launchFundingTxHash=${report.purse.launchFundingTxHash ?? "null"}`,
+    `launchFundingConfirmed=${report.purse.launchFundingConfirmed}`,
     `maxSingleTransfer=${report.limits.maxSingleTransfer}`,
     `maxSingleBurn=${report.limits.maxSingleBurn}`,
     `maxRolling24hOutflow=${report.limits.maxRolling24hOutflow}`,

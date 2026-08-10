@@ -339,12 +339,13 @@ describe("Stage 2 public fact readers", () => {
     );
   });
 
-  it("PUBLIC_FACT_KEYS cover Stage 2 six facts", () => {
+  it("PUBLIC_FACT_KEYS cover Stage 2 seven facts plus launch funding", () => {
     assert.deepEqual([...PUBLIC_FACT_KEYS], [
       "confirmed_outlaw_count",
       "greenwood_member_count",
       "greenwood_leaf_threshold",
       "official_fenn_token",
+      "fenn_launch_purse_funding",
       "current_public_gathering",
       "latest_public_chronicle",
     ]);

@@ -290,6 +290,7 @@ describe("P2C.1 runFennLaunchCheck side-effect free", () => {
     const report = await runFennLaunchCheck({
       listOfficialFlaggedRows: async () => [dormant()],
       getPurseConfig: async () => goodPurse,
+      loadLaunchFundingOperation: async () => null,
       readOfficialPurseBalance: async () => {
         balanceReads += 1;
         throw new Error("must not read balance when unresolved");
@@ -334,6 +335,7 @@ describe("P2C.1 runFennLaunchCheck side-effect free", () => {
         ...goodPurse,
         officialSettlementActivatedAt: "2026-08-10T12:00:00.000Z",
       }),
+      loadLaunchFundingOperation: async () => null,
       readOfficialPurseBalance: async (input) => {
         assert.equal(input.tokenAddress, liv.contract_address);
         assert.equal(input.decimals, 18);
@@ -351,12 +353,47 @@ describe("P2C.1 runFennLaunchCheck side-effect free", () => {
     });
     assert.equal(report.status, "LIVE_READY");
     assert.equal(report.purse.officialFennBalance, "10000000");
+    assert.equal(report.purse.launchFundingConfirmed, false);
+  });
+
+  it("durable confirmed funding is historical and independent of live balance", async () => {
+    const liv = live();
+    const report = await runFennLaunchCheck({
+      listOfficialFlaggedRows: async () => [liv],
+      getPurseConfig: async () => ({
+        ...goodPurse,
+        officialSettlementActivatedAt: "2026-08-10T12:00:00.000Z",
+      }),
+      loadLaunchFundingOperation: async () => ({
+        status: "confirmed",
+        txHash:
+          "0x1111111111111111111111111111111111111111111111111111111111111111",
+      }),
+      readOfficialPurseBalance: async () => "100",
+      countConfirmedOfficialMovements: async () => 0,
+      loadLimits: () => ({
+        maxSingleTransferFormatted: "100000",
+        maxSingleBurnFormatted: "50000",
+        maxRolling24hOutflowFormatted: "500000",
+        source: "production_defaults",
+        profile: "production",
+      }),
+      env: {},
+    });
+    assert.equal(report.purse.launchFundingConfirmed, true);
+    assert.equal(report.purse.officialFennBalance, "100");
+    assert.equal(report.status, "LIVE_READY");
+    assert.match(
+      formatFennLaunchCheckReport(report),
+      /launchFundingConfirmed=true/,
+    );
   });
 
   it("limits throw → CONFIG_ERROR", async () => {
     const report = await runFennLaunchCheck({
       listOfficialFlaggedRows: async () => [dormant()],
       getPurseConfig: async () => goodPurse,
+      loadLaunchFundingOperation: async () => null,
       loadLimits: () => {
         throw new EconomicAuthorityLimitsError("boom");
       },

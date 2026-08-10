@@ -8,6 +8,7 @@ export const PUBLIC_FACT_KEYS = [
   "greenwood_member_count",
   "greenwood_leaf_threshold",
   "official_fenn_token",
+  "fenn_launch_purse_funding",
   "current_public_gathering",
   "latest_public_chronicle",
 ] as const;
@@ -70,6 +71,7 @@ export function buildPublicFactEvidencePromptBlock(
     "  greenwood_member_count:v=<n>",
     "  greenwood_leaf_threshold:v=<n>",
     "  official_fenn_token:contract=<0x...>",
+    "  fenn_launch_purse_funding:tx=<0x...>",
     "  current_public_gathering:id=<starts>|<ends>",
     "Never invent a fingerprint not matching available facts below.",
     "",

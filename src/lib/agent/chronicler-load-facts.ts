@@ -9,6 +9,7 @@ import {
   readCurrentPublicGathering,
   readGreenwoodLeafThreshold,
   readOfficialFennToken,
+  readLaunchPurseFunding,
   readRegisterPublicFacts,
 } from "@/lib/agent/public-fact-readers";
 import {
@@ -71,6 +72,7 @@ export async function loadTrustedFactsForChronicler(input: {
   }
   if (caps.has("token")) {
     jobs.push(readOfficialFennToken());
+    jobs.push(readLaunchPurseFunding());
   }
   if (caps.has("gatherings")) {
     jobs.push(readCurrentPublicGathering());

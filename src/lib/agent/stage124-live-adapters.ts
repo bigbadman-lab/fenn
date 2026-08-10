@@ -23,6 +23,7 @@ import {
   readGreenwoodLeafThreshold,
   readLatestPublicChronicle,
   readOfficialFennToken,
+  readLaunchPurseFunding,
   readRegisterPublicFacts,
 } from "@/lib/agent/public-fact-readers";
 import { prioritizeAndCap } from "@/lib/agent/live-capability-routing";
@@ -261,13 +262,18 @@ export async function executeStage124LiveReads(
           facts: [fact],
         });
       } else if (capability === "token") {
-        const fact = await readOfficialFennToken();
-        allFacts.push(fact);
+        const [fact, funding] = await Promise.all([
+          readOfficialFennToken(),
+          readLaunchPurseFunding(),
+        ]);
+        const facts = [fact, funding];
+        allFacts.push(...facts);
+        const anyOk = facts.some((f) => f.available);
         results.push({
           capability,
-          available: fact.available,
-          context: fact.available ? factsToContext([fact]) : null,
-          facts: [fact],
+          available: anyOk,
+          context: anyOk ? factsToContext(facts) : null,
+          facts,
         });
       } else if (capability === "gatherings") {
         const fact = await readCurrentPublicGathering();

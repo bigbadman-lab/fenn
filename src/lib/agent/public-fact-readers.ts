@@ -24,6 +24,13 @@ import { getPublicHomeGatheringCall } from "@/lib/greenwood/gatherings/public-ho
 import { listPublicChronicleEntries } from "@/lib/chronicle/read";
 import { getPublicOfficialFennToken } from "@/lib/treasury/official-token";
 import { assertSafeIntegerAmount } from "@/lib/leaf/validate";
+import {
+  FENN_LAUNCH_PURSE_FUNDING_AMOUNT_DISPLAY,
+  FENN_LAUNCH_PURSE_FUNDING_OPERATION_ID,
+} from "@/lib/ops/fenn-launch-fund-constants";
+import { getLaunchOperationById } from "@/lib/ops/fenn-launch-fund-store";
+import { explorerTxUrl } from "@/lib/greenwood/hollow/explorer";
+import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
 
 async function defaultAdmin(): Promise<SupabaseClient> {
   const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -214,6 +221,82 @@ export async function readOfficialFennToken(options?: {
     };
   } catch {
     return unavailable("official_fenn_token", source, "public_config");
+  }
+}
+
+/**
+ * Confirmed Treasury → Purse 10M launch funding (durable operations row only).
+ * Unavailable until the one-shot ceremony is confirmed on-chain and in DB.
+ */
+export async function readLaunchPurseFunding(options?: {
+  loadOperation?: () => Promise<{
+    status: string;
+    amountFormatted: string;
+    treasuryAddress: string;
+    purseAddress: string;
+    tokenContract: string;
+    chainId: number;
+    txHash: string | null;
+    confirmedAt: string | null;
+    blockNumber: string | null;
+  } | null>;
+  now?: () => string;
+}): Promise<PublicFactEvidence> {
+  const source = "public_fact_readers.fenn_launch_purse_funding";
+  const observedAt = options?.now?.() ?? nowIso();
+  try {
+    const load =
+      options?.loadOperation ??
+      (async () => {
+        const row = await getLaunchOperationById(
+          FENN_LAUNCH_PURSE_FUNDING_OPERATION_ID,
+        );
+        if (!row) return null;
+        return {
+          status: row.status,
+          amountFormatted: row.amountFormatted,
+          treasuryAddress: row.treasuryAddress,
+          purseAddress: row.purseAddress,
+          tokenContract: row.tokenContract,
+          chainId: row.chainId,
+          txHash: row.txHash,
+          confirmedAt: row.confirmedAt,
+          blockNumber: row.blockNumber,
+        };
+      });
+    const op = await load();
+    if (!op || op.status !== "confirmed" || !op.txHash) {
+      return unavailable("fenn_launch_purse_funding", source, "public_record");
+    }
+    const explorer =
+      explorerTxUrl(op.chainId || ROBINHOOD_CHAIN_ID, op.txHash) ?? "";
+    const detail = [
+      `amount=${FENN_LAUNCH_PURSE_FUNDING_AMOUNT_DISPLAY} FENN`,
+      `amount_raw_formatted=${op.amountFormatted}`,
+      `treasury=${op.treasuryAddress}`,
+      `purse=${op.purseAddress}`,
+      `contract=${op.tokenContract}`,
+      `chain_id=${op.chainId}`,
+      `tx=${op.txHash}`,
+      explorer ? `explorer=${explorer}` : null,
+      op.confirmedAt ? `confirmed_at=${op.confirmedAt}` : null,
+      op.blockNumber ? `block=${op.blockNumber}` : null,
+      "status=confirmed_treasury_to_purse_launch_funding",
+      "note=human/operator launch funding — not an autonomous agent self-deploy claim",
+    ]
+      .filter(Boolean)
+      .join("; ");
+    return {
+      key: "fenn_launch_purse_funding",
+      available: true,
+      value: true,
+      detail,
+      observedAt: op.confirmedAt ?? observedAt,
+      source,
+      privacy: "public_record",
+    };
+  } catch {
+    return unavailable("fenn_launch_purse_funding", source, "public_record");
   }
 }
 
