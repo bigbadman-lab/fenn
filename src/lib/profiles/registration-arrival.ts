@@ -21,6 +21,17 @@ export const REGISTRATION_WRITING_COPY = {
   status: "[ writing the name… ]",
 } as const;
 
+/**
+ * Pre-form hold after Privy auth while identity / wallet resolve.
+ * Registration is not finished — user must stay on the page.
+ */
+export const REGISTRATION_IDENTITY_PREPARING_COPY = {
+  title: "BECOMING AN OUTLAW",
+  body: "YOUR IDENTITY IS BEING PREPARED.",
+  wait: "WAIT HERE — THE OUTLAW FORM IS OPENING…",
+  note: "THIS MAY TAKE A FEW SECONDS.",
+} as const;
+
 /** Registration already succeeded; refresh/open failed. */
 export const REGISTRATION_WRITE_OPEN_FAILED_COPY = {
   title: "YOUR NAME WAS WRITTEN.",

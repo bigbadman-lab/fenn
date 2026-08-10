@@ -1957,6 +1957,28 @@ a.home-welcome__inline-link:focus-visible {
   letter-spacing: 0.04em;
 }
 
+/* Post-auth identity resolve — stay-on-page attention (not failure). */
+.outlaw-register-holding--preparing {
+  color: var(--color-danger, #f0a0a0);
+  letter-spacing: 0.03em;
+}
+
+.outlaw-register-holding--preparing p {
+  color: inherit;
+  margin: 0 0 0.55rem;
+  line-height: 1.55;
+}
+
+.outlaw-register-holding--preparing p:first-child {
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+}
+
+.outlaw-register-holding--preparing p:last-child {
+  margin-bottom: 0;
+  letter-spacing: 0.06em;
+}
+
 @media (max-width: 360px) {
   .outlaw-invite__title {
     letter-spacing: 0.05em;

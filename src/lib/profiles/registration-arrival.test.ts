@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   OUTLAW_REGISTRATION_ARRIVAL_METHOD,
   OUTLAW_REGISTRATION_ARRIVAL_PATH,
+  REGISTRATION_IDENTITY_PREPARING_COPY,
   REGISTRATION_WRITE_OPEN_FAILED_COPY,
   REGISTRATION_WRITING_COPY,
 } from "./registration-arrival";
@@ -46,6 +47,59 @@ describe("Outlaw registration arrival (Book of the Road)", () => {
       REGISTRATION_WRITE_OPEN_FAILED_COPY.action,
       "[ CONTINUE TO YOUR OUTLAW ]",
     );
+  });
+
+  it("defines pre-form identity preparing copy after Privy auth", () => {
+    assert.equal(
+      REGISTRATION_IDENTITY_PREPARING_COPY.title,
+      "BECOMING AN OUTLAW",
+    );
+    assert.equal(
+      REGISTRATION_IDENTITY_PREPARING_COPY.body,
+      "YOUR IDENTITY IS BEING PREPARED.",
+    );
+    assert.equal(
+      REGISTRATION_IDENTITY_PREPARING_COPY.wait,
+      "WAIT HERE — THE OUTLAW FORM IS OPENING…",
+    );
+    assert.equal(
+      REGISTRATION_IDENTITY_PREPARING_COPY.note,
+      "THIS MAY TAKE A FEW SECONDS.",
+    );
+    assert.doesNotMatch(
+      Object.values(REGISTRATION_IDENTITY_PREPARING_COPY).join(" "),
+      /loading profile|process your account|please wait/i,
+    );
+  });
+
+  it("shows identity preparing hold for bootstrap and walletResolving, not registered identity path", () => {
+    const panel = read("src/components/outlaw/outlaw-register-panel.tsx");
+    const css = read("src/app/globals.css");
+    assert.match(panel, /REGISTRATION_IDENTITY_PREPARING_COPY/);
+    assert.match(panel, /OutlawIdentityPreparingHold/);
+    assert.match(panel, /walletResolving/);
+    assert.match(
+      panel,
+      /if \(authenticated\)[\s\S]*OutlawIdentityPreparingHold/,
+    );
+    assert.match(
+      panel,
+      /if \(walletResolving\)[\s\S]*OutlawIdentityPreparingHold/,
+    );
+    assert.doesNotMatch(panel, /the wood is checking its books/);
+    assert.doesNotMatch(panel, /the wood is preparing a place for you/);
+    // Unauthenticated listen remains muted one-liner
+    assert.match(panel, /the wood is listening\.\.\./);
+    // Returning registered identity UI unchanged
+    assert.match(panel, /the wood remembers you/);
+    assert.match(panel, /if \(registered && profile\)/);
+    // Form eligibility still requires wallets
+    assert.match(panel, /if \(wallets\.length === 0\)/);
+    assert.match(panel, /the wood needs a name/);
+    // Holding a11y + red attention (not failure) treatment
+    assert.match(panel, /outlaw-register-holding--preparing/);
+    assert.match(css, /\.outlaw-register-holding--preparing/);
+    assert.match(css, /--color-danger/);
   });
 
   it("shared panel is the one success handler for homepage and standalone register", () => {

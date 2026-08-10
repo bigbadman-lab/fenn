@@ -16,6 +16,7 @@ import {
 } from "@/lib/profiles/constants";
 import {
   OUTLAW_REGISTRATION_ARRIVAL_PATH,
+  REGISTRATION_IDENTITY_PREPARING_COPY,
   REGISTRATION_WRITE_OPEN_FAILED_COPY,
   REGISTRATION_WRITING_COPY,
   type OutlawRegisterPhase,
@@ -70,6 +71,23 @@ function InviteLedNotice() {
       <p className="muted">
         Complete the Register and your arrival will be remembered.
       </p>
+    </div>
+  );
+}
+
+/** Post-auth, pre-form — bootstrap / wallet only. Not a failure. */
+function OutlawIdentityPreparingHold() {
+  return (
+    <div
+      className="outlaw-register-holding outlaw-register-holding--preparing"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <p>{REGISTRATION_IDENTITY_PREPARING_COPY.title}</p>
+      <p>{REGISTRATION_IDENTITY_PREPARING_COPY.body}</p>
+      <p>{REGISTRATION_IDENTITY_PREPARING_COPY.wait}</p>
+      <p>{REGISTRATION_IDENTITY_PREPARING_COPY.note}</p>
     </div>
   );
 }
@@ -281,13 +299,10 @@ export function OutlawRegisterPanel({
   }
 
   if (!privyReady || loading) {
-    return wrap(
-      <p className="muted">
-        {authenticated
-          ? "the wood is checking its books."
-          : "the wood is listening..."}
-      </p>,
-    );
+    if (authenticated) {
+      return wrap(<OutlawIdentityPreparingHold />);
+    }
+    return wrap(<p className="muted">the wood is listening...</p>);
   }
 
   if (!authenticated) {
@@ -313,9 +328,7 @@ export function OutlawRegisterPanel({
   }
 
   if (walletResolving) {
-    return wrap(
-      <p className="muted">the wood is preparing a place for you.</p>,
-    );
+    return wrap(<OutlawIdentityPreparingHold />);
   }
 
   if (error && !registered) {
