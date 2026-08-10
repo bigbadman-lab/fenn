@@ -31,6 +31,8 @@ export { listConfirmedPurseTransfers } from "@/lib/purse/transfers-query";
 export type {
   PublicPurseSnapshot,
   PublicPurseTransfer,
+  PublicPurseEthBalance,
+  PublicPurseFennBalance,
   ManualOneFennTransferResult,
   PurseConfigState,
 } from "@/lib/purse/types";

@@ -94,12 +94,15 @@ describe("P2E Commons $FENN identity surface", () => {
     assert.doesNotMatch(id, /market cap|price|FDV|buy now/i);
   });
 
-  it("purse labels initial allocation and awaiting official token", () => {
+  it("purse labels initial allocation and live ETH/FENN held", () => {
     const purse = read("src/components/commons/purse-readout.tsx");
     assert.match(purse, /INITIAL ALLOCATION/);
     assert.match(purse, /launch intent/);
     assert.match(purse, /awaiting official token/);
-    assert.match(purse, /CURRENT \$FENN BALANCE|CURRENT \$FENN/);
+    assert.match(purse, /LIVE BALANCES/);
+    assert.match(purse, /ETH HELD/);
+    assert.match(purse, /FENN HELD/);
+    assert.doesNotMatch(purse, /CURRENT \$FENN BALANCE|CURRENT \$FENN/);
     assert.match(purse, /not the \$FENN token contract/);
     assert.match(purse, /FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED/);
     assert.match(purse, /officialTokenResolved/);

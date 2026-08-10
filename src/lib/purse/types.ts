@@ -81,9 +81,24 @@ export type PublicPurseFennBalance =
       reason: "rpc_failed" | "token_unavailable" | "configuration_error";
     };
 
+/** Live native gas (ETH on Robinhood Chain) for the Purse wallet. */
+export type PublicPurseEthBalance =
+  | {
+      state: "available";
+      balance: string;
+      decimals: number;
+      symbol: "ETH";
+      chainId: number;
+    }
+  | {
+      state: "unavailable";
+      reason: "rpc_failed" | "configuration_error";
+    };
+
 /**
  * Public Purse snapshot for /commons.
- * Balance from live chain. History is confirmed DB rows only.
+ * ETH + official FENN balances from live chain (independent availability).
+ * History is confirmed DB rows only.
  */
 export type PublicPurseSnapshot =
   | {
@@ -94,14 +109,17 @@ export type PublicPurseSnapshot =
       purseAddress: string;
       isEnabled: boolean;
       observedAt: string;
+      ethBalance: PublicPurseEthBalance;
       fennBalance: PublicPurseFennBalance;
       transfers: PublicPurseTransfer[];
     }
   | {
+      /** Configured, but neither live balance could be observed. */
       state: "unavailable";
       purseAddress: string;
       isEnabled: boolean;
       observedAt: string;
+      ethBalance: PublicPurseEthBalance;
       fennBalance: PublicPurseFennBalance;
       transfers: PublicPurseTransfer[];
     };

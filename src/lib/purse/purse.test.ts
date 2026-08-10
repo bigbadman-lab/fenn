@@ -45,6 +45,7 @@ const OFFICIAL: OfficialFennTokenAsset = {
 const PURSE = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const RECIPIENT = "0xcccccccccccccccccccccccccccccccccccccccc";
 const OTHER_TOKEN = "0xdddddddddddddddddddddddddddddddddddddddd";
+const TEST_TOKEN = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 function baseRow(over: Partial<PurseTransferRow> = {}): PurseTransferRow {
   return {
@@ -506,19 +507,28 @@ describe("executeManualOneFennTransfer idempotency", () => {
   });
 });
 
+function configuredPurseBase() {
+  return {
+    getConfig: async () =>
+      ({
+        configured: true as const,
+        walletAddress: PURSE,
+        isEnabled: true,
+        officialSettlementActivatedAt: null,
+        economicSettlementEnabled: true,
+      }) as const,
+    createClient: () => ({}) as never,
+    now: () => new Date("2026-08-08T12:00:00.000Z"),
+  };
+}
+
 describe("public Purse snapshot safety", () => {
   it("private key cannot leak through public readers", async () => {
     process.env.FENN_PURSE_PRIVATE_KEY =
       "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
 
     const snap = await getPublicPurseSnapshot({
-      getConfig: async () => ({
-        configured: true,
-        walletAddress: PURSE,
-        isEnabled: true,
-        officialSettlementActivatedAt: null,
-        economicSettlementEnabled: true,
-      }),
+      ...configuredPurseBase(),
       getOfficialToken: async () => OFFICIAL,
       listConfirmed: async () => [
         {
@@ -535,13 +545,16 @@ describe("public Purse snapshot safety", () => {
           actionType: "transfer",
         },
       ],
-      createClient: () => ({}) as never,
+      readNative: async () => ({
+        raw: BigInt("1500000000000000000"),
+        formatted: "1.5",
+        decimals: 18,
+      }),
       readErc20: async () => ({
         raw: BigInt("3000000000000000000"),
         formatted: "3",
         decimals: 18,
       }),
-      now: () => new Date("2026-08-08T12:00:00.000Z"),
     });
 
     const text = JSON.stringify(snap);
@@ -550,29 +563,184 @@ describe("public Purse snapshot safety", () => {
     if (snap.state === "ready") {
       assert.equal(snap.purseAddress, PURSE);
       assert.equal(snap.transfers.length, 1);
+      assert.equal(snap.ethBalance.state, "available");
       assert.equal(snap.fennBalance.state, "available");
+      if (snap.ethBalance.state === "available") {
+        assert.equal(snap.ethBalance.symbol, "ETH");
+        assert.equal(snap.ethBalance.balance, "1.5");
+      }
+      if (snap.fennBalance.state === "available") {
+        assert.equal(snap.fennBalance.symbol, "FENN");
+        assert.equal(snap.fennBalance.balance, "3");
+      }
     }
+  });
+
+  it("ETH available while official FENN balanceOf fails", async () => {
+    const snap = await getPublicPurseSnapshot({
+      ...configuredPurseBase(),
+      getOfficialToken: async () => OFFICIAL,
+      listConfirmed: async () => [],
+      readNative: async () => ({
+        raw: BigInt("2000000000000000000"),
+        formatted: "2",
+        decimals: 18,
+      }),
+      readErc20: async () => {
+        throw new Error("rpc_down");
+      },
+    });
+    assert.equal(snap.state, "ready");
+    if (snap.state === "ready") {
+      assert.equal(snap.ethBalance.state, "available");
+      assert.equal(snap.fennBalance.state, "unavailable");
+      if (snap.fennBalance.state === "unavailable") {
+        assert.equal(snap.fennBalance.reason, "rpc_failed");
+      }
+    }
+  });
+
+  it("FENN available while native ETH RPC fails", async () => {
+    const snap = await getPublicPurseSnapshot({
+      ...configuredPurseBase(),
+      getOfficialToken: async () => OFFICIAL,
+      listConfirmed: async () => [],
+      readNative: async () => {
+        throw new Error("eth_rpc_failed");
+      },
+      readErc20: async () => ({
+        raw: BigInt("9000000000000000000"),
+        formatted: "9",
+        decimals: 18,
+      }),
+    });
+    assert.equal(snap.state, "ready");
+    if (snap.state === "ready") {
+      assert.equal(snap.ethBalance.state, "unavailable");
+      if (snap.ethBalance.state === "unavailable") {
+        assert.equal(snap.ethBalance.reason, "rpc_failed");
+      }
+      assert.equal(snap.fennBalance.state, "available");
+      if (snap.fennBalance.state === "available") {
+        assert.equal(snap.fennBalance.balance, "9");
+      }
+    }
+  });
+
+  it("official FENN unset still exposes live ETH", async () => {
+    const snap = await getPublicPurseSnapshot({
+      ...configuredPurseBase(),
+      getOfficialToken: async () => null,
+      listConfirmed: async () => [],
+      readNative: async () => ({
+        raw: BigInt("100000000000000000"),
+        formatted: "0.1",
+        decimals: 18,
+      }),
+      readErc20: async () => {
+        throw new Error("should not be called without official token");
+      },
+    });
+    assert.equal(snap.state, "ready");
+    if (snap.state === "ready") {
+      assert.equal(snap.ethBalance.state, "available");
+      assert.equal(snap.fennBalance.state, "unavailable");
+      if (snap.fennBalance.state === "unavailable") {
+        assert.equal(snap.fennBalance.reason, "token_unavailable");
+      }
+    }
+  });
+
+  it("both balances unavailable yields soft unavailable snapshot (history retained)", async () => {
+    const history = [
+      {
+        id: "burn-1",
+        operationId: "op-burn",
+        recipientAddress: "0x000000000000000000000000000000000000dEaD",
+        amountFormatted: "1",
+        tokenAddress: OFFICIAL.contractAddress,
+        chainId: ROBINHOOD_CHAIN_ID,
+        txHash:
+          "0x7777777777777777777777777777777777777777777777777777777777777777",
+        confirmedAt: "2026-08-07T12:00:00.000Z",
+        explorerTxUrl: "https://example.test/tx/0x77",
+        actionType: "burn" as const,
+      },
+    ];
+    const snap = await getPublicPurseSnapshot({
+      ...configuredPurseBase(),
+      getOfficialToken: async () => OFFICIAL,
+      listConfirmed: async () => history,
+      readNative: async () => {
+        throw new Error("eth_down");
+      },
+      readErc20: async () => {
+        throw new Error("fenn_down");
+      },
+    });
+    assert.equal(snap.state, "unavailable");
+    if (snap.state === "unavailable") {
+      assert.equal(snap.ethBalance.state, "unavailable");
+      assert.equal(snap.fennBalance.state, "unavailable");
+      assert.equal(snap.transfers.length, 1);
+      assert.equal(snap.transfers[0]?.actionType, "burn");
+    }
+  });
+
+  it("public balance never routes through test-token configuration", async () => {
+    process.env[FENN_PURSE_TEST_MODE_ENV] = FENN_PURSE_TEST_MODE_ALLOW;
+    process.env[FENN_PURSE_TEST_TOKEN_ADDRESS_ENV] = TEST_TOKEN;
+    process.env[FENN_PURSE_TEST_TOKEN_DECIMALS_ENV] = "18";
+
+    let officialCalls = 0;
+    let erc20Token: string | null = null;
+    const snap = await getPublicPurseSnapshot({
+      ...configuredPurseBase(),
+      getOfficialToken: async () => {
+        officialCalls += 1;
+        return OFFICIAL;
+      },
+      listConfirmed: async () => [],
+      readNative: async (holder) => {
+        assert.equal(holder.toLowerCase(), PURSE.toLowerCase());
+        return {
+          raw: BigInt(0),
+          formatted: "0",
+          decimals: 18,
+        };
+      },
+      readErc20: async (input) => {
+        erc20Token = input.tokenAddress;
+        return {
+          raw: BigInt("1000000000000000000"),
+          formatted: "1",
+          decimals: 18,
+        };
+      },
+    });
+
+    assert.equal(officialCalls, 1);
+    assert.equal(erc20Token?.toLowerCase(), OFFICIAL.contractAddress.toLowerCase());
+    assert.notEqual(erc20Token?.toLowerCase(), TEST_TOKEN.toLowerCase());
+    assert.equal(snap.state, "ready");
   });
 
   it("Commons only exposes confirmed transfers (query path filters)", async () => {
     // listConfirmed is the only history source for the public snapshot.
     const snap = await getPublicPurseSnapshot({
-      getConfig: async () => ({
-        configured: true,
-        walletAddress: PURSE,
-        isEnabled: true,
-        officialSettlementActivatedAt: null,
-        economicSettlementEnabled: true,
-      }),
+      ...configuredPurseBase(),
       getOfficialToken: async () => OFFICIAL,
       listConfirmed: async () => [],
+      readNative: async () => ({
+        raw: BigInt(0),
+        formatted: "0",
+        decimals: 18,
+      }),
       readErc20: async () => ({
         raw: BigInt(1),
         formatted: "0.000000000000000001",
         decimals: 18,
       }),
-      createClient: () => ({}) as never,
-      now: () => new Date("2026-08-08T12:00:00.000Z"),
     });
     assert.equal(snap.state, "ready");
     if (snap.state === "ready") {
@@ -586,6 +754,9 @@ describe("public Purse snapshot safety", () => {
       getOfficialToken: async () => OFFICIAL,
       listConfirmed: async () => [],
       createClient: () => ({}) as never,
+      readNative: async () => {
+        throw new Error("no");
+      },
       readErc20: async () => {
         throw new Error("no");
       },
@@ -594,8 +765,6 @@ describe("public Purse snapshot safety", () => {
     assert.equal(snap.state, "unconfigured");
   });
 });
-
-const TEST_TOKEN = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 function armedTestEnv(
   over: Record<string, string | undefined> = {},

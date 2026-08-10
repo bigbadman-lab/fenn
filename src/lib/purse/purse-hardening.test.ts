@@ -139,6 +139,18 @@ describe("Purse P0 architecture hardening", () => {
     assert.match(readout, /not the Treasury/i);
     assert.match(readout, /authority may refuse/i);
     assert.match(readout, /only confirmed movements/i);
+    assert.match(readout, /ETH HELD/);
+    assert.match(readout, /FENN HELD/);
+  });
+
+  it("public purse snapshot reuses treasury native helper and official FENN only", () => {
+    const snap = read("src/lib/purse/snapshot.ts");
+    assert.match(snap, /readNativeBalance/);
+    assert.match(snap, /getOfficialFennTokenAsset/);
+    assert.match(snap, /createRobinhoodPublicClient/);
+    assert.doesNotMatch(snap, /FENN_PURSE_TEST_|resolveArmedPurseTestToken|test.?token/i);
+    // No second RPC stack for public balance reads.
+    assert.doesNotMatch(snap, /createPublicClient\(|http\(/);
   });
 
   it("env example documents FENN_PURSE_PRIVATE_KEY without a sample key", () => {

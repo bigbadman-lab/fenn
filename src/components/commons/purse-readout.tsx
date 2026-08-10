@@ -9,6 +9,10 @@ import {
   FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED,
 } from "@/lib/treasury/fenn-token-public-identity";
 import { abbreviateEvmAddress } from "@/lib/wallet/evm";
+import type {
+  PublicPurseEthBalance,
+  PublicPurseFennBalance,
+} from "@/lib/purse/types";
 
 type Props = {
   purse: CommonsPagePurse;
@@ -20,8 +24,8 @@ type Props = {
 };
 
 /**
- * THE PURSE OF FENN — dedicated hot wallet of official FENN.
- * Presentation only. Live balance + confirmed outbound history.
+ * THE PURSE OF FENN — dedicated hot wallet of official FENN (+ native gas).
+ * Presentation only. Live balances + confirmed outbound history.
  * No pending/failed settlement internals. No private keys.
  * Initial 10m allocation is context — never presented as permanent balance.
  */
@@ -70,10 +74,9 @@ export function PurseReadout({
   }
 
   const observed = formatTreasuryObservedAt(purse.observedAt);
+  const ethBalance = purse.ethBalance;
   const fennBalance = purse.fennBalance;
-  const balanceText =
-    fennBalance.state === "available" ? fennBalance.balance : null;
-  const tokenAwaiting =
+  const fennAwaitingOfficial =
     !officialTokenResolved ||
     (fennBalance.state === "unavailable" &&
       fennBalance.reason === "token_unavailable");
@@ -109,44 +112,63 @@ export function PurseReadout({
 
         <InitialPurseAllocationNote />
 
-        <h3 className="commons-subheading">CURRENT $FENN BALANCE</h3>
-        {tokenAwaiting ? (
+        <h3 className="commons-subheading">LIVE BALANCES</h3>
+        <table className="commons-table commons-table--treasury">
+          <caption className="visually-hidden">
+            Live Purse ETH and official FENN balances
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">ASSET</th>
+              <th scope="col">HELD</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" className="commons-table__asset">
+                <span className="commons-table__symbol">ETH</span>
+                <span className="commons-table__name muted">ETH HELD</span>
+              </th>
+              <td className={purseHeldCellClass(ethBalance)}>
+                <PurseHeldValue
+                  text={ethHeldDisplay(ethBalance)}
+                  available={ethBalance.state === "available"}
+                />
+              </td>
+            </tr>
+            <tr>
+              <th scope="row" className="commons-table__asset">
+                <span className="commons-table__symbol">FENN</span>
+                <span className="commons-table__name muted">FENN HELD</span>
+              </th>
+              <td
+                className={
+                  fennAwaitingOfficial
+                    ? "commons-table__amount commons-table__amount--muted"
+                    : purseHeldCellClass(fennBalance)
+                }
+              >
+                <PurseHeldValue
+                  text={fennHeldDisplay(fennBalance, fennAwaitingOfficial)}
+                  available={
+                    !fennAwaitingOfficial && fennBalance.state === "available"
+                  }
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        {fennAwaitingOfficial ? (
           <p className="commons-empty commons-empty--spaced" role="status">
-            awaiting official token.
+            awaiting official token for FENN HELD.
             <span className="visually-hidden">
               {" "}
-              Current on-chain $FENN balance cannot be shown until the official
+              Official on-chain $FENN balance cannot be shown until the official
               contract is configured. The initial allocation figure above is
               launch intent, not a live balance.
             </span>
           </p>
-        ) : balanceText != null ? (
-          <table className="commons-table commons-table--treasury">
-            <caption className="visually-hidden">
-              Live Purse official FENN balance
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">ASSET</th>
-                <th scope="col">HELD</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th scope="row" className="commons-table__asset">
-                  <span className="commons-table__symbol">FENN</span>
-                </th>
-                <td className="commons-table__amount">{balanceText}</td>
-              </tr>
-            </tbody>
-          </table>
-        ) : (
-          <p className="commons-empty commons-empty--spaced">
-            the address is known.
-            <br />
-            the balance cannot be read just now.
-          </p>
-        )}
+        ) : null}
 
         {observed ? (
           <p className="commons-observed muted">{observed}</p>
@@ -211,5 +233,58 @@ function InitialPurseAllocationNote() {
         launch intent — not a permanent balance.
       </p>
     </div>
+  );
+}
+
+/** ETH: trim trailing fractional zeros; keep compact readable precision. */
+export function formatPurseEthHeld(formatted: string): string {
+  const trimmed = formatted.trim();
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) return trimmed;
+  const [whole, frac = ""] = trimmed.split(".");
+  if (!frac || !/[1-9]/.test(frac)) return whole.replace(/^0+(?=\d)/, "") || "0";
+  const fracTrimmed = frac.replace(/0+$/, "");
+  // Cap display to 6 fractional digits without inventing magnitude (string ops only).
+  const fracCapped = fracTrimmed.slice(0, 6).replace(/0+$/, "");
+  if (!fracCapped) return whole.replace(/^0+(?=\d)/, "") || "0";
+  return `${whole.replace(/^0+(?=\d)/, "") || "0"}.${fracCapped}`;
+}
+
+function ethHeldDisplay(balance: PublicPurseEthBalance): string {
+  if (balance.state === "available") {
+    return formatPurseEthHeld(balance.balance);
+  }
+  // Commons-style unavailable (matches treasuryAssetBalanceDisplay).
+  return "unseen.";
+}
+
+function fennHeldDisplay(
+  balance: PublicPurseFennBalance,
+  awaitingOfficial: boolean,
+): string {
+  if (awaitingOfficial) return "—";
+  if (balance.state === "available") return balance.balance;
+  return "unseen.";
+}
+
+function purseHeldCellClass(
+  balance: PublicPurseEthBalance | PublicPurseFennBalance,
+): string {
+  if (balance.state === "available") return "commons-table__amount";
+  return "commons-table__amount commons-table__amount--muted";
+}
+
+function PurseHeldValue({
+  text,
+  available,
+}: {
+  text: string;
+  available: boolean;
+}) {
+  if (available) return text;
+  return (
+    <>
+      <span aria-hidden="true">{text}</span>
+      <span className="visually-hidden">balance unavailable</span>
+    </>
   );
 }
