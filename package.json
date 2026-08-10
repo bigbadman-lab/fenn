@@ -40,7 +40,8 @@
     "purse:settle": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/purse-settle.ts",
     "launch:check": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/fenn-launch-check.ts",
     "launch:activate": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/fenn-launch-activate.ts",
-    "launch:fund-purse": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/fenn-launch-fund-purse.ts"
+    "launch:fund-purse": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/fenn-launch-fund-purse.ts",
+    "launch:fund-purse:preflight": "tsx --conditions=react-server --import ./scripts/load-env.ts scripts/fenn-launch-fund-purse-preflight.ts"
   },
   "dependencies": {
     "@privy-io/node": "^0.27.0",

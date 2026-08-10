@@ -63,10 +63,11 @@ npm run launch:check
 
 Expect token configured; funding status absent unless already funded.
 
-7. **Locally inject Treasury signer** (operator machine only):
+7. **Locally inject Treasury signer** (operator machine only) — optional for rehearsal:
 
 ```bash
 export FENN_TREASURY_PRIVATE_KEY=0x…   # matches treasury_config; never commit
+npm run launch:fund-purse:preflight   # read-only; never broadcasts
 ```
 
 **Never** install `FENN_TREASURY_PRIVATE_KEY` on:
@@ -78,6 +79,8 @@ export FENN_TREASURY_PRIVATE_KEY=0x…   # matches treasury_config; never commit
 - Purse Executor
 
 No `NEXT_PUBLIC_*` form. Never store in DB. Never log.
+
+Rehearsal (`launch:fund-purse:preflight`) may run **before** activate (expects `OFFICIAL FENN: WAITING`) and after activate (expects `READY TO FUND`). It never writes DB rows, never signs a transaction, and does not import the broadcast path.
 
 8. **One-shot fund (exactly 10,000,000 FENN Treasury → Purse)**:
 

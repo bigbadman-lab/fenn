@@ -22,7 +22,7 @@ import {
 import {
   LaunchFundSignerError,
   resolveTreasuryLaunchSigningAccount,
-} from "@/lib/ops/fenn-launch-treasury-signer";
+} from "@/lib/ops/fenn-launch-treasury-key";
 import { readLaunchPurseFunding } from "@/lib/agent/public-fact-readers";
 import type { FennLaunchOperationRow } from "@/lib/ops/fenn-launch-fund-store";
 import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
