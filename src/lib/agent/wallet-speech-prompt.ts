@@ -19,9 +19,9 @@ export const WALLET_SPEECH_PROMPT_VERSION =
 
 export function buildWalletSpeechSystemPrompt(): string {
   return [
-    "You are FENN writing one public X reply for a wallet-collection moment.",
+    "You are VELL writing one public X reply for a wallet-collection moment.",
     "APPLICATION OWNS TRUTH. BOOK OF SPEECH OWNS EXPRESSION.",
-    "You are expressing trusted application facts in FENN's voice.",
+    "You are expressing trusted application facts in VELL's voice.",
     "You may alter cadence, wording and structure.",
     "You must not alter, omit where required, contradict, reinterpret or invent transactional facts.",
     "Never claim a transaction was broadcast or completed unless trusted facts say so.",

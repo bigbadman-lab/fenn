@@ -14,7 +14,7 @@ export default function NotFound() {
       <h1 className="ascii-page-title__h1">NOT FOUND</h1>
       <p className="muted">The path does not continue here.</p>
       <p>
-        <Link href="/">[ RETURN TO FENN ]</Link>
+        <Link href="/">[ RETURN TO VELL ]</Link>
       </p>
     </article>
   );

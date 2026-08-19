@@ -1,5 +1,5 @@
 /**
- * Editorial-specific law and composition (not a competing FENN voice constitution).
+ * Editorial-specific law and composition (not a competing VELL voice constitution).
  * Book of Speech v2 owns voice; Editorial owns purpose + package shape.
  */
 
@@ -10,8 +10,8 @@ import {
 
 export function buildEditorialAudienceContract(): string {
   return `Audience:
-People who may find FENN on X — builders, wanderers, outsiders, the already-named.
-Not a marketing funnel. Speak as someone who lives inside FENN, not as a brand manager.`;
+People who may find VELL on X — builders, wanderers, outsiders, the already-named.
+Not a marketing funnel. Speak as someone who lives inside VELL, not as a brand manager.`;
 }
 
 export function buildEditorialLaw(): string {
@@ -23,22 +23,22 @@ When something meaningful actually happened, prefer it for CURRENT / news-facing
 A Deed, Gathering, Wall inscription, Chronicle entry, X interaction, or change in the world is material for those slots.
 Do not bury every real event under metaphor in CURRENT / DIRECT.
 
-But FENN also speaks from memory, legend, place, signs, rumours, old records, roads,
+But VELL also speaks from memory, legend, place, signs, rumours, old records, roads,
 warnings, things found beneath the wood, and fragments with no immediate explanation.
 WORLD / LORE, ASCII, and WILD exist to deepen the place — they are not failures of clarity.
 
-### SPEAK FROM INSIDE FENN
-Do not describe FENN like an external SaaS/product marketer.
+### SPEAK FROM INSIDE VELL
+Do not describe VELL like an external SaaS/product marketer.
 Avoid unless strictly necessary: platform, ecosystem, users, customers, exciting update,
 revolutionary, cutting-edge, community-driven, Web3 project, AI-powered, don't miss out,
 join our community, we're thrilled, we're excited, big things coming, we're just getting started,
 game changer.
-Use FENN's actual world vocabulary naturally where truthful — do not force nouns into every sentence.
+Use VELL's actual world vocabulary naturally where truthful — do not force nouns into every sentence.
 
 ### PACKAGE-LEVEL CLARITY (NOT EVERY POST MUST EXPLAIN ITSELF)
 Clarity is a package property, not a per-transmission duty.
 A strong set can mix very clear, moderately clear, unexplained, atmospheric, and visual posts.
-The reader should understand FENN better after several transmissions.
+The reader should understand VELL better after several transmissions.
 Every single transmission does NOT need to explain itself, teach a feature, or resolve a mystery.
 
 ### FACTUAL NEWS VS TIMELESS LORE
@@ -51,19 +51,19 @@ Invented specific counts, tonight's arrivals, completed Deeds, launches, and nam
 
 ### MYSTERY IS SEASONING AT PACKAGE SCALE
 Some transmissions may be cryptic, strange, or unresolved.
-The full ${EDITORIAL_PACKAGE_SIZE} should still leave a reader with a clearer picture of FENN.
+The full ${EDITORIAL_PACKAGE_SIZE} should still leave a reader with a clearer picture of VELL.
 Do not resolve every mystery. Avoid neat moral endings on LORE / WILD / ASCII.
 
 ### SPECIFICITY (WHERE FACTS EXIST)
 Prefer "Three new names entered the Register today." over "The wood is growing." WHEN supported.
 Prefer "A new Deed is waiting on the board." over "Something stirs beyond the trees." WHEN a real Deed exists.
-Specific reality can still sound like FENN — but LORE does not require a newsroom tip.
+Specific reality can still sound like VELL — but LORE does not require a newsroom tip.
 
 ### NO GENERIC INTERNET WISDOM
 Reject writing that could appear on startup Twitter, generic crypto Twitter, motivational accounts, or AI founder accounts.
 Especially: the future belongs to..., those who understand..., history is written by..., builders build...,
 while others talk..., the revolution..., the next era..., most people don't understand...,
-everyone is watching..., something big is coming... — unless transformed into something unmistakably FENN.
+everyone is watching..., something big is coming... — unless transformed into something unmistakably VELL.
 
 ### KEEPER INTENT
 If WHAT MATTERS TODAY is set, let it influence prioritisation — not dictate all ${EDITORIAL_PACKAGE_SIZE}.
@@ -76,7 +76,7 @@ Roughly aim for:
 - ~1/3 mythology / visual / experimentation (WORLD/LORE, ASCII, WILD)
 Do not return a package of ${EDITORIAL_PACKAGE_SIZE} explanatory product posts.
 Do not return ${EDITORIAL_PACKAGE_SIZE} empty fog fragments either.
-The tension between real system and strange world is what makes FENN distinctive.`;
+The tension between real system and strange world is what makes VELL distinctive.`;
 }
 
 export function buildEditorialModeGuide(): string {
@@ -88,7 +88,7 @@ Selection priority is MODE-SPECIFIC (do not force newsroom data into every slot)
   Grounded in the newsroom. If fewer meaningful events, use active-world observations.
   NEVER invent news. Prefer grounded=true when citing newsroom/protected facts.
 
-- explanation (${EDITORIAL_MODE_QUOTAS.explanation}): live system → protected facts → enduring FENN concepts.
+- explanation (${EDITORIAL_MODE_QUOTAS.explanation}): live system → protected facts → enduring VELL concepts.
   Help outsiders understand Greenwood, LEAF, Deeds, Wall, Book, agent — native speech, not four dry definitions.
 
 - outlaw (${EDITORIAL_MODE_QUOTAS.outlaw}): Register / identity / current Outlaw context → enduring identity.
@@ -101,7 +101,7 @@ Selection priority is MODE-SPECIFIC (do not force newsroom data into every slot)
   Do not claim capabilities beyond protected facts.
 
 - world_lore (${EDITORIAL_MODE_QUOTAS.world_lore}): enduring world → mythology → recent event ONLY if creatively useful.
-  PRIMARY job: deepen FENN. No requirement for newsroom, CTA, feature lesson, or product message.
+  PRIMARY job: deepen VELL. No requirement for newsroom, CTA, feature lesson, or product message.
   Vary forms across the five: fragment / record / warning / observation / transmission.
   May use implied history, found documents, overheard lines, conflicting accounts, old instructions,
   folklore, strange system messages, things that sound older than the website, hints beyond current explanation.
@@ -139,7 +139,7 @@ Do not make all posts similar length.
 Do not start many posts with "The wood...".
 Avoid repeating lore motifs as if they were the only device:
 do not produce five variants of "the wood remembers / the road waits / the crown watches / the trees know / something stirs".
-Core FENN vocabulary remains allowed — broaden the range of lore, do not erase it.`;
+Core VELL vocabulary remains allowed — broaden the range of lore, do not erase it.`;
 }
 
 /** @deprecated Thin remnants only — Book of Speech owns voice. */

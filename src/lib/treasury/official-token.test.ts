@@ -22,8 +22,8 @@ function candidate(
 ): OfficialTokenCandidateRow {
   return {
     id: "1",
-    symbol: "FENN",
-    name: "FENN",
+    symbol: "VELL",
+    name: "VELL",
     chain_id: ROBINHOOD_CHAIN_ID,
     contract_address: FENN,
     decimals: 18,
@@ -50,7 +50,7 @@ describe("resolveOfficialFennToken", () => {
     const result = resolveOfficialFennToken([candidate()]);
     assert.equal(result.status, "ok");
     if (result.status !== "ok") return;
-    assert.equal(result.token.symbol, "FENN");
+    assert.equal(result.token.symbol, "VELL");
     assert.equal(result.token.chainId, ROBINHOOD_CHAIN_ID);
     assert.equal(result.token.contractAddress, FENN);
     assert.equal(result.token.decimals, 18);
@@ -62,7 +62,7 @@ describe("resolveOfficialFennToken", () => {
     ]);
     assert.equal(result.status, "ok");
     if (result.status !== "ok") return;
-    assert.equal(result.token.symbol, "FENN");
+    assert.equal(result.token.symbol, "VELL");
   });
 
   it("ignores untracked rows", () => {
@@ -144,14 +144,14 @@ describe("resolveOfficialFennToken", () => {
 describe("toPublicOfficialFennToken", () => {
   it("returns safe public fields with Robinhood explorer URL", () => {
     const token = toPublicOfficialFennToken({
-      symbol: "FENN",
-      name: "FENN",
+      symbol: "VELL",
+      name: "VELL",
       chainId: ROBINHOOD_CHAIN_ID,
       contractAddress: FENN,
       decimals: 18,
     });
     assert.ok(token);
-    assert.equal(token!.symbol, "FENN");
+    assert.equal(token!.symbol, "VELL");
     assert.equal(token!.chainId, ROBINHOOD_CHAIN_ID);
     assert.equal(token!.contractAddress, FENN);
     assert.equal(
@@ -190,8 +190,8 @@ describe("getPublicOfficialFennToken fail-closed", () => {
     const publicToken = await getPublicOfficialFennToken(async () => ({
       status: "ok",
       token: {
-        symbol: "FENN",
-        name: "FENN",
+        symbol: "VELL",
+        name: "VELL",
         chainId: ROBINHOOD_CHAIN_ID,
         contractAddress: FENN,
         decimals: 18,
@@ -206,8 +206,6 @@ describe("official FENN source safety + surfaces", () => {
   it("does not introduce env, mock, or trading paths", () => {
     const files = [
       "src/lib/treasury/official-token.ts",
-      "src/components/commons/official-fenn-contract.tsx",
-      "src/components/home/home-official-contract.tsx",
       "src/lib/commons/page-data.ts",
       "src/app/commons/page.tsx",
       "src/app/page.tsx",
@@ -228,56 +226,30 @@ describe("official FENN source safety + surfaces", () => {
     }
   });
 
-  it("commons places identity + contract after Treasury; always mounts contract strip", () => {
+  it("commons places identity after Treasury; no public contract strip", () => {
     const page = readFileSync(join(repo, "src/app/commons/page.tsx"), "utf8");
-    assert.match(page, /OfficialFennContract/);
+    assert.doesNotMatch(page, /OfficialFennContract/);
     assert.match(page, /FennTokenIdentity/);
-    assert.match(page, /TreasuryReadout[\s\S]*FennTokenIdentity[\s\S]*OfficialFennContract/);
-    assert.match(page, /OfficialFennContract token=\{officialToken\}/);
+    assert.match(page, /TreasuryReadout[\s\S]*FennTokenIdentity[\s\S]*PurseReadout/);
     assert.doesNotMatch(page, /coming soon|launch soon/i);
     assert.match(page, /WORLD_PULSE_COMMONS_MS/);
   });
 
-  it("commons UI copies full address and Robinhood explorer when live", () => {
-    const ui = readFileSync(
-      join(repo, "src/components/commons/official-fenn-contract.tsx"),
-      "utf8",
-    );
-    assert.match(ui, /contract copied\./);
-    assert.match(ui, /the contract could not be copied\./);
-    assert.match(ui, /aria-live="polite"/);
-    assert.match(ui, /token\.contractAddress/);
-    assert.match(ui, /token\.explorerUrl/);
-    assert.match(ui, /noopener noreferrer/);
-    assert.match(ui, /COPY/);
-    assert.match(ui, /VIEW CONTRACT/);
-    assert.match(ui, /NOT YET INSCRIBED/);
-    assert.doesNotMatch(ui, /dexscreener|uniswap|coingecko|market cap|writeContract/i);
-  });
-
-  it("homepage mounts compact strip with ISR freshness in world/map section", () => {
+  it("homepage world/map section has no public contract strip", () => {
     const page = readFileSync(join(repo, "src/app/page.tsx"), "utf8");
-    const home = readFileSync(
-      join(repo, "src/components/home/home-official-contract.tsx"),
-      "utf8",
-    );
     const identity = readFileSync(
       join(repo, "src/components/home/home-identity.tsx"),
       "utf8",
     );
     assert.match(page, /HomeIdentity/);
     assert.match(page, /revalidate\s*=\s*60/);
-    assert.doesNotMatch(page, /HomeOfficialContract/);
+    assert.doesNotMatch(page, /HomeOfficialContract|OfficialFennContract/);
     assert.match(page, /HomeFirstThirty[\s\S]*HomeIdentity[\s\S]*HomeOutlawRegister/);
-    assert.match(identity, /HomeOfficialContract/);
+    assert.doesNotMatch(identity, /HomeOfficialContract|OfficialFennContract/);
     assert.match(
       identity,
-      /home-world-orient[\s\S]*HomeOfficialContract[\s\S]*FennWorldMap/,
+      /home-map-preface[\s\S]*FennWorldMap/,
     );
-    assert.match(home, /getPublicOfficialFennToken/);
-    assert.match(home, /OfficialFennContract token=\{token\}/);
-    assert.doesNotMatch(home, /if \(!token\) return null/);
-    assert.doesNotMatch(home, /0x[a-f0-9]{40}/i);
     assert.doesNotMatch(page, /NEXT_PUBLIC_FENN_TOKEN/);
   });
 
@@ -400,19 +372,11 @@ describe("official FENN source safety + surfaces", () => {
     assert.equal(resolveOfficialFennToken([a, b]).status, "ambiguous");
   });
 
-  it("mobile/a11y CSS uses wrap + forced-colours CanvasText + pending styles", () => {
+  it("mobile/a11y CSS keeps token identity readable", () => {
     const css = readFileSync(join(repo, "src/app/globals.css"), "utf8");
-    assert.match(css, /commons-official-token__address/);
-    assert.match(css, /home-official-token__address/);
-    assert.match(css, /home-official-token__pending/);
-    assert.match(css, /commons-official-token__pending/);
     assert.match(css, /fenn-token-identity__facts/);
     assert.match(css, /overflow-wrap:\s*anywhere/);
     assert.match(css, /word-break:\s*break-all/);
-    assert.match(
-      css,
-      /forced-colors:\s*active[\s\S]*commons-official-token__address[\s\S]*CanvasText/,
-    );
   });
 
   it("snapshot still wires ETH tracking and officialToken independently", () => {

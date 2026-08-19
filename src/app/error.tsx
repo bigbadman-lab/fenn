@@ -27,7 +27,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
         </button>
       </p>
       <p>
-        <Link href="/">[ RETURN TO FENN ]</Link>
+        <Link href="/">[ RETURN TO VELL ]</Link>
       </p>
     </article>
   );

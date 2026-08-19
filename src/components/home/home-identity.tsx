@@ -1,41 +1,38 @@
 import { FennWorldMap } from "@/components/home/fenn-world-map";
-import { HomeOfficialContract } from "@/components/home/home-official-contract";
-import { HOMEPAGE_MAP_ORIENTATION } from "@/lib/home/homepage-audience";
+import {
+  HOMEPAGE_MAP_EPILOGUE,
+  HOMEPAGE_MAP_ORIENTATION,
+} from "@/lib/home/homepage-audience";
 
 /**
- * World / map section: orientation, official $FENN contract (trust surface),
- * then the geographic map. Contract sits above the map so verification is
- * early and independent of deep lore / directory.
+ * World / map section: orientation, then the geographic map.
  */
-export async function HomeIdentity() {
+export function HomeIdentity() {
   return (
     <section className="home-section home-identity" aria-labelledby="home-fenn">
       <h1 id="home-fenn" className="visually-hidden">
-        FENN
+        VELL
       </h1>
 
-      <header className="home-world-orient" aria-labelledby="home-world-title">
-        <h2 id="home-world-title" className="home-world-orient__title">
+      <header className="home-map-preface" aria-labelledby="home-world-title">
+        <p id="home-world-title" className="home-map-preface__label">
           {HOMEPAGE_MAP_ORIENTATION.title}
-        </h2>
-        <div className="home-world-orient__body">
-          {HOMEPAGE_MAP_ORIENTATION.lines.map((line) => (
-            <p key={line} className="home-world-orient__line">
-              {line}
-            </p>
+        </p>
+        <ol className="home-map-preface__steps">
+          {HOMEPAGE_MAP_ORIENTATION.lines.map((line, index) => (
+            <li key={line} className="home-map-preface__step">
+              <span className="home-map-preface__num" aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="home-map-preface__text">{line}</span>
+            </li>
           ))}
-        </div>
+        </ol>
       </header>
 
-      <HomeOfficialContract />
-
       <FennWorldMap />
-      <p className="home-identity__line">
-        What the Crown keeps,
-        <br />
-        the Greenwood shares.
-      </p>
-      <p className="home-identity__aside muted">i live in the greenwood.</p>
+      <p className="home-identity__line">{HOMEPAGE_MAP_EPILOGUE.line}</p>
+      <p className="home-identity__aside muted">{HOMEPAGE_MAP_EPILOGUE.aside}</p>
     </section>
   );
 }

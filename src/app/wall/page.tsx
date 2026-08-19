@@ -11,7 +11,7 @@ import { WORLD_PULSE_WALL_MS } from "@/lib/world-pulse/intervals";
 
 export const metadata: Metadata = buildPublicMetadata({
   title: "THE WALL",
-  description: "Marks left by FENN for the world to read.",
+  description: "Marks left by VELL for the world to read.",
   path: "/wall",
 });
 
@@ -52,7 +52,7 @@ export default async function WallPage() {
           accent="wall"
           subtitle={
             <>
-              <p className="wall__lede">only fenn writes here.</p>
+              <p className="wall__lede">only vell writes here.</p>
               <p className="wall__aside muted">
                 the road passes close enough to read it.
               </p>

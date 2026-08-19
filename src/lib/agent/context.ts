@@ -88,12 +88,12 @@ function renderPublicKnowledgeBlock(items: PublicAgentKnowledgeItem[]): string {
   ];
 
   const canonBlock = renderSection(
-    "FENN CANON",
-    "Authoritative enduring knowledge about FENN. Canon defines FENN.",
+    "VELL CANON",
+    "Authoritative enduring knowledge about VELL. Canon defines VELL.",
     canon,
   );
   const memoryBlock = renderSection(
-    "PUBLIC FENN MEMORY",
+    "PUBLIC VELL MEMORY",
     "Approved contextual public knowledge. It does not override Canon.",
     memory,
   );

@@ -9,6 +9,8 @@ import type {
   SafeFirstThirtyProgress,
 } from "@/lib/first-thirty/types";
 
+import { CANOPY_DISPLAY, NAMED_DISPLAY } from "@/lib/site/world-vocabulary";
+
 export const FIRST_THIRTY_GREENWOOD_HREF = "/greenwood?crossing=1";
 export const FIRST_THIRTY_DEEDS_HREF = "/deeds";
 
@@ -24,7 +26,7 @@ export const FIRST_THIRTY_DEEDS_COPY = {
   beforeWitness:
     "A Deed must be witnessed before it carries weight.",
   beforeSubmit:
-    "Offer something real. The Greenwood will not count an empty gesture.",
+    "Offer something real. The Canopy will not count an empty gesture.",
   pendingWitness: "YOUR DEED IS WAITING TO BE WITNESSED",
   pathInactive:
     "LEAF may still be found through Camp and Deeds.",
@@ -159,7 +161,7 @@ export function isFirstThirtyPathInactiveBelowOpen(
 export const FIRST_THIRTY_CAMP_HREF = "/camp";
 
 export const FIRST_THIRTY_PRINCIPLE = {
-  line1: "Every Outlaw remembers the first thirty leaves.",
+  line1: `Every ${NAMED_DISPLAY.singular} remembers the first thirty leaves.`,
   line2: "They are not earned for greatness.",
   line3: "They are earned for arriving.",
 } as const;
@@ -170,7 +172,7 @@ export const FIRST_THIRTY_JOURNEY_COPY = {
   loading: "the road is being read...",
   fetchFail: "The road cannot be read just now.",
   fetchFailAside: "Camp and Deeds remain open.",
-  openTitle: "THE GREENWOOD IS OPEN",
+  openTitle: CANOPY_DISPLAY.openTitle,
   openBody: "The road no longer ends here.",
   nextLabel: "NEXT",
   nextStepLabel: "NEXT STEP",
@@ -179,15 +181,18 @@ export const FIRST_THIRTY_JOURNEY_COPY = {
   returnToCampFurther: "Let your words carry further.",
   oneExchangeRemains: "ONE MEANINGFUL EXCHANGE REMAINS",
   offerDeed: "Offer a Deed to the world.",
-  deedOpensGreenwood: "The Greenwood opens when it is witnessed.",
+  deedOpensGreenwood: `The ${CANOPY_DISPLAY.short} opens when it is witnessed.`,
   pathInactive: FIRST_THIRTY_DEEDS_COPY.pathInactive,
   visitCamp: "[ VISIT CAMP ]",
   visitDeeds: "[ VISIT DEEDS ]",
   goToCamp: "[ GO TO CAMP ]",
   returnToCamp: "[ RETURN TO CAMP ]",
   findADeed: "[ FIND A DEED ]",
-  walkToGreenwood: "[ WALK TO THE GREENWOOD ]",
+  walkToGreenwood: CANOPY_DISPLAY.walkToLink,
   continueJourney: "[ CONTINUE THE JOURNEY ]",
+  untilCanopyOpens: (until: number) =>
+    `${until} MORE UNTIL ${CANOPY_DISPLAY.title} OPENS`,
+  canopyOpens: CANOPY_DISPLAY.opens,
 } as const;
 
 export type FirstThirtyPrimaryAction = {

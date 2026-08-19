@@ -130,7 +130,7 @@ export function DeskAgentPanel() {
           [ refresh ]
         </button>
       </div>
-      <p className="muted">Is FENN able to see, think and speak?</p>
+      <p className="muted">Is VELL able to see, think and speak?</p>
       <p className="muted">
         Health, OAuth, and a single controlled Wall test. Pipeline cron remains
         outside The Desk.
@@ -141,7 +141,7 @@ export function DeskAgentPanel() {
         <>
           <h3 className="desk-overview__group-title">IDENTITY</h3>
           <ul className="desk-member__facts">
-            <li>@{agent.identity.configuredUsername ?? "askfenn"}</li>
+            <li>@{agent.identity.configuredUsername ?? "thisisvell"}</li>
             <li>
               OAuth: {agent.identity.oauthBound ? "BOUND" : "NOT BOUND"}
               {agent.identity.oauthUsername
@@ -161,9 +161,9 @@ export function DeskAgentPanel() {
                 </button>
               ) : (
                 <div className="desk-gatherings__confirm">
-                  <p>BIND ASKFENN OAUTH</p>
+                  <p>BIND THISISVELL OAUTH</p>
                   <p className="muted">
-                    Starts the @askfenn OAuth binding flow. Tokens are never
+                    Starts the @thisisvell OAuth binding flow. Tokens are never
                     shown in The Desk. Pipeline execution remains outside The
                     Desk.
                   </p>

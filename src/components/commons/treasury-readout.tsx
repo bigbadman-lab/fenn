@@ -34,7 +34,7 @@ export function TreasuryReadout({ treasury }: Props) {
           THE TREASURY
         </h2>
         <div className="commons-block__body">
-          <p className="commons-section__lede">what FENN holds.</p>
+          <p className="commons-section__lede">what VELL holds.</p>
           <p className="commons-empty">
             nothing has been fixed here yet.
           </p>
@@ -52,7 +52,7 @@ export function TreasuryReadout({ treasury }: Props) {
         THE TREASURY
       </h2>
       <div className="commons-block__body">
-        <p className="commons-section__lede">what FENN holds.</p>
+        <p className="commons-section__lede">what VELL holds.</p>
         <p className="commons-section__aside muted">
           where things arrive — not the Purse.
         </p>

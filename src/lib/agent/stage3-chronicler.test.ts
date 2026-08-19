@@ -399,7 +399,7 @@ describe("Stage 3 pure Chronicler admission", () => {
     const first = evaluateChroniclerWallAdmission({
       finalAction: "reply_and_write_to_wall",
       finalReplyText: "The official token stands.",
-      finalWallBody: "THE OFFICIAL $FENN CONTRACT IS NAMED.",
+      finalWallBody: "THE OFFICIAL $VELL CONTRACT IS NAMED.",
       wallCandidate: {
         kind: "public_fact",
         factKey: "official_fenn_token",

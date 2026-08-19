@@ -120,35 +120,36 @@ describe("resolveHomepageAudience", () => {
 
 describe("homepage copy constants", () => {
   it("uses prescribed greetings and CTAs", () => {
-    assert.equal(HOMEPAGE_GREETING.stranger, "WELCOME, STRANGER.");
-    assert.equal(HOMEPAGE_GREETING.outlaw, "WELCOME, OUTLAW.");
-    assert.equal(HOMEPAGE_GREETING.greenwood, "WELCOME HOME.");
-    assert.equal(HOMEPAGE_ACTIONS.becomeOutlaw, "[ BECOME AN OUTLAW ]");
+    assert.equal(HOMEPAGE_GREETING.stranger, "YOU ARRIVE UNNAMED.");
+    assert.equal(HOMEPAGE_GREETING.outlaw, "THE REGISTER KNOWS YOU.");
+    assert.equal(HOMEPAGE_GREETING.greenwood, "THE CANOPY IS OPEN.");
+    assert.equal(HOMEPAGE_ACTIONS.becomeOutlaw, "[ CLAIM A NAME ]");
     assert.equal(HOMEPAGE_ACTIONS.exploreMap, "[ EXPLORE THE MAP ]");
-    assert.equal(HOMEPAGE_MAP_ORIENTATION.title, "THE WORLD");
+    assert.equal(HOMEPAGE_MAP_ORIENTATION.title, "THE MAP");
     assert.ok(
       HOMEPAGE_MAP_ORIENTATION.lines.some((l) =>
         /named place can be entered/i.test(l),
       ),
     );
-    assert.equal(HOMEPAGE_OUTLAW_THRESHOLD.title, "BECOME AN OUTLAW");
+    assert.equal(HOMEPAGE_OUTLAW_THRESHOLD.title, "CLAIM A NAME");
   });
 });
 
 describe("homepage V2 structure and wiring", () => {
-  it("places welcome → journey → map → outlaw threshold before lore voice", () => {
+  it("places welcome → journey → map vault → register before lore", () => {
     const page = read("src/app/page.tsx");
     const welcome = page.indexOf("<HomeWelcome");
     const journey = page.indexOf("<HomeFirstThirty");
     const identity = page.indexOf("<HomeIdentity");
     const register = page.indexOf("<HomeOutlawRegister");
-    const voice = page.indexOf("<HomeFennVoice");
     const transmission = page.indexOf("<LoreTransmission");
+    const hero = page.indexOf('className="home-stage"');
+    assert.ok(hero >= 0);
     assert.ok(welcome >= 0 && journey > welcome);
     assert.ok(identity > journey);
     assert.ok(register > identity);
-    assert.ok(voice > register);
-    assert.ok(transmission > voice);
+    assert.ok(transmission > register);
+    assert.doesNotMatch(page, /HomeFennVoice/);
   });
 
   it("welcome uses audience helpers and does not hardcode OUTLAW for all", () => {
@@ -160,17 +161,17 @@ describe("homepage V2 structure and wiring", () => {
     assert.doesNotMatch(welcome, /ENTER THE MAP/);
   });
 
-  it("stranger welcome links deeds, Camp, Greenwood, and Commons with underlines", () => {
+  it("stranger welcome links deeds, Camp, Canopy, and Commons with underlines", () => {
     const welcome = read("src/components/home/home-welcome.tsx");
     const css = read("src/app/globals.css");
     assert.match(welcome, /href="\/deeds"/);
     assert.match(welcome, /href="\/camp"/);
-    assert.match(welcome, /href="\/greenwood\?crossing=1"/);
+    assert.match(welcome, /CANOPY_PATH|href="\/greenwood\?crossing=1"/);
     assert.match(welcome, /href="\/commons"/);
     assert.match(welcome, /home-welcome__inline-link/);
     assert.match(welcome, /href="\/deeds"[\s\S]*?deeds/);
     assert.match(welcome, /href="\/camp"[\s\S]*?Camp/);
-    assert.match(welcome, /href="\/greenwood\?crossing=1"[\s\S]*?Greenwood/);
+    assert.match(welcome, /CANOPY_PATH|href="\/greenwood\?crossing=1"[\s\S]*?Canopy/);
     assert.match(welcome, /href="\/commons"[\s\S]*?Commons/);
     assert.match(css, /a\.home-welcome__inline-link/);
     assert.match(
@@ -206,7 +207,8 @@ describe("homepage V2 structure and wiring", () => {
   it("map keeps orientation copy and semantic nav", () => {
     const identity = read("src/components/home/home-identity.tsx");
     const map = read("src/components/home/fenn-world-map.tsx");
-    assert.match(identity, /HOMEPAGE_MAP_ORIENTATION|THE WORLD/);
+    assert.match(identity, /HOMEPAGE_MAP_ORIENTATION|THE MAP/);
+    assert.match(identity, /home-map-preface__steps/);
     assert.match(map, /aria-label="map of fenn"/);
     assert.match(map, /id="the-map"/);
     assert.match(map, /nav className="fenn-map"/);
@@ -217,7 +219,7 @@ describe("homepage V2 structure and wiring", () => {
     for (const label of [
       "[ the book ]",
       "[ the oak ]",
-      "[ the greenwood ]",
+      "[ the canopy ]",
       "[ deeds ]",
       "[ the camp ]",
       "[ the ledger ]",
@@ -232,7 +234,7 @@ describe("homepage V2 structure and wiring", () => {
     const panel = read("src/components/home/home-outlaw-register.tsx");
     const audience = read("src/lib/home/homepage-audience.ts");
     assert.match(panel, /HOMEPAGE_OUTLAW_THRESHOLD/);
-    assert.match(audience, /permanent name in the Register/);
+    assert.match(audience, /permanent name in THE REGISTER|NAMED_DISPLAY\.registerTitle/);
     assert.match(audience, /journey permanent/);
     assert.doesNotMatch(audience, /price|ROI|APY|airdrop/i);
   });
@@ -255,6 +257,6 @@ describe("homepage V2 structure and wiring", () => {
     assert.match(register, /\[\s*claim the name\s*\]/);
 
     const audience = read("src/lib/home/homepage-audience.ts");
-    assert.match(audience, /\[ BECOME AN OUTLAW \]/);
+    assert.match(audience, /NAMED_DISPLAY\.claimCta|\[ CLAIM A NAME \]/);
   });
 });

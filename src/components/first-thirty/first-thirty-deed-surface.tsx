@@ -92,10 +92,10 @@ export function FirstThirtyDeedSurface({
       // Greenwood open from other path — brief line only.
       return (
         <div className="ft-deed-surface">
-          <p className="ft-progress__title">THE GREENWOOD IS OPEN</p>
+          <p className="ft-progress__title">{FIRST_THIRTY_JOURNEY_COPY.openTitle}</p>
           <p>
             <Link href={FIRST_THIRTY_GREENWOOD_HREF} className="btn-text">
-              [ WALK TO THE GREENWOOD ]
+              {FIRST_THIRTY_JOURNEY_COPY.walkToGreenwood}
             </Link>
           </p>
         </div>
@@ -104,10 +104,10 @@ export function FirstThirtyDeedSurface({
     if (placement === "detail" && progress.milestones.firstDeed) {
       return (
         <div className="ft-deed-surface">
-          <p className="ft-progress__title">THE GREENWOOD IS OPEN</p>
+          <p className="ft-progress__title">{FIRST_THIRTY_JOURNEY_COPY.openTitle}</p>
           <p>
             <Link href={FIRST_THIRTY_GREENWOOD_HREF} className="btn-text">
-              [ WALK TO THE GREENWOOD ]
+              {FIRST_THIRTY_JOURNEY_COPY.walkToGreenwood}
             </Link>
           </p>
         </div>

@@ -1,3 +1,5 @@
+import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
+
 /**
  * THE FIRST THIRTY — constants, safe DTOs, pure helpers.
  * Does not write LEAF; progress mutations are SQL RPCs only.
@@ -23,7 +25,7 @@ export type FirstThirtyNextMilestone =
 export const FIRST_THIRTY_ACK = {
   camp_first: "THE FIRE LEFT SOMETHING BEHIND",
   camp_three: "YOUR WORDS WERE KEPT",
-  first_deed: "THE GREENWOOD OPENS",
+  first_deed: CANOPY_DISPLAY.opens,
 } as const;
 
 export type FirstThirtyMilestoneEvent = {

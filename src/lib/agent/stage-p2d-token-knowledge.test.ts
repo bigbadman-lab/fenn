@@ -127,15 +127,15 @@ describe("P2D address verification", () => {
 
 describe("P2D token live knowledge helpers", () => {
   it("detects CA / launch-live questions", () => {
-    assert.equal(questionNeedsOfficialTokenLiveState("What is the FENN contract?"), true);
+    assert.equal(questionNeedsOfficialTokenLiveState("What is the VELL contract?"), true);
     assert.equal(questionNeedsOfficialTokenLiveState("What is your CA?"), true);
-    assert.equal(questionNeedsOfficialTokenLiveState("Has FENN launched?"), true);
+    assert.equal(questionNeedsOfficialTokenLiveState("Has VELL launched?"), true);
     assert.equal(
       questionNeedsOfficialTokenLiveState(`Is ${FAKE} the official FENN contract?`),
       true,
     );
-    assert.equal(questionNeedsOfficialTokenLiveState("What is $FENN?"), false);
-    assert.equal(questionNeedsOfficialTokenLiveState("Where was FENN launched?"), false);
+    assert.equal(questionNeedsOfficialTokenLiveState("What is $VELL?"), false);
+    assert.equal(questionNeedsOfficialTokenLiveState("Where was VELL launched?"), false);
   });
 
   it("parses contract from fact detail", () => {
@@ -192,7 +192,7 @@ describe("P2D self-knowledge pre/post launch with injected token fact", () => {
     const token = getFennCanonDocument("fenn.token.identity")!;
     let userSeen = "";
     const result = await runSelfKnowledgeCalibration(
-      { text: "What is the FENN contract?" },
+      { text: "What is the VELL contract?" },
       {
         retrieve: async () => [
           chunk({
@@ -274,9 +274,9 @@ describe("P2D self-knowledge pre/post launch with injected token fact", () => {
   it("PONS and LEAF questions stay knowledge-only with no live token required", async () => {
     const token = getFennCanonDocument("fenn.token.identity")!;
     for (const text of [
-      "Where was FENN launched?",
-      "Does PONS control FENN?",
-      "Is LEAF the same as FENN?",
+      "Where was VELL launched?",
+      "Does PONS control VELL?",
+      "Is LEAF the same as VELL?",
     ]) {
       const result = await runSelfKnowledgeCalibration(
         { text },

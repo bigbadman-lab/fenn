@@ -7,9 +7,10 @@ import {
   resolveHomepageAudience,
   shouldShowOutlawThresholdIntro,
 } from "@/lib/home/homepage-audience";
+import { NAMED_DISPLAY, REGISTER_ANCHOR_ID } from "@/lib/site/world-vocabulary";
 
 /**
- * Outlaw threshold — registration for strangers; profile for the named.
+ * Register threshold — name claim for strangers; profile for the Named.
  * Placed after the map so wanderers can explore first, with top CTA anchor.
  */
 export function HomeOutlawRegister() {
@@ -32,23 +33,22 @@ export function HomeOutlawRegister() {
   });
 
   const showIntro = shouldShowOutlawThresholdIntro(audience);
-  // Registered: panel becomes identity readout — keep a quieter heading.
-  const isBecomeTitle =
+  const isClaimTitle =
     audience !== "outlaw" && audience !== "greenwood";
-  const title = isBecomeTitle
+  const title = isClaimTitle
     ? HOMEPAGE_OUTLAW_THRESHOLD.title
-    : "THE OUTLAW REGISTER";
+    : NAMED_DISPLAY.registerTitle;
 
   return (
     <section
-      id="outlaw-register"
+      id={REGISTER_ANCHOR_ID}
       className="home-section home-register"
-      aria-labelledby="outlaw-register-title"
+      aria-labelledby="register-title"
     >
       <h2
-        id="outlaw-register-title"
+        id="register-title"
         className={
-          isBecomeTitle
+          isClaimTitle
             ? "place__title home-register__title home-register__title--become"
             : "place__title home-register__title"
         }

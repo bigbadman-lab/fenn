@@ -48,7 +48,7 @@ function msg(id: string, at: string): SafeClearingMessage {
 function wood(
   id: string,
   at: string,
-  amountLabel = "1,000 $FENN",
+  amountLabel = "1,000 $VELL",
 ): SafeMarketWatchFeedItem {
   return {
     kind: "market_watch",
@@ -66,7 +66,7 @@ describe("Market Watch 1.0B feed merge", () => {
       msg("m1", "2026-08-05T10:00:00.000Z"),
     ];
     const mw = [
-      wood("w1", "2026-08-05T11:00:00.000Z", "11,400 $FENN"),
+      wood("w1", "2026-08-05T11:00:00.000Z", "11,400 $VELL"),
     ];
     const { items, hasMore } = mergeClearingFeedSources(messages, mw, 10);
     assert.equal(hasMore, false);
@@ -116,7 +116,7 @@ describe("Market Watch 1.0B public DTO gates", () => {
         kind: "market_watch",
         id: "x",
         occurredAt: "2026-08-05T10:00:00.000Z",
-        amountLabel: "2,340 $FENN",
+        amountLabel: "2,340 $VELL",
         transactionUrl: null,
       }),
       true,
@@ -149,8 +149,8 @@ describe("Market Watch 1.0B amount + explorer formatting", () => {
     assert.equal(formatTokenAmountWithSeparators("0.1000"), "0.1");
     const raw = BigInt(2340) * BigInt(10) ** BigInt(18);
     assert.equal(
-      formatClearingMarketFennAmount(raw, 18, "FENN"),
-      "2,340 $FENN",
+      formatClearingMarketFennAmount(raw, 18, "VELL"),
+      "2,340 $VELL",
     );
   });
 

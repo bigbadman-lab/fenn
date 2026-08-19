@@ -207,7 +207,7 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
             setRegistered(false);
             clearMemberSnapshots();
             setProfileResolved(true);
-            setError(data.error ?? "Failed to load FENN identity");
+            setError(data.error ?? "Failed to load VELL identity");
             setBootstrapGeneration((g) => g + 1);
           }
           return false;
@@ -244,7 +244,7 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
         if (generation !== fetchGeneration.current) return false;
         if (!quiet) {
           setProfileResolved(true);
-          setError("Failed to load FENN identity");
+          setError("Failed to load VELL identity");
           clearMemberSnapshots();
           setBootstrapGeneration((g) => g + 1);
         }

@@ -30,6 +30,7 @@ import {
   newestFeedItem,
   newestFirstToConversation,
 } from "@/lib/clearing/feed-client";
+import { formatNamedLabel, NAMED_DISPLAY } from "@/lib/site/world-vocabulary";
 
 const POLL_MS = CLEARING_PUBLIC_POLL_MS;
 const NEAR_BOTTOM_PX = 96;
@@ -385,7 +386,7 @@ export function ClearingPage() {
     if (authenticated && registered && profile) {
       const alias =
         profile.alias?.trim() ||
-        `OUTLAW ${String(profile.outlawNumber).padStart(5, "0")}`;
+        formatNamedLabel(profile.outlawNumber);
       return { kind: "outlaw", alias, speaking };
     }
     // Listening is public; speaking is Outlaw-only.
@@ -411,11 +412,11 @@ export function ClearingPage() {
               <p className="clearing__lede">The trees thin here.</p>
               <p className="clearing__telegram-note">
                 This is our version of a group chat in the wood — one open circle
-                where Outlaws speak in the open, plain as a Telegram thread, but
+                where {NAMED_DISPLAY.plural} speak in the open, plain as a Telegram thread, but
                 under the law of the Camp.
               </p>
               <p className="clearing__lede">Anyone may listen.</p>
-              <p className="clearing__lede">Only Outlaws may speak.</p>
+              <p className="clearing__lede">Only {NAMED_DISPLAY.plural} may speak.</p>
               <p className="muted clearing__leaf-note">
                 Nothing spoken here earns LEAF automatically.
               </p>

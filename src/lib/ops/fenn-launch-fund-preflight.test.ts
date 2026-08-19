@@ -80,8 +80,8 @@ function activatedDeps(
 ): FennLaunchFundPreflightDeps {
   return baseDeps({
     getOfficialToken: async () => ({
-      symbol: "FENN",
-      name: "FENN",
+      symbol: "VELL",
+      name: "VELL",
       chainId: ROBINHOOD_CHAIN_ID,
       contractAddress: TEST_TOKEN,
       decimals: 18,
@@ -89,8 +89,8 @@ function activatedDeps(
     getBytecode: async () => "0x6001600055",
     readTokenMeta: async () => ({
       decimals: 18,
-      symbol: "FENN",
-      name: "FENN",
+      symbol: "VELL",
+      name: "VELL",
     }),
     readErc20: async () => ({
       raw: TEN_M_RAW * BigInt(2),
@@ -254,8 +254,8 @@ describe("P0 fund preflight — post activation", () => {
       activatedDeps({
         readTokenMeta: async () => ({
           decimals: 6,
-          symbol: "FENN",
-          name: "FENN",
+          symbol: "VELL",
+          name: "VELL",
         }),
       }),
     );

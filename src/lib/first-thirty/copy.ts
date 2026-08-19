@@ -7,6 +7,8 @@
  * milestone — open is a consequence of the path / threshold.
  */
 
+import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
+
 export type FirstThirtyMilestoneCopy = {
   incomplete: string;
   completed: string;
@@ -93,11 +95,11 @@ export const FIRST_THIRTY_REVEAL_TITLE = {
   /** Event line when a Deed is finalised. */
   first_deed_witnessed: "A DEED WAS WITNESSED",
   /** Consequence when trusted state opens Greenwood. */
-  first_deed_greenwood_open: "THE GREENWOOD HAS OPENED",
+  first_deed_greenwood_open: CANOPY_DISPLAY.hasOpened,
   /** @deprecated Prefer first_deed_greenwood_open */
-  first_deed_grant: "THE GREENWOOD HAS OPENED",
+  first_deed_grant: CANOPY_DISPLAY.hasOpened,
   /** @deprecated Prefer first_deed_greenwood_open */
-  first_deed_zero: "THE GREENWOOD HAS OPENED",
+  first_deed_zero: CANOPY_DISPLAY.hasOpened,
 } as const;
 
 export function firstThirtyThresholdTotal(progress: {

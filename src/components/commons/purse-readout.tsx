@@ -37,7 +37,7 @@ export function PurseReadout({
     return (
       <section className="commons-block" aria-labelledby="purse-heading">
         <h2 id="purse-heading" className="commons-block__label">
-          THE PURSE OF FENN
+          THE PURSE OF VELL
         </h2>
         <div className="commons-block__body">
           <p className="commons-empty">the purse cannot be read.</p>
@@ -51,11 +51,11 @@ export function PurseReadout({
     return (
       <section className="commons-block" aria-labelledby="purse-heading">
         <h2 id="purse-heading" className="commons-block__label">
-          THE PURSE OF FENN
+          THE PURSE OF VELL
         </h2>
         <div className="commons-block__body">
           <p className="commons-section__lede">
-            A finite quantity of $FENN under FENN&apos;s keeping.
+            A finite quantity of $VELL under VELL&apos;s keeping.
           </p>
           <p className="commons-section__aside muted">
             distinct from the Treasury.
@@ -84,17 +84,17 @@ export function PurseReadout({
   return (
     <section className="commons-block" aria-labelledby="purse-heading">
       <h2 id="purse-heading" className="commons-block__label">
-        THE PURSE OF FENN
+        THE PURSE OF VELL
       </h2>
       <div className="commons-block__body">
         <p className="commons-section__lede">
-          A finite quantity of $FENN under FENN&apos;s keeping.
+          A finite quantity of $VELL under VELL&apos;s keeping.
         </p>
         {!purse.isEnabled ? (
           <p className="commons-section__aside muted">the purse is at rest.</p>
         ) : (
           <p className="commons-section__aside muted">
-            finite under FENN&apos;s keeping — not the Treasury.
+            finite under VELL&apos;s keeping — not the Treasury.
             <br />
             judgement may use it; authority may refuse.
             <br />
@@ -107,7 +107,7 @@ export function PurseReadout({
           <code className="commons-wallet__address">{purse.purseAddress}</code>
         </p>
         <p className="commons-section__aside muted commons-purse-wallet-note">
-          this is the Purse wallet — not the $FENN token contract.
+          this is the Purse wallet — not the $VELL token contract.
         </p>
 
         <InitialPurseAllocationNote />
@@ -115,7 +115,7 @@ export function PurseReadout({
         <h3 className="commons-subheading">LIVE BALANCES</h3>
         <table className="commons-table commons-table--treasury">
           <caption className="visually-hidden">
-            Live Purse ETH and official FENN balances
+            Live Purse ETH and official VELL balances
           </caption>
           <thead>
             <tr>
@@ -138,8 +138,8 @@ export function PurseReadout({
             </tr>
             <tr>
               <th scope="row" className="commons-table__asset">
-                <span className="commons-table__symbol">FENN</span>
-                <span className="commons-table__name muted">FENN HELD</span>
+                <span className="commons-table__symbol">VELL</span>
+                <span className="commons-table__name muted">VELL HELD</span>
               </th>
               <td
                 className={
@@ -160,10 +160,10 @@ export function PurseReadout({
         </table>
         {fennAwaitingOfficial ? (
           <p className="commons-empty commons-empty--spaced" role="status">
-            awaiting official token for FENN HELD.
+            awaiting official token for VELL HELD.
             <span className="visually-hidden">
               {" "}
-              Official on-chain $FENN balance cannot be shown until the official
+              Official on-chain $VELL balance cannot be shown until the official
               contract is configured. The initial allocation figure above is
               launch intent, not a live balance.
             </span>
@@ -191,8 +191,8 @@ export function PurseReadout({
                   </time>
                   <p className="commons-history__delta">
                     {row.actionType === "burn"
-                      ? `${row.amountFormatted} FENN burned`
-                      : `${row.amountFormatted} FENN → ${shortTo}`}
+                      ? `${row.amountFormatted} VELL burned`
+                      : `${row.amountFormatted} VELL → ${shortTo}`}
                   </p>
                   {row.explorerTxUrl ? (
                     <p className="commons-history__reason">
@@ -224,11 +224,11 @@ function InitialPurseAllocationNote() {
     <div className="commons-purse-initial">
       <h3 className="commons-subheading">INITIAL ALLOCATION</h3>
       <p className="commons-purse-initial__value">
-        {FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED} FENN
+        {FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED} VELL
       </p>
       <p className="commons-section__aside muted">
         {FENN_TOKEN_PUBLIC_INITIAL_PURSE_PCT} of total supply (
-        {FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED} FENN).
+        {FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED} VELL).
         <br />
         launch intent — not a permanent balance.
       </p>

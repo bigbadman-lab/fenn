@@ -4,10 +4,11 @@ import Link from "next/link";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { resolveHomepageAudience } from "@/lib/home/homepage-audience";
+import { CANOPY_DISPLAY, CANOPY_PATH } from "@/lib/site/world-vocabulary";
 
 /**
- * Greenwood desire object for strangers / Outlaws.
- * Members see a restrained open-home path instead of "not opened" copy.
+ * Canopy desire object for strangers / Named members.
+ * Canopy members see a restrained open-home path instead of "not opened" copy.
  */
 export function HomeGreenwoodTeaser() {
   const {
@@ -31,17 +32,17 @@ export function HomeGreenwoodTeaser() {
   if (audience === "greenwood") {
     return (
       <section
-        className="home-section home-greenwood"
-        aria-labelledby="home-greenwood-title"
+        className="home-section home-canopy"
+        aria-labelledby="home-canopy-title"
       >
-        <h2 id="home-greenwood-title" className="place__title">
-          THE GREENWOOD
+        <h2 id="home-canopy-title" className="place__title">
+          {CANOPY_DISPLAY.title}
         </h2>
         <div className="place__body">
-          <p>you already walk this wood.</p>
+          <p>you already walk beneath it.</p>
           <p className="muted">return when the road calls you back.</p>
           <p>
-            <Link href="/greenwood?crossing=1">[ walk to the greenwood ]</Link>
+            <Link href={CANOPY_PATH}>{CANOPY_DISPLAY.walkLink}</Link>
           </p>
         </div>
       </section>
@@ -50,20 +51,20 @@ export function HomeGreenwoodTeaser() {
 
   return (
     <section
-      className="home-section home-greenwood"
-      aria-labelledby="home-greenwood-title"
+      className="home-section home-canopy"
+      aria-labelledby="home-canopy-title"
     >
-      <h2 id="home-greenwood-title" className="place__title">
-        THE GREENWOOD
+      <h2 id="home-canopy-title" className="place__title">
+        {CANOPY_DISPLAY.title}
       </h2>
       <div className="place__body">
-        <p>the path continues beyond this point.</p>
+        <p>the path continues above the road.</p>
         <p>access is earned — not sold.</p>
-        <p className="home-greenwood__whisper muted">
+        <p className="home-canopy__whisper muted">
           a door everyone can open isn&apos;t much of a door.
         </p>
         <p>
-          <Link href="/greenwood?crossing=1">[ go to the greenwood ]</Link>
+          <Link href={CANOPY_PATH}>{CANOPY_DISPLAY.goLink}</Link>
         </p>
       </div>
     </section>

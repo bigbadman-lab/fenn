@@ -6,11 +6,15 @@ import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { getConfiguredGreenwoodLifetimeThreshold } from "@/lib/leaf/standing";
 import { buildPublicMetadata } from "@/lib/site/metadata";
 
+import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
+
 export const metadata: Metadata = buildPublicMetadata({
-  title: "THE GREENWOOD",
+  title: CANOPY_DISPLAY.title,
   description: "The path is free to see. Entry is earned.",
   path: "/greenwood",
 });
+
+import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
 
 /** Threshold law is configuration — never invent a number at build time. */
 export const dynamic = "force-dynamic";
@@ -19,8 +23,8 @@ function GreenwoodFallback() {
   return (
     <article className="place greenwood-gate">
       <AsciiPageTitle
-        title="THE GREENWOOD"
-        mark="GREENWOOD"
+        title={CANOPY_DISPLAY.title}
+        mark={CANOPY_DISPLAY.mark}
         accent="greenwood"
         subtitle={<p className="muted">finding the path...</p>}
       />

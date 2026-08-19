@@ -17,6 +17,7 @@ import {
   CLEARING_REGISTER_HREF,
   markClearingRegistrationOrigin,
 } from "@/lib/clearing/origin";
+import { NAMED_DISPLAY } from "@/lib/site/world-vocabulary";
 
 export type ComposerIdentity =
   | { kind: "pending" }
@@ -248,7 +249,7 @@ export function ClearingComposer({
   if (identity.kind === "outlaw_required") {
     return (
       <section className="clearing-composer" aria-label="Speak">
-        <p className="clearing-composer__law">ONLY OUTLAWS MAY SPEAK HERE.</p>
+        <p className="clearing-composer__law">ONLY {NAMED_DISPLAY.plural.toUpperCase()} MAY SPEAK HERE.</p>
         <p className="muted">
           Anyone may listen. Take a permanent name if you would join the circle.
         </p>
@@ -258,7 +259,7 @@ export function ClearingComposer({
             className="btn-text"
             onClick={() => markClearingRegistrationOrigin()}
           >
-            [ BECOME AN OUTLAW ]
+            {NAMED_DISPLAY.claimCta}
           </Link>
         </p>
       </section>

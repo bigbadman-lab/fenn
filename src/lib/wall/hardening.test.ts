@@ -216,9 +216,9 @@ describe("Stage 10.5.4 world surface regressions", () => {
     assert.match(map, /label: "\[ the wall \]"/);
     assert.match(map, /href: "\/wall"/);
     assert.match(map, /by the road|by road/);
-    const greenwood = map.indexOf("[ the greenwood ]");
+    const canopy = map.indexOf("[ the canopy ]");
     const wallArt = map.indexOf('place("  [ the wall ]"');
-    assert.ok(greenwood >= 0 && wallArt > greenwood);
+    assert.ok(canopy >= 0 && wallArt > canopy);
   });
 
   it("Old Directory keeps concise FENN-only copy", () => {

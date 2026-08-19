@@ -52,7 +52,7 @@ export type GreenwoodSpeaksFetchResult =
   | { ok: false; error: GreenwoodClientError };
 
 /**
- * Authenticated GET /api/greenwood/speaks — current FENN SPEAKS for members.
+ * Authenticated GET /api/greenwood/speaks — current VELL SPEAKS for members.
  */
 export async function fetchGreenwoodSpeaks(
   headers: HeadersInit,
@@ -81,7 +81,7 @@ export async function fetchGreenwoodSpeaks(
         response.status,
         body,
         "greenwood_fire_message_failed",
-        "FENN SPEAKS failed",
+        "VELL SPEAKS failed",
       ),
     };
   }

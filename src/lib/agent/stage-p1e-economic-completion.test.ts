@@ -50,7 +50,7 @@ describe("Stage P1E economic completion", () => {
     const f = factsTransfer({ amountFormatted: "10000" })!;
     assert.equal(
       validateEconomicCompletionSpeech(
-        `10000 FENN left the Purse for ${f.shortRecipient}. ${f.explorerUrl}`,
+        `10000 VELL left the Purse for ${f.shortRecipient}. ${f.explorerUrl}`,
         f,
       ).ok,
       true,
@@ -64,7 +64,7 @@ describe("Stage P1E economic completion", () => {
     );
     assert.equal(
       validateEconomicCompletionSpeech(
-        `100000 FENN left the Purse for ${f.shortRecipient}. ${f.explorerUrl}`,
+        `100000 VELL left the Purse for ${f.shortRecipient}. ${f.explorerUrl}`,
         f,
       ).ok,
       false,
@@ -141,7 +141,7 @@ describe("Stage P1E economic completion", () => {
     );
     assert.equal(
       validateEconomicCompletionSpeech(
-        `100000 FENN will not return. ${br.explorerUrl}`,
+        `100000 VELL will not return. ${br.explorerUrl}`,
         br,
       ).ok,
       false,
@@ -219,7 +219,7 @@ describe("Stage P1E economic completion", () => {
     const good = await renderEconomicCompletionSpeech({
       facts: f,
       callModel: async () => ({
-        replyText: `25000 FENN left the Purse for ${f.shortRecipient}. Proof: ${f.explorerUrl}`,
+        replyText: `25000 VELL left the Purse for ${f.shortRecipient}. Proof: ${f.explorerUrl}`,
       }),
     });
     assert.equal(good.source, "book_of_speech");
@@ -261,7 +261,7 @@ describe("Stage P1E economic completion", () => {
 
     assert.equal(
       validateEconomicCompletionSpeech(
-        `25000 FENN to dead address will not return. ${f.explorerUrl}`,
+        `25000 VELL to dead address will not return. ${f.explorerUrl}`,
         f,
       ).ok,
       false,
@@ -351,7 +351,7 @@ describe("Stage P1E economic completion", () => {
       amountFormatted: "100000",
       txHash: TX,
     });
-    assert.match(draft.text, /100000 FENN left my Purse/);
+    assert.match(draft.text, /100000 VELL left my Purse/);
     assert.ok(buildEconomicCompletionFallback(factsTransfer()!));
   });
 });

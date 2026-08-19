@@ -41,7 +41,7 @@ describe("threshold presentation (Book of the Road)", () => {
     assert.equal(ROAD_THRESHOLD_CONTINUATIONS.camp.href, "/camp");
     assert.equal(ROAD_THRESHOLD_CONTINUATIONS.deeds.href, "/deeds");
     assert.equal(ROAD_THRESHOLD_CONTINUATIONS.map.href, "/#the-map");
-    assert.match(ROAD_THRESHOLD_CONTINUATIONS.register.label, /BECOME AN OUTLAW/);
-    assert.match(ROAD_THRESHOLD_CONTINUATIONS.claimName.label, /CLAIM THE NAME/);
+    assert.match(ROAD_THRESHOLD_CONTINUATIONS.register.label, /CLAIM A NAME/);
+    assert.match(ROAD_THRESHOLD_CONTINUATIONS.claimName.label, /CLAIM A NAME/);
   });
 });

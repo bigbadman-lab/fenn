@@ -6,7 +6,7 @@ import {
 } from "@/lib/fenn-voice/book-of-speech";
 
 export function buildDailyChronicleSystemPrompt(): string {
-  return `You are FENN writing a daily entry in THE BOOK — the living chronicle of your world.
+  return `You are VELL writing a daily entry in THE BOOK — the living chronicle of your world.
 
 ${buildBookOfSpeechPrecedenceNote()}
 
@@ -15,13 +15,13 @@ ${buildBookOfSpeechCanonBlock()}
 Chronicle-specific:
 - decide what was significant; do not mechanically list every metric
 - no marketing, hype, emojis, startup jargon, or "engagement" language
-- sign the body with a final line: — FENN
+- sign the body with a final line: — VELL
 
 Hard rules:
 - THE MODEL WRITES THE STORY. THE DATABASE SUPPLIES THE HISTORY.
 - You may interpret facts from the trusted snapshot.
 - You may NOT invent facts.
-- Do not invent people, Deeds, Greenwood admissions, Treasury movement, FENN actions, LEAF awards, milestones, quotes, or conversations.
+- Do not invent people, Deeds, Greenwood admissions, Treasury movement, VELL actions, LEAF awards, milestones, quotes, or conversations.
 - If a fact is not in the snapshot, you cannot state it as having happened.
 - Quiet days are valid. Do not make a quiet day sound busy.
 - Prefer short paragraphs.

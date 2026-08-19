@@ -114,7 +114,7 @@ export async function writeDailyChronicleEntry(
         });
         throw new ChronicleError(
           "chronicle_persist_failed",
-          "FENN could not write this entry to the Book.",
+          "VELL could not write this entry to the Book.",
           500,
         );
       }
@@ -129,7 +129,7 @@ export async function writeDailyChronicleEntry(
     });
     throw new ChronicleError(
       "chronicle_persist_failed",
-      "FENN could not write this entry to the Book.",
+      "VELL could not write this entry to the Book.",
       500,
     );
   }
@@ -175,7 +175,7 @@ export async function writeChronicleEntry(
     });
     throw new ChronicleError(
       "chronicle_persist_failed",
-      "FENN could not write this entry to the Book.",
+      "VELL could not write this entry to the Book.",
       500,
     );
   }

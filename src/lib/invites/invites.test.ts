@@ -61,11 +61,11 @@ describe("Outlaw Invite — constants and URL", () => {
   });
 
   it("builds environment invite URL as /enter?invite=", () => {
-    const url = buildOutlawInviteUrl("AbCdEfGh12xx", "https://imfenn.com");
-    assert.equal(url, "https://imfenn.com/enter?invite=AbCdEfGh12xx");
+    const url = buildOutlawInviteUrl("AbCdEfGh12xx", "https://askvell.com");
+    assert.equal(url, "https://askvell.com/enter?invite=AbCdEfGh12xx");
     assert.equal(
-      buildOutlawInviteUrl("AbCdEfGh12xx", "https://imfenn.com/"),
-      "https://imfenn.com/enter?invite=AbCdEfGh12xx",
+      buildOutlawInviteUrl("AbCdEfGh12xx", "https://askvell.com/"),
+      "https://askvell.com/enter?invite=AbCdEfGh12xx",
     );
   });
 });

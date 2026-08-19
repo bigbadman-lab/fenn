@@ -22,7 +22,7 @@ type LedgerPageProps = {
 
 /**
  * Public LEAF recognition register.
- * LEAF is FENN's record that something mattered — not money, not XP.
+ * LEAF is VELL's record that something mattered — not money, not XP.
  */
 export default async function LedgerPage({ searchParams }: LedgerPageProps) {
   const params = await searchParams;
@@ -58,7 +58,7 @@ export default async function LedgerPage({ searchParams }: LedgerPageProps) {
     |             ||             |
     |_____________||_____________|`}</pre>
               <p className="ledger__lede">
-                FENN&apos;s record that something mattered.
+                VELL&apos;s record that something mattered.
               </p>
               <p className="ledger__aside muted">
                 recognition accumulates as standing.

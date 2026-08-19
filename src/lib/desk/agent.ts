@@ -90,7 +90,7 @@ export async function getDeskAgentHealth(): Promise<DeskAgentHealth> {
   const warnings: string[] = [];
 
   const configuredUsername =
-    process.env.FENN_X_USERNAME?.trim().replace(/^@/, "") || "askfenn";
+    process.env.FENN_X_USERNAME?.trim().replace(/^@/, "") || "thisisvell";
   const userIdConfigured = Boolean(process.env.FENN_X_USER_ID?.trim());
 
   const { data: oauthRow, error: oauthError } = await db

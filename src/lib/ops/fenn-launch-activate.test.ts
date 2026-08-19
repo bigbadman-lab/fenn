@@ -34,8 +34,8 @@ const META = {
 function dormant(over: Partial<ActivateCandidateRow> = {}): ActivateCandidateRow {
   return {
     id: "dormant-fenn-1",
-    symbol: "FENN",
-    name: "FENN",
+    symbol: "VELL",
+    name: "VELL",
     chain_id: ROBINHOOD_CHAIN_ID,
     contract_address: null,
     decimals: 18,
@@ -165,7 +165,7 @@ describe("P2C.2 runFennLaunchActivate", () => {
 
     assert.equal(report.status, "CONFIGURED");
     assert.equal(report.mode, "FENN_LAUNCH_ACTIVATE");
-    assert.equal(report.symbol, "FENN");
+    assert.equal(report.symbol, "VELL");
     assert.equal(report.chainId, 4663);
     assert.equal(report.decimals, 18);
     assert.equal(report.contractAddress, OFFICIAL_ADDR);

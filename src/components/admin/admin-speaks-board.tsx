@@ -11,7 +11,7 @@ type SpeaksPayload = {
 };
 
 /**
- * Minimal Admin fallback for FENN SPEAKS.
+ * Minimal Admin fallback for VELL SPEAKS.
  * Same domain helpers as Desk; independently gated by FENN_ADMIN_WALLETS.
  */
 export function AdminSpeaksBoard() {
@@ -39,7 +39,7 @@ export function AdminSpeaksBoard() {
       error?: string;
     };
     if (!response.ok || !data.speaks) {
-      setError(data.error ?? "Could not load FENN SPEAKS.");
+      setError(data.error ?? "Could not load VELL SPEAKS.");
       setSpeaks(null);
       return;
     }
@@ -94,8 +94,8 @@ export function AdminSpeaksBoard() {
   }
 
   return (
-    <section aria-label="Admin FENN SPEAKS">
-      <h1>FENN SPEAKS</h1>
+    <section aria-label="Admin VELL SPEAKS">
+      <h1>VELL SPEAKS</h1>
       <p className="muted">Admin fallback. Desk is the primary operator surface.</p>
       {status ? <p>{status}</p> : null}
       {error ? <p className="muted">{error}</p> : null}
@@ -113,7 +113,7 @@ export function AdminSpeaksBoard() {
         onChange={(e) => setBody(e.target.value)}
         rows={5}
         maxLength={2000}
-        aria-label="New FENN SPEAKS message"
+        aria-label="New VELL SPEAKS message"
       />
       <p>
         <button

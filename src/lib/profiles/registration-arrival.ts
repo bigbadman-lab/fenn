@@ -1,7 +1,9 @@
 /**
  * Book of the Road — post-registration arrival.
- * One authoritative destination for every successful Outlaw registration surface.
+ * One authoritative destination for every successful registration surface.
  */
+import { NAMED_DISPLAY } from "@/lib/site/world-vocabulary";
+
 export const OUTLAW_REGISTRATION_ARRIVAL_PATH = "/outlaw" as const;
 
 /** Prefer replace so Back does not land on a completed register form. */
@@ -26,9 +28,9 @@ export const REGISTRATION_WRITING_COPY = {
  * Registration is not finished — user must stay on the page.
  */
 export const REGISTRATION_IDENTITY_PREPARING_COPY = {
-  title: "BECOMING AN OUTLAW",
+  title: NAMED_DISPLAY.becoming,
   body: "YOUR IDENTITY IS BEING PREPARED.",
-  wait: "WAIT HERE — THE OUTLAW FORM IS OPENING…",
+  wait: NAMED_DISPLAY.formOpening,
   note: "THIS MAY TAKE A FEW SECONDS.",
 } as const;
 
@@ -36,5 +38,5 @@ export const REGISTRATION_IDENTITY_PREPARING_COPY = {
 export const REGISTRATION_WRITE_OPEN_FAILED_COPY = {
   title: "YOUR NAME WAS WRITTEN.",
   body: "The road did not open cleanly.",
-  action: "[ CONTINUE TO YOUR OUTLAW ]",
+  action: NAMED_DISPLAY.continueToHub,
 } as const;

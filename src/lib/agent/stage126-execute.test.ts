@@ -106,7 +106,7 @@ describe("Stage 12.6 OAuth helpers", () => {
 
     const url = buildXAuthorizationUrl({
       clientId: "cid",
-      redirectUri: "https://imfenn.com/api/auth/x/callback",
+      redirectUri: "https://askvell.com/api/auth/x/callback",
       state: pkce.state,
       codeChallenge: pkce.codeChallenge,
     });
@@ -117,8 +117,8 @@ describe("Stage 12.6 OAuth helpers", () => {
 
   it("resolves redirect from site URL only", () => {
     assert.equal(
-      resolveXOauthRedirectUri("https://imfenn.com/"),
-      "https://imfenn.com/api/auth/x/callback",
+      resolveXOauthRedirectUri("https://askvell.com/"),
+      "https://askvell.com/api/auth/x/callback",
     );
   });
 
@@ -127,7 +127,7 @@ describe("Stage 12.6 OAuth helpers", () => {
       () =>
         assertFennXIdentity(
           { id: "1", username: "someone" },
-          { fennXUserId: FENN_ID, fennXUsername: "askfenn" },
+          { fennXUserId: FENN_ID, fennXUsername: "thisisvell" },
         ),
       (err: unknown) =>
         err instanceof XError && err.code === "x_account_mismatch",
@@ -160,8 +160,8 @@ describe("Stage 12.6 X write client", () => {
     process.env.X_OAUTH_CLIENT_ID = "cid";
     process.env.X_OAUTH_CLIENT_SECRET = "sec";
     process.env.FENN_X_USER_ID = FENN_ID;
-    process.env.FENN_X_USERNAME = "askfenn";
-    process.env.NEXT_PUBLIC_SITE_URL = "https://imfenn.com";
+    process.env.FENN_X_USERNAME = "thisisvell";
+    process.env.NEXT_PUBLIC_SITE_URL = "https://askvell.com";
   }
 
   function restoreOauthEnv() {
@@ -187,7 +187,7 @@ describe("Stage 12.6 X write client", () => {
         loadCredentials: async () => ({
           id: "c1",
           xUserId: FENN_ID,
-          xUsername: "askfenn",
+          xUsername: "thisisvell",
           accessToken: "access",
           refreshToken: "refresh",
           tokenType: "bearer",
@@ -230,7 +230,7 @@ describe("Stage 12.6 X write client", () => {
         loadCredentials: async () => ({
           id: "c1",
           xUserId: FENN_ID,
-          xUsername: "askfenn",
+          xUsername: "thisisvell",
           accessToken: "stale",
           refreshToken: "r1",
           tokenType: "bearer",
@@ -289,7 +289,7 @@ describe("Stage 12.6 X write client", () => {
         loadCredentials: async () => ({
           id: "c1",
           xUserId: FENN_ID,
-          xUsername: "askfenn",
+          xUsername: "thisisvell",
           accessToken: "access",
           refreshToken: "r1",
           tokenType: "bearer",
@@ -322,7 +322,7 @@ describe("Stage 12.6 X write client", () => {
         loadCredentials: async () => ({
           id: "c1",
           xUserId: FENN_ID,
-          xUsername: "askfenn",
+          xUsername: "thisisvell",
           accessToken: "access",
           refreshToken: "r1",
           tokenType: "bearer",
@@ -359,7 +359,7 @@ describe("Stage 12.6 X write client", () => {
             loadCredentials: async () => ({
               id: "c1",
               xUserId: FENN_ID,
-              xUsername: "askfenn",
+              xUsername: "thisisvell",
               accessToken,
               refreshToken: "secret-refresh-token-value-xyz",
               tokenType: "bearer",
@@ -425,7 +425,7 @@ describe("Stage 12.6 X write client", () => {
           loadCredentials: async () => ({
             id: "c1",
             xUserId: FENN_ID,
-            xUsername: "askfenn",
+            xUsername: "thisisvell",
             accessToken,
             refreshToken: "valid-refresh-token-alive",
             tokenType: "bearer",
@@ -482,7 +482,7 @@ describe("Stage 12.6 X write client", () => {
           loadCredentials: async () => ({
             id: "c1",
             xUserId: FENN_ID,
-            xUsername: "askfenn",
+            xUsername: "thisisvell",
             accessToken: "access-token-aaa",
             refreshToken: "refresh-token-bbb",
             tokenType: "bearer",
@@ -538,7 +538,7 @@ describe("Stage 12.6 X write client", () => {
           loadCredentials: async () => ({
             id: "c1",
             xUserId: FENN_ID,
-            xUsername: "askfenn",
+            xUsername: "thisisvell",
             accessToken: "tok_live_should_not_appear",
             refreshToken: "ref_live_should_not_appear",
             tokenType: "bearer",
@@ -588,7 +588,7 @@ describe("Stage 12.6 X write client", () => {
           loadCredentials: async () => ({
             id: "c1",
             xUserId: FENN_ID,
-            xUsername: "askfenn",
+            xUsername: "thisisvell",
             accessToken: "stale-access-token-111",
             refreshToken: "stale-refresh-token-222",
             tokenType: "bearer",

@@ -64,24 +64,24 @@ const devRuntime = {
 describe("site origin", () => {
   it("normalises trailing slashes and requires http(s)", () => {
     assert.equal(
-      normalizeSiteOrigin("https://imfenn.com/"),
+      normalizeSiteOrigin("https://askvell.com/"),
       PRODUCTION_SITE_ORIGIN,
     );
     assert.equal(
       normalizeSiteOrigin("http://localhost:3000/"),
       "http://localhost:3000",
     );
-    assert.throws(() => normalizeSiteOrigin("ftp://imfenn.com"));
+    assert.throws(() => normalizeSiteOrigin("ftp://askvell.com"));
     assert.throws(() => normalizeSiteOrigin("https://amfenn.com"));
   });
 
   it("rejects amfenn and treats vercel.app as forbidden for canonical metadata", () => {
     assert.equal(isForbiddenCanonicalHost("amfenn.com"), true);
     assert.equal(isForbiddenCanonicalHost("foo.vercel.app"), true);
-    assert.equal(isForbiddenCanonicalHost("imfenn.com"), false);
+    assert.equal(isForbiddenCanonicalHost("askvell.com"), false);
   });
 
-  it("production metadata origin fails closed without valid imfenn.com", () => {
+  it("production metadata origin fails closed without valid askvell.com", () => {
     assert.equal(
       resolveMetadataSiteOrigin(prodRuntime),
       PRODUCTION_SITE_ORIGIN,
@@ -132,7 +132,7 @@ describe("site origin", () => {
     );
   });
 
-  it("preview metadata never publishes vercel.app and stays on imfenn.com", () => {
+  it("preview metadata never publishes vercel.app and stays on askvell.com", () => {
     assert.equal(isPreviewDeployment(previewRuntime), true);
     assert.equal(
       resolveMetadataSiteOrigin(previewRuntime),
@@ -155,15 +155,15 @@ describe("site origin", () => {
 });
 
 describe("root and shared metadata", () => {
-  it("root metadata title is exactly FENN with template branding", () => {
+  it("root metadata title is exactly VELL with template branding", () => {
     const root = buildRootMetadata(prodRuntime);
     assert.deepEqual(root.title, {
-      default: "FENN",
-      template: "%s — FENN",
+      default: "VELL",
+      template: "%s — VELL",
     });
     assert.equal(root.description, FENN_DEFAULT_DESCRIPTION);
-    assert.equal(root.description, "The road ends here. The wood begins.");
-    assert.equal(root.applicationName, "FENN");
+    assert.equal(root.description, "VELL is here.");
+    assert.equal(root.applicationName, "VELL");
   });
 
   it("metadata base uses canonical production origin", () => {
@@ -172,7 +172,7 @@ describe("root and shared metadata", () => {
     assert.equal(root.metadataBase?.origin, PRODUCTION_SITE_ORIGIN);
   });
 
-  it("global OG image is /og.jpg at 1200×630 with FENN alt", () => {
+  it("global OG image is /og.jpg at 1200×630 with VELL alt", () => {
     const root = buildRootMetadata(prodRuntime);
     const images = root.openGraph?.images;
     assert.ok(Array.isArray(images) && images[0]);
@@ -186,12 +186,12 @@ describe("root and shared metadata", () => {
     assert.equal(image.url, "/og.jpg");
     assert.equal(image.width, 1200);
     assert.equal(image.height, 630);
-    assert.equal(image.alt, "FENN");
+    assert.equal(image.alt, "VELL");
     assert.equal(FENN_OG_IMAGE.width, 1200);
     assert.equal(FENN_OG_IMAGE.height, 630);
   });
 
-  it("X card uses summary_large_image and @askfenn", () => {
+  it("X card uses summary_large_image and @thisisvell", () => {
     const root = buildRootMetadata(prodRuntime);
     const twitter = root.twitter;
     assert.ok(twitter && typeof twitter === "object");
@@ -209,7 +209,7 @@ describe("root and shared metadata", () => {
     );
     assert.equal(
       "site" in twitter ? twitter.site : undefined,
-      "@askfenn",
+      "@thisisvell",
     );
     assert.deepEqual(
       "images" in twitter ? twitter.images : undefined,
@@ -217,14 +217,14 @@ describe("root and shared metadata", () => {
     );
   });
 
-  it("homepage metadata is absolute FENN without template doubling", () => {
+  it("homepage metadata is absolute VELL without template doubling", () => {
     const home = buildHomeMetadata(prodRuntime);
-    assert.deepEqual(home.title, { absolute: "FENN" });
+    assert.deepEqual(home.title, { absolute: "VELL" });
     assert.equal(home.description, FENN_DEFAULT_DESCRIPTION);
     assert.equal(home.alternates?.canonical, "/");
-    assert.equal(home.openGraph?.title, "FENN");
-    assert.equal(socialTitleFromSegment("FENN", true), "FENN");
-    assert.notEqual(home.title, "FENN — FENN");
+    assert.equal(home.openGraph?.title, "VELL");
+    assert.equal(socialTitleFromSegment("VELL", true), "VELL");
+    assert.notEqual(home.title, "VELL — VELL");
   });
 
   it("public child titles brand once via social title", () => {
@@ -235,10 +235,10 @@ describe("root and shared metadata", () => {
       runtime: prodRuntime,
     });
     assert.equal(meta.title, "CAMP");
-    assert.equal(meta.openGraph?.title, "CAMP — FENN");
-    assert.equal(meta.twitter?.title, "CAMP — FENN");
-    assert.equal(socialTitleFromSegment("CAMP"), "CAMP — FENN");
-    assert.doesNotMatch(String(meta.openGraph?.title), /FENN — FENN/);
+    assert.equal(meta.openGraph?.title, "CAMP — VELL");
+    assert.equal(meta.twitter?.title, "CAMP — VELL");
+    assert.equal(socialTitleFromSegment("CAMP"), "CAMP — VELL");
+    assert.doesNotMatch(String(meta.openGraph?.title), /VELL — VELL/);
   });
 
   it("canonicals are path-only without query parameters", () => {
@@ -250,7 +250,7 @@ describe("root and shared metadata", () => {
     });
     assert.equal(meta.alternates?.canonical, "/ledger");
     const greenwood = buildPublicMetadata({
-      title: "THE GREENWOOD",
+      title: "THE CANOPY",
       description: "y",
       path: "/greenwood?crossing=1",
       runtime: prodRuntime,
@@ -261,7 +261,7 @@ describe("root and shared metadata", () => {
   it("explicitly preserves shared OG image on page-level openGraph", () => {
     const meta = buildPublicMetadata({
       title: "THE WALL",
-      description: "Marks left by FENN for the world to read.",
+      description: "Marks left by VELL for the world to read.",
       path: "/wall",
       runtime: prodRuntime,
     });
@@ -275,7 +275,7 @@ describe("root and shared metadata", () => {
     const commons = buildPublicMetadata({
       title: "THE COMMONS",
       description:
-        "The FENN Treasury, public commitments and the official contract in full view.",
+        "The VELL Treasury, $VELL, the Purse, and public commitments in full view.",
       path: "/commons",
       runtime: prodRuntime,
     });
@@ -284,11 +284,11 @@ describe("root and shared metadata", () => {
     assert.doesNotMatch(blob, /contract address/i);
   });
 
-  it("OG absolute URL resolves through metadataBase to imfenn.com/og.jpg", () => {
+  it("OG absolute URL resolves through metadataBase to askvell.com/og.jpg", () => {
     const root = buildRootMetadata(prodRuntime);
     assert.ok(root.metadataBase);
     const absolute = new URL(FENN_OG_IMAGE_PATH, root.metadataBase).href;
-    assert.equal(absolute, "https://imfenn.com/og.jpg");
+    assert.equal(absolute, "https://askvell.com/og.jpg");
   });
 
   it("preview deployments are noindex", () => {
@@ -461,7 +461,7 @@ describe("assets and public route wiring", () => {
     assert.ok(root.metadataBase);
     assert.equal(
       new URL(FENN_FAVICON_PATH, root.metadataBase).href,
-      "https://imfenn.com/favicon.ico",
+      "https://askvell.com/favicon.ico",
     );
   });
 
@@ -471,7 +471,7 @@ describe("assets and public route wiring", () => {
       ["src/app/book/page.tsx", "THE BOOK", "/book"],
       ["src/app/oak/page.tsx", "THE OAK", "/oak"],
       ["src/app/deeds/page.tsx", "DEEDS", "/deeds"],
-      ["src/app/greenwood/page.tsx", "THE GREENWOOD", "/greenwood"],
+      ["src/app/greenwood/page.tsx", "THE CANOPY", "/greenwood"],
       ["src/app/ledger/page.tsx", "THE LEDGER", "/ledger"],
       ["src/app/commons/page.tsx", "THE COMMONS", "/commons"],
       ["src/app/wall/page.tsx", "THE WALL", "/wall"],
@@ -489,14 +489,14 @@ describe("assets and public route wiring", () => {
     const src = read("src/app/not-found.tsx");
     assert.match(src, /title:\s*"NOT FOUND"/);
     assert.match(src, /PRIVATE_ROBOTS|index:\s*false/);
-    assert.match(src, /RETURN TO FENN/);
+    assert.match(src, /RETURN TO VELL/);
   });
 
   it("error page avoids stack traces in UI", () => {
     const src = read("src/app/error.tsx");
     assert.match(src, /"use client"/);
     assert.doesNotMatch(src, /error\.stack|stack trace/i);
-    assert.match(src, /TRY AGAIN|RETURN TO FENN/);
+    assert.match(src, /TRY AGAIN|RETURN TO VELL/);
   });
 
   it("OAuth callback HTML is noindex", () => {

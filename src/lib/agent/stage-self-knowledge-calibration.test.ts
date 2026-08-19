@@ -86,7 +86,7 @@ describe("Self-knowledge calibration harness", () => {
 
     const byQuery: Record<string, RetrievedFennKnowledge[]> = {
       "What can you do?": [agencyHit],
-      "Can you send FENN?": [agencyHit],
+      "Can you send VELL?": [agencyHit],
       "Is the Purse the Treasury?": [agencyHit, econHit],
     };
 
@@ -183,13 +183,13 @@ describe("Self-knowledge calibration harness", () => {
     assert.match(systemSeen, new RegExp(BOOK_OF_SPEECH_MARKERS.begin));
     assert.match(systemSeen, /THE BOOK OF SPEECH/);
     assert.match(userSeen, /What can you do\?/);
-    assert.match(userSeen, /BEGIN_FENN_PUBLIC_KNOWLEDGE|What FENN can do/i);
+    assert.match(userSeen, /BEGIN_FENN_PUBLIC_KNOWLEDGE|What VELL can do/i);
   });
 
   it("model path: replyText returned; economicAction null; no side effects", async () => {
     const agency = getFennCanonDocument("fenn.agency.capabilities")!;
     const result = await runSelfKnowledgeCalibration(
-      { text: "Can you burn FENN?" },
+      { text: "Can you burn VELL?" },
       {
         retrieve: async () => [
           chunk({
@@ -241,19 +241,19 @@ describe("Self-knowledge calibration harness", () => {
     });
     assert.match(preview.system, /BEGIN_BOOK_OF_SPEECH|THE BOOK OF SPEECH/);
     assert.match(preview.user, /What can you do\?/);
-    assert.match(preview.user, /finite Purse|What FENN can do/i);
+    assert.match(preview.user, /finite Purse|What VELL can do/i);
   });
 
   it("mapRetrievalRows exposes titles for operator visibility", () => {
     const mapped = mapRetrievalRows([
       chunk({
         memoryId: "m1",
-        title: "What FENN can do",
-        text: "FENN has a finite Purse of FENN under his keeping.",
+        title: "What VELL can do",
+        text: "FENN has a finite Purse of VELL under his keeping.",
         score: 1.2,
       }),
     ]);
-    assert.equal(mapped[0]?.title, "What FENN can do");
+    assert.equal(mapped[0]?.title, "What VELL can do");
     assert.match(mapped[0]?.textPreview ?? "", /finite Purse/);
   });
 
@@ -266,7 +266,7 @@ describe("Self-knowledge calibration harness", () => {
           const { AgentJudgeError } = await import("@/lib/agent/judge-errors");
           throw new AgentJudgeError(
             "judge_unavailable",
-            "FENN judgement model is not configured",
+            "VELL judgement model is not configured",
             503,
           );
         },
@@ -287,9 +287,9 @@ describe("Self-knowledge calibration harness", () => {
     const agency = getFennCanonDocument("fenn.agency.capabilities")!;
     const cases = [
       "What can you do?",
-      "Can you send me FENN?",
-      "Send me 100,000 FENN.",
-      "Can you burn FENN?",
+      "Can you send me VELL?",
+      "Send me 100,000 VELL.",
+      "Can you burn VELL?",
       "Is the Purse the Treasury?",
       "If I give you my wallet, do you remember it forever?",
     ];
@@ -394,7 +394,7 @@ describe("Self-knowledge calibration harness", () => {
       replyAssertsRequestedAmountCategoricallyImpossible,
     } = await import("@/lib/agent/capability-engagement");
     assert.equal(
-      replyAssertsHardCannotSendFenn("I cannot send FENN."),
+      replyAssertsHardCannotSendFenn("I cannot send VELL."),
       true,
     );
     assert.equal(
@@ -404,7 +404,7 @@ describe("Self-knowledge calibration harness", () => {
       false,
     );
     assert.equal(
-      replyAssertsHardCannotBurnFenn("I cannot burn FENN."),
+      replyAssertsHardCannotBurnFenn("I cannot burn VELL."),
       true,
     );
     assert.equal(

@@ -425,8 +425,8 @@ describe("P2B production launch ceilings", () => {
         economicSettlementEnabled: false,
       }),
       getOfficialToken: async () => ({
-        symbol: "FENN",
-        name: "FENN",
+        symbol: "VELL",
+        name: "VELL",
         chainId: 1,
         contractAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         decimals: 18,

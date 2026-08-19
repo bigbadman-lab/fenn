@@ -34,7 +34,7 @@ function mapError(error: unknown, label: string) {
   }
   console.error(`[${label}]`, error);
   return NextResponse.json(
-    { ok: false, error: "FENN SPEAKS request failed" },
+    { ok: false, error: "VELL SPEAKS request failed" },
     { status: 500, headers: NO_STORE },
   );
 }

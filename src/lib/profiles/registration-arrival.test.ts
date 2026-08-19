@@ -11,6 +11,7 @@ import {
   REGISTRATION_WRITE_OPEN_FAILED_COPY,
   REGISTRATION_WRITING_COPY,
 } from "./registration-arrival";
+import { NAMED_DISPLAY } from "@/lib/site/world-vocabulary";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "../../..");
@@ -45,14 +46,14 @@ describe("Outlaw registration arrival (Book of the Road)", () => {
     );
     assert.equal(
       REGISTRATION_WRITE_OPEN_FAILED_COPY.action,
-      "[ CONTINUE TO YOUR OUTLAW ]",
+      NAMED_DISPLAY.continueToHub,
     );
   });
 
   it("defines pre-form identity preparing copy after Privy auth", () => {
     assert.equal(
       REGISTRATION_IDENTITY_PREPARING_COPY.title,
-      "BECOMING AN OUTLAW",
+      NAMED_DISPLAY.becoming,
     );
     assert.equal(
       REGISTRATION_IDENTITY_PREPARING_COPY.body,
@@ -60,7 +61,7 @@ describe("Outlaw registration arrival (Book of the Road)", () => {
     );
     assert.equal(
       REGISTRATION_IDENTITY_PREPARING_COPY.wait,
-      "WAIT HERE — THE OUTLAW FORM IS OPENING…",
+      NAMED_DISPLAY.formOpening,
     );
     assert.equal(
       REGISTRATION_IDENTITY_PREPARING_COPY.note,
@@ -259,7 +260,7 @@ describe("Outlaw registration arrival (Book of the Road)", () => {
     const outlawPage = read("src/app/outlaw/page.tsx");
     assert.doesNotMatch(outlawPage, /router\.(push|replace)/);
     assert.doesNotMatch(outlawPage, /redirect\(/);
-    assert.match(outlawPage, /\/outlaw\/register/);
+    assert.match(outlawPage, /REGISTER_ANCHOR_HREF|outlaw-register/);
   });
 
   it("registration rules and RPC path are unchanged", () => {

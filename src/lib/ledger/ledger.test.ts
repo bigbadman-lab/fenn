@@ -81,11 +81,11 @@ describe("Ledger public normalization", () => {
 
   it("reserves FENN category for future without claiming current awards", () => {
     const future = toLedgerPublicSummary({
-      category: "FENN",
+      category: "VELL",
       amount: 15,
       reason: "future",
     });
-    assert.match(future, /FENN recognised/);
+    assert.match(future, /VELL recognised/);
   });
 });
 

@@ -40,7 +40,7 @@ export function getXOauthClientConfig(): XOAuthClientConfig {
   const clientId = readOptionalEnv("X_OAUTH_CLIENT_ID");
   const clientSecret = readOptionalEnv("X_OAUTH_CLIENT_SECRET");
   const fennXUserId = readOptionalEnv("FENN_X_USER_ID");
-  const usernameRaw = readOptionalEnv("FENN_X_USERNAME") || "askfenn";
+  const usernameRaw = readOptionalEnv("FENN_X_USERNAME") || "thisisvell";
   const fennXUsername = usernameRaw.replace(/^@/, "").toLowerCase();
   const siteUrl = readOptionalEnv("NEXT_PUBLIC_SITE_URL");
 

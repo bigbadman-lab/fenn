@@ -203,7 +203,7 @@ export function buildWalletSpeechFallback(facts: WalletSpeechFacts): string {
 
   switch (facts.moment) {
     case "destination_required":
-      return `I intend to send ${amount} FENN. Reply with the destination wallet address (0x…). Settlement is not done yet.`.slice(
+      return `I intend to send ${amount} VELL. Reply with the destination wallet address (0x…). Settlement is not done yet.`.slice(
         0,
         280,
       );
@@ -223,7 +223,7 @@ export function buildWalletSpeechFallback(facts: WalletSpeechFacts): string {
         280,
       );
     case "destination_confirmed_pending":
-      return `Confirmed ${short}. I will send ${amount} FENN there if the Purse still allows it. Settlement is not complete until the chain confirms.`.slice(
+      return `Confirmed ${short}. I will send ${amount} VELL there if the Purse still allows it. Settlement is not complete until the chain confirms.`.slice(
         0,
         280,
       );
@@ -235,7 +235,7 @@ export function buildWalletSpeechFallback(facts: WalletSpeechFacts): string {
     case "economic_refused":
       return (
         amount
-          ? `I could not complete the transfer of ${amount} FENN. Nothing has been sent.`
+          ? `I could not complete the transfer of ${amount} VELL. Nothing has been sent.`
           : "I could not complete that transfer. Nothing has been sent."
       ).slice(0, 280);
     default: {

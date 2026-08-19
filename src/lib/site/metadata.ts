@@ -6,9 +6,8 @@ import {
   type SiteRuntimeHints,
 } from "@/lib/site/origin";
 
-/** Default and homepage description — keep atmospheric, no token addresses. */
-export const FENN_DEFAULT_DESCRIPTION =
-  "The road ends here. The wood begins.";
+/** Default and homepage description — keep minimal, no token addresses. */
+export const FENN_DEFAULT_DESCRIPTION = "VELL is here.";
 
 export const FENN_OG_IMAGE_PATH = "/og.jpg";
 
@@ -16,7 +15,7 @@ export const FENN_OG_IMAGE = {
   url: FENN_OG_IMAGE_PATH,
   width: 1200,
   height: 630,
-  alt: "FENN",
+  alt: "VELL",
 } as const;
 
 /**
@@ -31,11 +30,11 @@ export const FENN_FAVICON = {
   sizes: "50x50",
 } as const;
 
-export const FENN_X_HANDLE = "@askfenn";
+export const FENN_X_HANDLE = "@thisisvell";
 
 /** Preferred description when a public Deed has no usable lore. */
 export const DEED_METADATA_DESCRIPTION_FALLBACK =
-  "A Deed waiting to be witnessed in FENN.";
+  "A Deed waiting to be witnessed in VELL.";
 
 export const PRIVATE_ROBOTS = {
   index: false,
@@ -48,7 +47,7 @@ const PUBLIC_INDEX_ROBOTS = {
 } as const;
 
 export type PublicMetadataInput = {
-  /** Title segment only — root template appends " — FENN". Use absoluteHome for `/`. */
+  /** Title segment only — root template appends " — VELL". Use absoluteHome for `/`. */
   title: string;
   description: string;
   /** Path without origin or query, e.g. `/camp` or `/`. */
@@ -80,8 +79,8 @@ export function socialTitleFromSegment(
   segment: string,
   absoluteTitle?: boolean,
 ): string {
-  if (absoluteTitle || segment === "FENN") return "FENN";
-  return `${segment} — FENN`;
+  if (absoluteTitle || segment === "VELL") return "VELL";
+  return `${segment} — VELL`;
 }
 
 /**
@@ -134,7 +133,7 @@ export function buildPublicMetadata(input: PublicMetadataInput): Metadata {
     robots: noindex ? PRIVATE_ROBOTS : PUBLIC_INDEX_ROBOTS,
     openGraph: {
       type: "website",
-      siteName: "FENN",
+      siteName: "VELL",
       title: socialTitle,
       description: input.description,
       url: path,
@@ -160,7 +159,7 @@ export function buildPublicMetadata(input: PublicMetadataInput): Metadata {
 
 export function buildHomeMetadata(runtime?: SiteRuntimeHints): Metadata {
   return buildPublicMetadata({
-    title: "FENN",
+    title: "VELL",
     description: FENN_DEFAULT_DESCRIPTION,
     path: "/",
     absoluteTitle: true,
@@ -177,10 +176,10 @@ export function buildRootMetadata(runtime?: SiteRuntimeHints): Metadata {
 
   return {
     metadataBase: new URL(origin),
-    applicationName: "FENN",
+    applicationName: "VELL",
     title: {
-      default: "FENN",
-      template: "%s — FENN",
+      default: "VELL",
+      template: "%s — VELL",
     },
     description: FENN_DEFAULT_DESCRIPTION,
     icons: {
@@ -197,8 +196,8 @@ export function buildRootMetadata(runtime?: SiteRuntimeHints): Metadata {
     robots: noindex ? PRIVATE_ROBOTS : PUBLIC_INDEX_ROBOTS,
     openGraph: {
       type: "website",
-      siteName: "FENN",
-      title: "FENN",
+      siteName: "VELL",
+      title: "VELL",
       description: FENN_DEFAULT_DESCRIPTION,
       url: "/",
       images: [
@@ -212,7 +211,7 @@ export function buildRootMetadata(runtime?: SiteRuntimeHints): Metadata {
     },
     twitter: {
       card: "summary_large_image",
-      title: "FENN",
+      title: "VELL",
       description: FENN_DEFAULT_DESCRIPTION,
       images: [FENN_OG_IMAGE_PATH],
       site: FENN_X_HANDLE,

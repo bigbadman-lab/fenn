@@ -249,7 +249,7 @@ describe("Stage 12.3 behavioural fixtures (mocked model)", () => {
       xPostId: "10",
       authorXUserId: "1",
       body: "gm",
-      knowledge: availableKnowledge([knowledgeHit("FENN", "FENN is the being.")]),
+      knowledge: availableKnowledge([knowledgeHit("VELL", "FENN is the being.")]),
       callModel: fixedModel({
         engage: false,
         action: "do_nothing",

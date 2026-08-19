@@ -1,5 +1,5 @@
 /**
- * P2E — public $FENN surface: homepage + /commons contracts, identity, ETH+FENN.
+ * P2E — public $VELL surface: homepage + /commons contracts, identity, ETH+FENN.
  * Structural tests (source content / wiring). No chain writes, no DB mutations.
  */
 import assert from "node:assert/strict";
@@ -38,54 +38,28 @@ describe("P2E stable public identity constants", () => {
   });
 });
 
-describe("P2E OfficialFennContract pending + live wiring", () => {
-  it("accepts token null pending and live contract without fallbacks", () => {
-    const ui = read("src/components/commons/official-fenn-contract.tsx");
-    assert.match(ui, /token:\s*PublicOfficialFennToken\s*\|\s*null/);
-    assert.match(ui, /NOT YET INSCRIBED/);
-    assert.match(ui, /VIEW CONTRACT/);
-    assert.match(ui, /COPY/);
-    assert.match(ui, /token\.contractAddress/);
-    assert.match(ui, /token\.explorerUrl/);
-    assert.doesNotMatch(ui, /0x0{40}|0x0000/);
-    assert.doesNotMatch(ui, /purseAddress|treasuryAddress|FENN_PURSE/);
-    assert.doesNotMatch(ui, /NEXT_PUBLIC_|process\.env/);
-    // COPY only when live
-    assert.match(ui, /if \(!token\) return;/);
-  });
-
-  it("homepage always mounts strip; no null early exit; request-time resolver only", () => {
-    const home = read("src/components/home/home-official-contract.tsx");
-    assert.match(home, /getPublicOfficialFennToken/);
-    assert.match(home, /OfficialFennContract token=\{token\}/);
-    assert.doesNotMatch(home, /return null/);
-    assert.doesNotMatch(home, /0x[a-f0-9]{40}/i);
-    assert.doesNotMatch(home, /module-level|globalThis|process\.env.*TOKEN/i);
-  });
-
-  it("homepage ISR and commons force-dynamic preserve live update path", () => {
+describe("P2E public token surface wiring", () => {
+  it("homepage and commons preserve live update path without public contract strip", () => {
     const page = read("src/app/page.tsx");
     const commons = read("src/app/commons/page.tsx");
     const identity = read("src/components/home/home-identity.tsx");
     assert.match(page, /revalidate\s*=\s*60/);
     assert.match(page, /HomeIdentity/);
-    assert.doesNotMatch(page, /HomeOfficialContract/);
-    assert.match(
-      identity,
-      /HomeOfficialContract[\s\S]*FennWorldMap/,
-    );
+    assert.doesNotMatch(page, /HomeOfficialContract|OfficialFennContract/);
+    assert.doesNotMatch(identity, /HomeOfficialContract|OfficialFennContract/);
+    assert.match(identity, /home-map-preface[\s\S]*FennWorldMap/);
     assert.match(commons, /dynamic\s*=\s*"force-dynamic"/);
     assert.match(commons, /FennTokenIdentity/);
-    assert.match(commons, /OfficialFennContract token=\{officialToken\}/);
-    assert.doesNotMatch(commons, /officialToken \?/);
+    assert.doesNotMatch(commons, /OfficialFennContract/);
+    assert.match(commons, /officialToken != null/);
   });
 });
 
-describe("P2E Commons $FENN identity surface", () => {
+describe("P2E Commons $VELL identity surface", () => {
   it("renders stable identity facts and LEAF distinction without CA", () => {
     const id = read("src/components/commons/fenn-token-identity.tsx");
-    assert.match(id, /\$FENN|FENN_TOKEN_PUBLIC_TICKER/);
-    assert.match(id, /LEAF IS NOT \$FENN/);
+    assert.match(id, /\$VELL|FENN_TOKEN_PUBLIC_TICKER/);
+    assert.match(id, /LEAF IS NOT \$VELL/);
     assert.match(id, /off-chain/);
     assert.match(id, /on-chain/);
     assert.match(id, /PONS/);
@@ -102,8 +76,8 @@ describe("P2E Commons $FENN identity surface", () => {
     assert.match(purse, /LIVE BALANCES/);
     assert.match(purse, /ETH HELD/);
     assert.match(purse, /FENN HELD/);
-    assert.doesNotMatch(purse, /CURRENT \$FENN BALANCE|CURRENT \$FENN/);
-    assert.match(purse, /not the \$FENN token contract/);
+    assert.doesNotMatch(purse, /CURRENT \$VELL BALANCE|CURRENT \$VELL/);
+    assert.match(purse, /not the \$VELL token contract/);
     assert.match(purse, /FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED/);
     assert.match(purse, /officialTokenResolved/);
     assert.doesNotMatch(purse, /permanently contains 10/);
@@ -126,8 +100,6 @@ describe("P2E source-of-truth consistency", () => {
 
   it("no hardcoded official CA across P2E public surfaces", () => {
     const files = [
-      "src/components/commons/official-fenn-contract.tsx",
-      "src/components/home/home-official-contract.tsx",
       "src/components/commons/fenn-token-identity.tsx",
       "src/components/commons/purse-readout.tsx",
       "src/app/commons/page.tsx",

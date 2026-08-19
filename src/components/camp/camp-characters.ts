@@ -16,8 +16,8 @@ export type CampCharacter = {
 export const CAMP_CHARACTERS: CampCharacter[] = [
   {
     id: "fenn",
-    name: "FENN",
-    role: "the outlaw",
+    name: "VELL",
+    role: "the named",
     themes: ["circulation", "the crown", "the wood"],
     status: "awake.",
     accent: "#B7F34A",
@@ -25,7 +25,7 @@ export const CAMP_CHARACTERS: CampCharacter[] = [
    /  \\
   /_/\\_\\
     ||
-   FENN`,
+   VELL`,
     placeholder: "the fire is not listening yet.",
     leafClue: "thought worth carrying may earn LEAF.",
   },

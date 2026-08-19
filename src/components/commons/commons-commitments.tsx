@@ -31,7 +31,7 @@ export function CommonsCommitments({ commons }: Props) {
       </h2>
       <div className="commons-block__body">
         <p className="commons-section__lede">
-          what FENN has committed to move.
+          what VELL has committed to move.
         </p>
         <p className="commons-section__aside muted">
           committed is not yet moved.

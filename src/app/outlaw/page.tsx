@@ -13,7 +13,12 @@ import {
   peekClearingRegistrationOrigin,
 } from "@/lib/clearing/origin";
 import { CLEARING_PUBLIC_SURFACE_ENABLED } from "@/lib/clearing/visibility";
-import { formatOutlawNumber } from "@/lib/profiles/types";
+import {
+  CANOPY_DISPLAY,
+  formatNamedLabel,
+  REGISTER_ANCHOR_HREF,
+  NAMED_DISPLAY,
+} from "@/lib/site/world-vocabulary";
 
 function formatJoinedDate(iso: string): string {
   const date = new Date(iso);
@@ -27,11 +32,11 @@ function formatJoinedDate(iso: string): string {
     .toUpperCase();
 }
 
-function OutlawTitle({ subtitle }: { subtitle?: ReactNode }) {
+function NamedTitle({ subtitle }: { subtitle?: ReactNode }) {
   return (
     <AsciiPageTitle
-      title="OUTLAW"
-      mark="OUTLAW"
+      title={NAMED_DISPLAY.pageTitle}
+      mark={NAMED_DISPLAY.pageTitle}
       accent="outlaw"
       subtitle={subtitle}
     />
@@ -60,7 +65,7 @@ export default function OutlawPage() {
   if (!privyReady || loading || walletResolving) {
     return (
       <article className="place outlaw-page outlaw-page--resolving">
-        <OutlawTitle
+        <NamedTitle
           subtitle={
             <p className="muted" aria-live="polite">
               {walletResolving
@@ -84,7 +89,7 @@ export default function OutlawPage() {
   if (!authenticated) {
     return (
       <article className="place">
-        <OutlawTitle
+        <NamedTitle
           subtitle={
             <>
               <p>the wood does not know you yet.</p>
@@ -107,7 +112,7 @@ export default function OutlawPage() {
   if (error && !registered) {
     return (
       <article className="place">
-        <OutlawTitle
+        <NamedTitle
           subtitle={
             <>
               <p className="muted">the wood could not verify this session.</p>
@@ -122,12 +127,12 @@ export default function OutlawPage() {
   if (!registered || !profile) {
     return (
       <article className="place">
-        <OutlawTitle
+        <NamedTitle
           subtitle={
             <>
               <p>the wood does not know your name yet.</p>
               <p>
-                <Link href="/#outlaw-register">[ register ]</Link>
+                <Link href={REGISTER_ANCHOR_HREF}>[ register ]</Link>
               </p>
             </>
           }
@@ -139,10 +144,10 @@ export default function OutlawPage() {
   // Identity, journey, invite, and account from one bootstrap snapshot.
   return (
     <article className="place outlaw-page">
-      <OutlawTitle
+      <NamedTitle
         subtitle={
           <p className="ascii-page-title__outlaw-no">
-            {formatOutlawNumber(profile.outlawNumber)}
+            {formatNamedLabel(profile.outlawNumber)}
           </p>
         }
       />
@@ -196,7 +201,7 @@ export default function OutlawPage() {
           {formatJoinedDate(profile.joinedAt)}
         </p>
         <p className="muted">
-          entered means joining FENN, not Greenwood admission.
+          entered means joining VELL, not {CANOPY_DISPLAY.short} admission.
         </p>
       </div>
     </article>

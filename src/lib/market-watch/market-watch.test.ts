@@ -302,7 +302,7 @@ describe("config validation", () => {
         chain_id: 4663,
         token_address: FENN,
         token_decimals: 18,
-        token_symbol: "FENN",
+        token_symbol: "VELL",
         pool_address: POOL,
         pool_kind: "custom",
         quote_token_address: QUOTE,
@@ -320,7 +320,7 @@ describe("config validation", () => {
         chainId: 4663,
         contractAddress: FENN,
         decimals: 18,
-        symbol: "FENN",
+        symbol: "VELL",
       },
     });
     assert.equal(state.status, "invalid");
@@ -336,7 +336,7 @@ describe("config validation", () => {
         chain_id: 4663,
         token_address: FENN,
         token_decimals: 18,
-        token_symbol: "FENN",
+        token_symbol: "VELL",
         pool_address: POOL,
         pool_kind: "uniswap_v2",
         quote_token_address: QUOTE,
@@ -354,7 +354,7 @@ describe("config validation", () => {
         chainId: 4663,
         contractAddress: FENN,
         decimals: 18,
-        symbol: "FENN",
+        symbol: "VELL",
       },
     });
     assert.equal(state.status, "ready");

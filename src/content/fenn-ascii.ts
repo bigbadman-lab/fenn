@@ -18,7 +18,7 @@ export const FENN_ASCII_DETAILED = `
        /   |   \\
       /    |    \\
      /     |     \\
-    (_) f e n n (_)
+    (_) v e l l (_)
        /-----\\
         /   \\
        (_) (_)
@@ -36,7 +36,7 @@ export const FENN_ASCII_MAP_A = `
     \\  v  /
      \\-|-/
     /  |  \\
-   (_)fenn(_)
+   (_)vell(_)
      /---\\
      (_)(_)
 `.replace(/^\n/, "").replace(/\n$/, "");
@@ -50,7 +50,7 @@ export const FENN_ASCII_MAP_B = `
     \\  v  /
      \\-|-/
     /  |  \\
-   (_)fenn(_)
+   (_)vell(_)
      /---\\
     (_) (_)
 `.replace(/^\n/, "").replace(/\n$/, "");
@@ -64,7 +64,7 @@ export const FENN_ASCII_MAP_COMPACT_A = `
  / o o \\
   \\-|-/
  /  |  \\
-(_)fenn(_)
+(_)vell(_)
   (_)(_)
 `.replace(/^\n/, "").replace(/\n$/, "");
 
@@ -73,7 +73,7 @@ export const FENN_ASCII_MAP_COMPACT_B = `
  / o o \\
   \\-|-/
  /  |  \\
-(_)fenn(_)
+(_)vell(_)
  (_) (_)
 `.replace(/^\n/, "").replace(/\n$/, "");
 

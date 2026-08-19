@@ -370,8 +370,8 @@ describe("Stage P1C economic magnitude", () => {
       const deps: Partial<ManualTransferDeps> = {
         getPurse: async () => ({ walletAddress: PURSE }),
         getOfficialToken: async () => ({
-          symbol: "FENN",
-          name: "FENN",
+          symbol: "VELL",
+          name: "VELL",
           chainId: ROBINHOOD_CHAIN_ID,
           contractAddress: TOKEN,
           decimals: 18,
@@ -546,7 +546,7 @@ describe("Stage P1C economic magnitude", () => {
         amountFormatted: "100000",
         txHash: TX,
       });
-      assert.match(draft.text, /100000 FENN left my Purse/);
+      assert.match(draft.text, /100000 VELL left my Purse/);
       assert.equal(
         replyClaimsCompletedEconomicAction("I may send FENN if permitted."),
         false,
@@ -574,7 +574,7 @@ describe("Stage P1C economic magnitude", () => {
       );
       const block = buildEconomicJudgementInstructionBlock();
       assert.match(block, /proposedAmount/);
-      assert.match(block, /10,000 FENN and 500,000 FENN/);
+      assert.match(block, /10,000 VELL and 500,000 VELL/);
       assert.match(block, /does not set your economic action/i);
 
       const state = harnessPurseState();

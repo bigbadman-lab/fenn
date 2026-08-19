@@ -853,7 +853,7 @@ describe("Keeper speak-once (single transmission)", () => {
       protectedFacts: {
         ...mockPack().protectedFacts,
         officialToken: {
-          symbol: "FENN",
+          symbol: "VELL",
           chainId: 4663,
           contractAddress: OFFICIAL,
           explorerUrl: "https://example.invalid",
@@ -977,7 +977,7 @@ describe("Keeper speak-once (single transmission)", () => {
       protectedFacts: {
         ...mockPack().protectedFacts,
         officialToken: {
-          symbol: "FENN",
+          symbol: "VELL",
           chainId: 4663,
           contractAddress: OFFICIAL,
           explorerUrl: "https://example.invalid",
@@ -1074,7 +1074,7 @@ describe("Keeper speak-once (single transmission)", () => {
       protectedFacts: {
         ...mockPack().protectedFacts,
         officialToken: {
-          symbol: "FENN",
+          symbol: "VELL",
           chainId: 4663,
           contractAddress: OFFICIAL,
           explorerUrl: "https://example.invalid",

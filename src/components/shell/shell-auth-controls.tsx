@@ -14,6 +14,11 @@ import { useFennAuth } from "@/components/auth/fenn-auth-provider";
 import { CLEARING_PATH } from "@/lib/clearing/origin";
 import { CLEARING_PUBLIC_SURFACE_ENABLED } from "@/lib/clearing/visibility";
 import { formatOutlawNumber } from "@/lib/profiles/types";
+import {
+  MEMBER_HUB_PATH,
+  NAMED_DISPLAY,
+  REGISTER_ANCHOR_HREF,
+} from "@/lib/site/world-vocabulary";
 
 function LeaveConfirmDialog({
   open,
@@ -173,7 +178,7 @@ export function ShellAuthControls() {
   if (!registered || !profile) {
     return (
       <div className="shell-auth">
-        <Link href="/#outlaw-register" className="btn-text">
+        <Link href={REGISTER_ANCHOR_HREF} className="btn-text">
           [ register ]
         </Link>
         <button type="button" className="btn-text" onClick={requestLeave}>
@@ -186,8 +191,8 @@ export function ShellAuthControls() {
 
   return (
     <div className="shell-auth">
-      <Link href="/outlaw" className="btn-text">
-        [ outlaw {formatOutlawNumber(profile.outlawNumber)} ]
+      <Link href={MEMBER_HUB_PATH} className="btn-text">
+        {NAMED_DISPLAY.memberLinkLabel(formatOutlawNumber(profile.outlawNumber))}
       </Link>
       {CLEARING_PUBLIC_SURFACE_ENABLED ? (
         <Link href={CLEARING_PATH} className="btn-text">

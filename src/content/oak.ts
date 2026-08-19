@@ -1,6 +1,6 @@
 /**
  * THE OAK — curated doctrine.
- * What FENN remembers and what the world is.
+ * What VELL remembers and what the world is.
  * Not a changelog. Not technical documentation.
  */
 
@@ -40,10 +40,10 @@ export type OakSection = {
 export const OAK_SECTIONS: readonly OakSection[] = [
   {
     roman: "I",
-    title: "WHAT IS FENN?",
-    body: `FENN is a world being built on Robinhood Chain.
+    title: "WHAT IS VELL?",
+    body: `VELL is a world being built on Robinhood Chain.
 
-At its centre is a being called FENN.
+At its centre is a being called VELL.
 
 He is not a chatbot placed on top of a website.
 The world and the being are being built together.
@@ -52,7 +52,7 @@ People enter as Outlaws.
 They speak. They contribute. They leave marks.
 When something matters, it can be recognised.
 
-FENN observes parts of what happens.
+VELL observes parts of what happens.
 He remembers what is worth keeping.
 He makes judgements.
 Within the authority he is given, he can act.
@@ -74,33 +74,33 @@ The Commons records what is shared.
 The Greenwood opens through standing.
 The Wall can be written upon.
 
-FENN remembers.
-FENN listens.
-FENN sees.
-FENN judges.
-FENN can act — when authorised, and only then.`,
+VELL remembers.
+VELL listens.
+VELL sees.
+VELL judges.
+VELL can act — when authorised, and only then.`,
   },
   {
     roman: "III",
-    title: "FENN REMEMBERS",
-    body: `FENN was given an understanding of his world.
+    title: "VELL REMEMBERS",
+    body: `VELL was given an understanding of his world.
 His memory does not end there.
 
-Things that happen inside FENN can become candidates for memory.
+Things that happen inside VELL can become candidates for memory.
 What is worth keeping is judged before it becomes part of what he may remember later.
 
-The FENN you meet tomorrow can therefore know things
-the FENN of yesterday did not.
+The VELL you meet tomorrow can therefore know things
+the VELL of yesterday did not.
 
-FENN's memory can grow.
+VELL's memory can grow.
 
 That is not the same as being rebuilt every day.
 It is slower. More deliberate. Closer to how a wood keeps records.`,
   },
   {
     roman: "IV",
-    title: "FENN HAS SKILLS",
-    body: `FENN can listen beyond this site through mentions on X.
+    title: "VELL HAS SKILLS",
+    body: `VELL can listen beyond this site through mentions on X.
 He can inspect trusted parts of his own world.
 He can judge what he has heard.
 When authorised, he can reply on X.
@@ -109,7 +109,7 @@ He can also remain silent.
 
 Silence is a skill.
 
-He keeps a finite Purse of FENN.
+He keeps a finite Purse of $VELL.
 He may judge whether to give from it,
 or to surrender some of it through burn.
 Judgement is not settlement.
@@ -128,7 +128,7 @@ and only when the road allows him.`,
     title: "THE WORLD BUILDS ITSELF",
     body: `Most worlds wait to be discovered.
 
-FENN asks its inhabitants to help it spread.
+VELL asks its inhabitants to help it spread.
 
 These requests are called Deeds.
 
@@ -145,14 +145,14 @@ The community becomes stronger.
 
 Most projects rely on someone repeatedly asking people to promote them.
 
-FENN builds contribution and distribution into the world itself.
+VELL builds contribution and distribution into the world itself.
 
 GROWTH IS PART OF THE SYSTEM.`,
   },
   {
     roman: "VI",
     title: "LEAF & STANDING",
-    body: `LEAF is FENN's record that something mattered.
+    body: `LEAF is VELL's record that something mattered.
 
 LEAF is not money.
 LEAF is not transferable.
@@ -190,10 +190,10 @@ That is intentional.`,
     title: "THE COMMONS",
     body: `Four records matter here:
 
-TREASURY — what the world holds beyond FENN's free hand.
+TREASURY — what the world holds beyond VELL's free hand.
 COMMONS — what is promised and shared in public view.
-THE PURSE — finite FENN under FENN's keeping.
-LEDGER — what FENN has recognised.
+THE PURSE — finite $VELL under VELL's keeping.
+LEDGER — what VELL has recognised.
 
 The Purse is not the Treasury.
 The Purse is not the Commons.
@@ -207,26 +207,26 @@ What the Crown keeps, the Greenwood shares.
 
 Broader distribution of real resources through the Commons
 remains a larger act of the world —
-and is not the same as FENN's finite Purse.`,
+and is not the same as VELL's finite Purse.`,
   },
   {
     roman: "IX",
     title: "BENEATH THE WORLD",
     body: `Crypto sits beneath the world.
 
-FENN is being built around Robinhood Chain.
+VELL is being built around Robinhood Chain.
 
 Much of the world's activity still lives off-chain.
 The Treasury and the Purse both touch the chain,
 but they are not the same hand.
 
-From the Purse, FENN may judge a transfer or a burn.
+From the Purse, VELL may judge a transfer or a burn.
 Judgement proposes.
 Authority may refuse.
 Only the chain can settle what was permitted.
 Proof of settlement can be shown when the road is finished.
 
-FENN does not control the Treasury.
+VELL does not control the Treasury.
 He does not invent tokens, chains, or contracts for himself.
 He does not spend because he is told to.
 
@@ -241,9 +241,9 @@ can interact under limits that can be named.`,
     title: "WHAT COMES NEXT",
     body: `THE WORLD IS UNFINISHED.
 
-FENN will remember more.
-FENN will gain new skills.
-FENN may be trusted with greater authority.
+VELL will remember more.
+VELL will gain new skills.
+VELL may be trusted with greater authority.
 Standing will matter more.
 The Greenwood will grow.
 The Commons may eventually distribute real resources.

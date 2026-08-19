@@ -21,7 +21,15 @@ import {
   REGISTRATION_WRITING_COPY,
   type OutlawRegisterPhase,
 } from "@/lib/profiles/registration-arrival";
-import { formatOutlawNumber } from "@/lib/profiles/types";
+import {
+  CANOPY_DISPLAY,
+  formatNamedLabel,
+  MEMBER_HUB_PATH,
+  NAMED_DISPLAY,
+  REGISTER_ANCHOR_HREF,
+  isLegacyOrNamedInviteFrom,
+  normalizeInviteFromLabel,
+} from "@/lib/site/world-vocabulary";
 import { abbreviateEvmAddress } from "@/lib/wallet/evm";
 
 function formatJoinedDate(iso: string): string {
@@ -47,10 +55,10 @@ function InviteLedNotice() {
       const params = new URLSearchParams(window.location.search);
       const led = params.get("led") === "1";
       const from = params.get("from")?.trim() ?? "";
-      // Invite-only: OUTLAW N. Do not treat from=clearing as invite copy.
+      // Invite-only: legacy OUTLAW N or NAMED N.
       const safeFrom =
-        from.length > 0 && /^OUTLAW\s+\d{1,8}$/i.test(from)
-          ? from.toUpperCase()
+        from.length > 0 && isLegacyOrNamedInviteFrom(from)
+          ? normalizeInviteFromLabel(from)
           : null;
       setState({ led, safeFrom });
     } catch {
@@ -64,8 +72,8 @@ function InviteLedNotice() {
     <div className="invite-landing" aria-label="Invite arrival">
       <p className="invite-landing__kicker">
         {state.safeFrom
-          ? `${state.safeFrom} LED YOU TO THE ROAD`
-          : "AN OUTLAW LED YOU HERE"}
+          ? NAMED_DISPLAY.ledYouToRoad(state.safeFrom)
+          : NAMED_DISPLAY.ledYouHere}
       </p>
       <p>The road is still yours to walk.</p>
       <p className="muted">
@@ -249,7 +257,7 @@ export function OutlawRegisterPanel({
       <article className="place">
         {title ? (
           <AsciiPageTitle
-            title="THE OUTLAW REGISTER"
+            title={NAMED_DISPLAY.registerPageTitle}
             mark="REGISTER"
             accent="outlaw"
           />
@@ -345,7 +353,7 @@ export function OutlawRegisterPanel({
       <div className="profile-block">
         <p>the wood remembers you.</p>
         <p>
-          OUTLAW {formatOutlawNumber(profile.outlawNumber)}
+          {formatNamedLabel(profile.outlawNumber)}
         </p>
         <p>
           known as:
@@ -378,7 +386,7 @@ export function OutlawRegisterPanel({
           {formatJoinedDate(profile.joinedAt)}
         </p>
         <p>
-          <Link href="/outlaw">[ the outlaw ]</Link>
+          <Link href={MEMBER_HUB_PATH}>{NAMED_DISPLAY.hubLink}</Link>
         </p>
       </div>,
     );

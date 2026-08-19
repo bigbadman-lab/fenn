@@ -17,8 +17,8 @@ export const ROAD_THRESHOLD_CONTINUATIONS = {
   camp: { href: "/camp", label: "[ GO TO CAMP ]" },
   deeds: { href: "/deeds", label: "[ FIND A DEED ]" },
   map: { href: "/#the-map", label: "[ RETURN TO THE MAP ]" },
-  register: { href: "/#outlaw-register", label: "[ BECOME AN OUTLAW ]" },
-  claimName: { href: "/#outlaw-register", label: "[ CLAIM THE NAME ]" },
+  register: { href: "/#outlaw-register", label: "[ CLAIM A NAME ]" },
+  claimName: { href: "/#outlaw-register", label: "[ CLAIM A NAME ]" },
 } as const;
 
 export function standingFromLifetimeAndThreshold(

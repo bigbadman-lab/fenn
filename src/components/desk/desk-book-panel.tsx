@@ -34,7 +34,7 @@ function mapGenerateError(error: string | undefined, status: number): string {
   if (status === 401 || status === 403 || error === "forbidden") {
     return "Keeper access is required.";
   }
-  if (!error) return "FENN could not complete this step.";
+  if (!error) return "VELL could not complete this step.";
   const lower = error.toLowerCase();
   if (
     lower.includes("schema cache") ||
@@ -42,7 +42,7 @@ function mapGenerateError(error: string | undefined, status: number): string {
     lower.includes("postgrest") ||
     /source_external|pgrst/i.test(lower)
   ) {
-    return "FENN could not write this entry to the Book.";
+    return "VELL could not write this entry to the Book.";
   }
   return error;
 }
@@ -106,7 +106,7 @@ export function DeskBookPanel() {
         setError("Keeper access is required.");
         return;
       }
-      setStatus("FENN is writing…");
+      setStatus("VELL is writing…");
       const response = await fetch("/api/desk/book/generate", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
@@ -134,7 +134,7 @@ export function DeskBookPanel() {
       await load();
     } catch {
       setStatus(null);
-      setError("FENN could not complete this step.");
+      setError("VELL could not complete this step.");
     } finally {
       setBusy(false);
     }
@@ -157,7 +157,7 @@ export function DeskBookPanel() {
           [ refresh ]
         </button>
       </div>
-      <p className="muted">Did FENN write yesterday’s history?</p>
+      <p className="muted">Did VELL write yesterday’s history?</p>
       <p className="muted desk-book__note">
         The Book records each completed UTC day.
       </p>
@@ -259,7 +259,7 @@ export function DeskBookPanel() {
           ) : (
             <div className="desk-gatherings__confirm">
               <p>
-                FENN will gather the world’s activity and compose the entry for{" "}
+                VELL will gather the world’s activity and compose the entry for{" "}
                 {selectedLabel || yesterdayLabel}.
               </p>
               <p className="muted">
@@ -282,7 +282,7 @@ export function DeskBookPanel() {
                 disabled={busy || !generateDate}
                 onClick={() => void generate()}
               >
-                [ Generate with FENN ]
+                [ Generate with VELL ]
               </button>
               <button
                 type="button"

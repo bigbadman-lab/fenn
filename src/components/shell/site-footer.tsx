@@ -1,14 +1,14 @@
 export function SiteFooter() {
   return (
     <footer className="shell__footer">
-      <p>imfenn.com</p>
+      <p>askvell.com</p>
       <p>
         <a
-          href="https://x.com/askfenn"
+          href="https://x.com/thisisvell"
           target="_blank"
           rel="noopener noreferrer"
         >
-          @askfenn
+          @thisisvell
         </a>
       </p>
       <p>
@@ -17,10 +17,10 @@ export function SiteFooter() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          fenn speaks
+          vell speaks
         </a>
       </p>
-      <p className="muted">what the crown keeps, the greenwood shares.</p>
+      <p className="muted">what the crown keeps, the canopy shares.</p>
       <p className="muted">the wood was listening.</p>
     </footer>
   );

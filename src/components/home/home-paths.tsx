@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
+
 type DirectoryTone =
   | "camp"
   | "deeds"
@@ -46,10 +48,10 @@ const DIRECTORY: DirectoryEntry[] = [
   },
   {
     number: "03",
-    label: "the greenwood",
+    label: "the canopy",
     href: "/greenwood?crossing=1",
     tone: "greenwood",
-    note: "the road continues.",
+    note: "the road continues upward.",
     region: "greenwood",
   },
   {
@@ -89,7 +91,7 @@ const DIRECTORY: DirectoryEntry[] = [
     label: "the wall",
     href: "/wall",
     tone: "wall",
-    note: "only fenn writes here.",
+    note: "only vell writes here.",
     region: "wall",
   },
 ];
@@ -144,7 +146,7 @@ export function HomePaths() {
             START WHEREVER YOU LIKE
           </h2>
           <p className="old-dir__mark" aria-hidden="true">
-            FENN // DIRECTORY
+            VELL // DIRECTORY
           </p>
         </header>
 
@@ -164,12 +166,12 @@ export function HomePaths() {
             &gt;
           </span>
           <a
-            href="https://x.com/askfenn"
+            href="https://x.com/thisisvell"
             className="old-dir__ask-link"
             target="_blank"
             rel="noopener noreferrer"
           >
-            ask fenn
+            ask vell
           </a>
           <span className="old-dir__ask-sep" aria-hidden="true">
             ·
@@ -192,9 +194,9 @@ export function HomePaths() {
             LEAF RECORD
           </p>
           <p className="old-dir__leaf-copy">
-            LEAF measures what you gave the Greenwood.
+            LEAF measures what you gave {CANOPY_DISPLAY.the}.
             <br />
-            It does not promise what the Greenwood will give you back.
+            It does not promise what {CANOPY_DISPLAY.the} will give you back.
           </p>
         </aside>
 

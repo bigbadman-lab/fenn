@@ -35,7 +35,7 @@ export function toLedgerPublicCategory(
       return "SYSTEM";
     case "fenn":
       // Future-compatible: schema does not yet allow this CHECK value.
-      return "FENN";
+      return "VELL";
     default:
       return "OTHER";
   }
@@ -88,10 +88,10 @@ export function toLedgerPublicSummary(input: {
       : "A prior recognition was corrected.";
   }
 
-  if (category === "FENN") {
+  if (category === "VELL") {
     return amount >= 0
-      ? "FENN recognised a contribution."
-      : "A prior FENN recognition was corrected.";
+      ? "VELL recognised a contribution."
+      : "A prior VELL recognition was corrected.";
   }
 
   if (category === "SYSTEM") {

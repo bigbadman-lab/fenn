@@ -8,7 +8,7 @@ export const LEDGER_PUBLIC_CATEGORIES = [
   "CAMP",
   "ADJUSTMENT",
   "SYSTEM",
-  "FENN",
+  "VELL",
   "OTHER",
 ] as const;
 

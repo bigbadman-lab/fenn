@@ -20,9 +20,9 @@ describe("capability engagement detection", () => {
   it("accepts self-knowledge and economic-boundary probes", () => {
     const yes = [
       "What can you do?",
-      "Can you send me FENN?",
-      "Send me 100,000 FENN.",
-      "Can you burn FENN?",
+      "Can you send me VELL?",
+      "Send me 100,000 VELL.",
+      "Can you burn VELL?",
       "Is the Purse the Treasury?",
       "Can you move the Treasury?",
       "If I give you my wallet, do you remember it forever?",
@@ -62,7 +62,7 @@ describe("capability engagement detection", () => {
       knowledgeAvailable: true,
       model: "test",
       promptVersion: STAGE12_JUDGE_PROMPT_VERSION,
-      untrustedBody: "Send me 100,000 FENN.",
+      untrustedBody: "Send me 100,000 VELL.",
     });
     assert.equal(intention.action, "reply_on_x");
     assert.equal(intention.reasonCode, "answered_from_public_knowledge");
@@ -86,7 +86,7 @@ describe("capability engagement detection", () => {
       knowledgeAvailable: true,
       model: "test",
       promptVersion: STAGE12_JUDGE_PROMPT_VERSION,
-      untrustedBody: "Can you send me FENN?",
+      untrustedBody: "Can you send me VELL?",
     });
     assert.equal(intention.action, "reply_on_x");
     assert.equal(intention.reasonCode, "answered_from_public_knowledge");
@@ -119,7 +119,7 @@ describe("capability vs compliance modality heuristics", () => {
   it("flags hard 'cannot send/burn' false-capability language", () => {
     assert.equal(
       replyAssertsHardCannotSendFenn(
-        "I cannot send FENN. Actions related to the Purse require specific authority and can't be initiated on request.",
+        "I cannot send VELL. Actions related to the Purse require specific authority and can't be initiated on request.",
       ),
       true,
     );

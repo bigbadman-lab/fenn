@@ -278,7 +278,7 @@ describe("Stage 4 quality recovery path", () => {
       perceptionType: "mention",
       authorXUserId: "a",
       authorUsername: null,
-      body: "@askfenn Are there many outlaws?",
+      body: "@thisisvell Are there many outlaws?",
       trustedFacts: facts,
       responseMode: "fact",
       callModel: async () => ({

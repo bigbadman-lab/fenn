@@ -80,7 +80,7 @@ export function CampGround() {
         <ul className="camp__how-roles">
           <li>
             <span className="camp__how-role-name camp__how-role-name--fenn">
-              FENN
+              VELL
             </span>
             <span className="muted">
               {" "}

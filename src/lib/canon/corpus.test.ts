@@ -58,16 +58,16 @@ describe("Fenn Canon corpus", () => {
     assert.ok(memory);
     assert.match(
       memory.content,
-      /A conversation is not automatically FENN memory/,
+      /A conversation is not automatically VELL memory/,
     );
 
     const wall = getFennCanonDocument("fenn.wall");
     assert.ok(wall);
-    assert.match(wall.content, /FENN speaks/);
+    assert.match(wall.content, /VELL speaks/);
     assert.match(wall.content, /Everyone else witnesses/);
   });
 
-  it("registers $FENN token identity as public stable knowledge without live CA", () => {
+  it("registers $VELL token identity as public stable knowledge without live CA", () => {
     const token = getFennCanonDocument("fenn.token.identity");
     assert.ok(token);
     assert.equal(token.visibility, "public");
@@ -92,7 +92,7 @@ describe("Fenn Canon corpus", () => {
     assert.match(econ.content, /THE PURSE/);
     assert.match(econ.content, /CIRCULATION/);
     assert.match(econ.content, /LEDGER/);
-    assert.match(econ.content, /what FENN has committed/);
+    assert.match(econ.content, /what VELL has committed/);
     assert.match(econ.content, /what actually moved/);
     assert.match(econ.content, /permanent record of movement/);
     assert.match(econ.content, /distinct from the Treasury/);

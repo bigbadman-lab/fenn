@@ -3,7 +3,7 @@ import "server-only";
 import { XError } from "@/lib/x/errors";
 
 /** Canonical FENN X handle for Stage 12 perception. */
-export const FENN_X_USERNAME_DEFAULT = "askfenn";
+export const FENN_X_USERNAME_DEFAULT = "thisisvell";
 
 export const X_API_BASE_URL = "https://api.x.com/2";
 

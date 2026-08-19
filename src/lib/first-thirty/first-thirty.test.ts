@@ -12,6 +12,7 @@ import {
   nextMilestoneFromFlags,
   progressFromRow,
 } from "@/lib/first-thirty/types";
+import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
 import { leafIdempotencyKeys } from "@/lib/leaf/validate";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -129,7 +130,7 @@ describe("THE FIRST THIRTY — pure progress helpers", () => {
     assert.equal(FIRST_THIRTY_NOMINAL_GRANT, 10);
     assert.equal(FIRST_THIRTY_ACK.camp_first, "THE FIRE LEFT SOMETHING BEHIND");
     assert.equal(FIRST_THIRTY_ACK.camp_three, "YOUR WORDS WERE KEPT");
-    assert.equal(FIRST_THIRTY_ACK.first_deed, "THE GREENWOOD OPENS");
+    assert.equal(FIRST_THIRTY_ACK.first_deed, CANOPY_DISPLAY.opens);
   });
 });
 

@@ -18,6 +18,7 @@ import {
   shouldShowActiveFirstThirty,
   shouldShowGreenwoodOpenAction,
 } from "@/lib/first-thirty/presentation";
+import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
 import type { SafeFirstThirtyProgress } from "@/lib/first-thirty/types";
 
 type FirstThirtyJourneyProps = {
@@ -322,7 +323,7 @@ function ActiveJourney({
               <dd>{lifetime}</dd>
             </div>
             <div>
-              <dt>GREENWOOD</dt>
+              <dt>{CANOPY_DISPLAY.short.toUpperCase()}</dt>
               <dd>
                 {progress.greenwoodOpen ? "OPEN" : "NOT YET OPEN"}
               </dd>

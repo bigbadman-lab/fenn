@@ -1,5 +1,5 @@
 /**
- * P2E — stable public $FENN identity facts for the website.
+ * P2E — stable public $VELL identity facts for the website.
  *
  * Matches P2D Canon (`fenn.token.identity`). Never includes contract address.
  * Live CA comes only from getPublicOfficialFennToken / resolveOfficialFennToken.
@@ -8,8 +8,8 @@
 import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
 
 /** Shared with launch readiness semantics — design identity only. */
-export const FENN_TOKEN_PUBLIC_SYMBOL = "FENN" as const;
-export const FENN_TOKEN_PUBLIC_TICKER = "$FENN" as const;
+export const FENN_TOKEN_PUBLIC_SYMBOL = "VELL" as const;
+export const FENN_TOKEN_PUBLIC_TICKER = "$VELL" as const;
 export const FENN_TOKEN_PUBLIC_CHAIN_NAME = "ROBINHOOD CHAIN" as const;
 export const FENN_TOKEN_PUBLIC_CHAIN_ID = ROBINHOOD_CHAIN_ID;
 export const FENN_TOKEN_PUBLIC_STANDARD = "ERC-20" as const;
@@ -30,11 +30,11 @@ export const FENN_TOKEN_PUBLIC_IDENTITY_ROWS = [
   { label: "DECIMALS", value: String(FENN_TOKEN_PUBLIC_DECIMALS) },
   {
     label: "TOTAL SUPPLY",
-    value: `${FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED} FENN`,
+    value: `${FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED} VELL`,
   },
   { label: "LAUNCH", value: FENN_TOKEN_PUBLIC_LAUNCH_ROUTE },
   {
     label: "INITIAL PURSE",
-    value: `${FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED} FENN / ${FENN_TOKEN_PUBLIC_INITIAL_PURSE_PCT}`,
+    value: `${FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED} VELL / ${FENN_TOKEN_PUBLIC_INITIAL_PURSE_PCT}`,
   },
 ] as const;

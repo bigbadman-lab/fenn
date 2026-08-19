@@ -35,8 +35,8 @@ import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
 import type { OfficialFennTokenAsset } from "@/lib/treasury/types";
 
 const OFFICIAL: OfficialFennTokenAsset = {
-  symbol: "FENN",
-  name: "FENN",
+  symbol: "VELL",
+  name: "VELL",
   chainId: ROBINHOOD_CHAIN_ID,
   contractAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   decimals: 18,
@@ -570,7 +570,7 @@ describe("public Purse snapshot safety", () => {
         assert.equal(snap.ethBalance.balance, "1.5");
       }
       if (snap.fennBalance.state === "available") {
-        assert.equal(snap.fennBalance.symbol, "FENN");
+        assert.equal(snap.fennBalance.symbol, "VELL");
         assert.equal(snap.fennBalance.balance, "3");
       }
     }

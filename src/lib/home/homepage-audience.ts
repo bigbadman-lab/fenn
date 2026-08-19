@@ -5,6 +5,12 @@
  * Authenticated resolution never shows stranger-only CTAs or wrong greetings.
  */
 
+import {
+  CANOPY_DISPLAY,
+  NAMED_DISPLAY,
+  REGISTER_ANCHOR_ID,
+} from "@/lib/site/world-vocabulary";
+
 export type HomepageAudience =
   | "stranger"
   | "pending"
@@ -45,7 +51,6 @@ export function resolveHomepageAudience(
     if (input.registered) {
       return "outlaw";
     }
-    // Auth'd but not registered — still a stranger at the wood's edge.
     return "stranger";
   }
 
@@ -53,10 +58,13 @@ export function resolveHomepageAudience(
 }
 
 export const HOMEPAGE_GREETING = {
-  stranger: "WELCOME, STRANGER.",
-  outlaw: "WELCOME, OUTLAW.",
-  greenwood: "WELCOME HOME.",
+  stranger: "YOU ARRIVE UNNAMED.",
+  outlaw: "THE REGISTER KNOWS YOU.",
+  greenwood: "THE CANOPY IS OPEN.",
 } as const;
+
+export const HOMEPAGE_PENDING_LINE =
+  "the gate is still deciding who you are…" as const;
 
 export function homepageGreetingTitle(
   audience: HomepageAudience,
@@ -70,51 +78,56 @@ export function homepageGreetingTitle(
 /** Anonymous / not-yet-named orientation prose under the title. */
 export const HOMEPAGE_STRANGER_LINES = {
   lead: [
-    "You stand at the edge of something old.",
-    "FENN is a living AI-native world that watches,",
-    "remembers and changes through its people.",
+    "VELL is a living world — watched, remembered, and reshaped by the people inside it.",
+    "You may wander without a name.",
+    "When you are ready, claim one and let the world begin remembering you.",
   ],
   deeds: [
     "Do deeds. Speak in Camp. Earn LEAF.",
-    "When FENN is satisfied, the Greenwood opens.",
-    "What FENN commits to move is named in the Commons.",
+    `When VELL is satisfied, ${CANOPY_DISPLAY.the} opens.`,
+    "What VELL commits to move is named in the Commons.",
   ],
-  closing: "This is not a game. This is how a world remembers.",
+  closing: "Nothing here is decoration. What you do here stays.",
 } as const;
 
 export const HOMEPAGE_BEGIN_HERE = {
-  title: "BEGIN HERE",
+  title: "FIRST STEPS",
   lines: [
-    "Explore the map below.",
+    "Use the map below as a compass.",
     "Every named place can be entered.",
-    "You may wander without a name.",
-    "When you are ready, become an Outlaw and let the world begin remembering you.",
+    "Walk without registering if you wish.",
+    `When you want permanence, ${NAMED_DISPLAY.claimTitle.toLowerCase()} and enter ${NAMED_DISPLAY.registerTitle}.`,
   ],
 } as const;
 
 export const HOMEPAGE_ACTIONS = {
-  becomeOutlaw: "[ BECOME AN OUTLAW ]",
+  becomeOutlaw: NAMED_DISPLAY.claimCta,
   exploreMap: "[ EXPLORE THE MAP ]",
   /** href targets */
-  outlawThresholdId: "outlaw-register",
+  outlawThresholdId: REGISTER_ANCHOR_ID,
   mapId: "the-map",
 } as const;
 
 export const HOMEPAGE_MAP_ORIENTATION = {
-  title: "THE WORLD",
+  title: "THE MAP",
   lines: [
-    "Nothing below is decorative.",
+    "Each label is a door.",
     "Every named place can be entered.",
-    "Choose a place.",
-    "Begin walking.",
+    "Pick a direction.",
+    "Keep walking.",
   ],
 } as const;
 
+export const HOMEPAGE_MAP_EPILOGUE = {
+  line: "What gathers in the treasury must eventually move.",
+  aside: "vell keeps watch from the canopy.",
+} as const;
+
 export const HOMEPAGE_OUTLAW_THRESHOLD = {
-  title: "BECOME AN OUTLAW",
+  title: NAMED_DISPLAY.claimTitle,
   body: [
-    "An Outlaw has a permanent name in the Register.",
-    "Outlaws can speak in Camp, complete Deeds, earn LEAF and leave marks the world remembers.",
+    `A ${NAMED_DISPLAY.singular} has a permanent name in ${NAMED_DISPLAY.registerTitle}.`,
+    `${NAMED_DISPLAY.plural} can speak in Camp, complete Deeds, earn LEAF and leave marks the world remembers.`,
     "The road is open to everyone.",
     "A name makes your journey permanent.",
   ],
@@ -124,18 +137,18 @@ export const HOMEPAGE_OUTLAW_THRESHOLD = {
   ],
 } as const;
 
-/** Compact lines for registered Outlaws at the top (journey fills the rest). */
+/** Compact lines for registered members at the top (journey fills the rest). */
 export const HOMEPAGE_OUTLAW_TOP = {
   lines: [
-    "The map still waits.",
-    "Your next step is below — or choose a place and walk.",
+    "Your journey continues below.",
+    "Or pick a place on the map and go.",
   ],
 } as const;
 
 export const HOMEPAGE_GREENWOOD_TOP = {
   lines: [
-    "The Greenwood is open.",
-    "The map is still yours. Walk where the work is.",
+    `${CANOPY_DISPLAY.title} is open to you.`,
+    "The map still belongs to you — walk toward the work.",
   ],
 } as const;
 

@@ -4,7 +4,7 @@ export const HOME_FENN_ASCII = `
            /  \\
           /_/\\_\\
             ||
-           FENN
+           VELL
             ||
          ___||___
         /   ||   \\

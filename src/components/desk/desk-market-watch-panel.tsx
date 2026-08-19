@@ -174,7 +174,7 @@ export function DeskMarketWatchPanel() {
       <header className="desk-mw__header">
         <h1 className="desk__title">MARKET WATCH</h1>
         <p className="desk-mw__lede muted">
-          Keeper view of the official $FENN market observer.
+          Keeper view of the official $VELL market observer.
         </p>
       </header>
 

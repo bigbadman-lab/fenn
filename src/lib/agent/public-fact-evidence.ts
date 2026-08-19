@@ -60,7 +60,7 @@ export function buildPublicFactEvidencePromptBlock(
   const lines: string[] = [
     PUBLIC_FACT_EVIDENCE_MARKERS.begin,
     "",
-    "TRUSTED PUBLIC FACTS — approved FENN public source-of-truth readers.",
+    "TRUSTED PUBLIC FACTS — approved VELL public source-of-truth readers.",
     "Use exact available values when they answer the question.",
     "Never alter numbers. Do not add unsupported quantities.",
     "Failed or unavailable facts must not be guessed.",

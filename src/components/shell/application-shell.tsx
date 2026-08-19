@@ -18,8 +18,8 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
           <header className="shell__brand">
             <div className="shell__brand-row">
               <Link href="/" className="shell__identity-link">
-                <pre className="shell__identity ascii" aria-label="FENN home">
-                  {`FENN`}
+                <pre className="shell__identity ascii" aria-label="VELL home">
+                  {`VELL`}
                 </pre>
               </Link>
               <div className="shell__controls">
@@ -28,7 +28,7 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
               </div>
             </div>
             <p className="shell__tag">
-              <Link href="/">an old corner of the wood</Link>
+              <Link href="/">a clearing where the road forks</Link>
             </p>
           </header>
 

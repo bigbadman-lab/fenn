@@ -28,13 +28,13 @@ export type FennLiveCapabilityPolicy = {
 
 /**
  * Explicit knowledge vs live-truth boundary for Stage 12.
- * RAG tells FENN what it knows. Trusted tools tell FENN what is true right now.
+ * RAG tells VELL what it knows. Trusted tools tell VELL what is true right now.
  */
 export const FENN_LIVE_CAPABILITY_POLICIES: readonly FennLiveCapabilityPolicy[] =
   [
     {
       capability: "treasury",
-      knowledgeMayExplain: "what Treasury means and its role in FENN",
+      knowledgeMayExplain: "what Treasury means and its role in VELL",
       liveToolMustProvide: "current Treasury balance / observed treasury state",
     },
     {
@@ -67,9 +67,9 @@ export const FENN_LIVE_CAPABILITY_POLICIES: readonly FennLiveCapabilityPolicy[] 
     },
     {
       capability: "token",
-      knowledgeMayExplain: "what $FENN is conceptually",
+      knowledgeMayExplain: "what $VELL is conceptually",
       liveToolMustProvide:
-        "official public FENN token contract definition when configured",
+        "official public token contract definition when configured",
     },
     {
       capability: "gatherings",

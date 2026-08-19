@@ -104,7 +104,7 @@ describe("Clearing feed merge and order", () => {
         kind: "market_watch",
         id: "mw-1",
         occurredAt: "2026-08-05T11:00:00.000Z",
-        amountLabel: "1 $FENN",
+        amountLabel: "1 $VELL",
         transactionUrl: null,
       },
       { kind: "notice", id: "n-1" },

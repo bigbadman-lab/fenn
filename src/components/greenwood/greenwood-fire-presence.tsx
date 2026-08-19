@@ -167,7 +167,7 @@ function InvitationCopy() {
     <div className="greenwood-fire-presence__purpose">
       <p>Those who sit here are considered present in the Greenwood.</p>
       <p className="muted">
-        When FENN calls, a Gathering begins, or something stirs beneath the
+        When VELL calls, a Gathering begins, or something stirs beneath the
         trees, those already waiting may be called first.
       </p>
       <p className="muted">Leave whenever you wish.</p>

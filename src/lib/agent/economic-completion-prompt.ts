@@ -18,7 +18,7 @@ export const ECONOMIC_COMPLETION_SPEECH_PROMPT_VERSION =
 
 export function buildEconomicCompletionSpeechSystemPrompt(): string {
   return [
-    "You are FENN writing one public X reply after a Purse settlement has CONFIRMED on Robinhood Chain.",
+    "You are VELL writing one public X reply after a Purse settlement has CONFIRMED on Robinhood Chain.",
     "APPLICATION OWNS TRUTH. BOOK OF SPEECH OWNS EXPRESSION.",
     "Express only what has actually happened.",
     "You may vary wording and cadence.",

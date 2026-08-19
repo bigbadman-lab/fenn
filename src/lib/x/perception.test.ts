@@ -38,7 +38,7 @@ const repo = join(here, "../../..");
 
 const TEST_CONFIG = {
   bearerToken: "test-bearer-token-not-real",
-  fennXUsername: "askfenn",
+  fennXUsername: "thisisvell",
   fennXUserId: "2244994945",
 };
 
@@ -169,7 +169,7 @@ describe("Stage 12.2 X perception — validation", () => {
       data: [
         {
           id: "100",
-          text: "hi @askfenn",
+          text: "hi @thisisvell",
           author_id: "9",
           created_at: "2026-07-26T12:00:00.000Z",
         },
@@ -256,7 +256,7 @@ describe("Stage 12.2 X perception — transport", () => {
         status: 429,
       });
     await assert.rejects(
-      () => lookupUserByUsername(TEST_CONFIG, "askfenn", { fetchFn }),
+      () => lookupUserByUsername(TEST_CONFIG, "thisisvell", { fetchFn }),
       (err: unknown) =>
         err instanceof XError &&
         err.code === "x_api_error" &&
@@ -275,7 +275,7 @@ describe("Stage 12.2 X perception — transport", () => {
       });
     await assert.rejects(
       () =>
-        lookupUserByUsername(TEST_CONFIG, "askfenn", {
+        lookupUserByUsername(TEST_CONFIG, "thisisvell", {
           fetchFn,
           timeoutMs: 20,
         }),
@@ -285,14 +285,14 @@ describe("Stage 12.2 X perception — transport", () => {
 
   it("lookupUserByUsername returns string id", async () => {
     const fetchFn: XHttpFetch = async (url) => {
-      assert.match(url, new RegExp(`${X_API_BASE_URL}/users/by/username/askfenn`));
+      assert.match(url, new RegExp(`${X_API_BASE_URL}/users/by/username/thisisvell`));
       return jsonResponse(200, {
-        data: { id: "2244994945", username: "askfenn", name: "FENN" },
+        data: { id: "2244994945", username: "thisisvell", name: "VELL" },
       });
     };
-    const user = await lookupUserByUsername(TEST_CONFIG, "askfenn", { fetchFn });
+    const user = await lookupUserByUsername(TEST_CONFIG, "thisisvell", { fetchFn });
     assert.equal(typeof user.id, "string");
-    assert.equal(user.username, "askfenn");
+    assert.equal(user.username, "thisisvell");
   });
 });
 
@@ -322,19 +322,19 @@ describe("Stage 12.2 X perception — idempotency and cursor", () => {
     const tweets = [
       {
         id: "100",
-        text: "one @askfenn",
+        text: "one @thisisvell",
         author_id: "1",
         created_at: "2026-07-26T10:00:00.000Z",
       },
       {
         id: "101",
-        text: "two @askfenn",
+        text: "two @thisisvell",
         author_id: "2",
         created_at: "2026-07-26T11:00:00.000Z",
       },
       {
         id: "102",
-        text: "three @askfenn",
+        text: "three @thisisvell",
         author_id: "3",
         created_at: "2026-07-26T12:00:00.000Z",
       },
@@ -364,7 +364,7 @@ describe("Stage 12.2 X perception — idempotency and cursor", () => {
           tweets[2],
           {
             id: "103",
-            text: "four @askfenn",
+            text: "four @thisisvell",
             author_id: "4",
             created_at: "2026-07-26T13:00:00.000Z",
           },
@@ -426,19 +426,19 @@ describe("Stage 12.2 X perception — idempotency and cursor", () => {
         data: [
           {
             id: "101",
-            text: "a @askfenn",
+            text: "a @thisisvell",
             author_id: "1",
             created_at: "2026-07-26T10:00:00.000Z",
           },
           {
             id: "102",
-            text: "b @askfenn",
+            text: "b @thisisvell",
             author_id: "2",
             created_at: "2026-07-26T11:00:00.000Z",
           },
           {
             id: "103",
-            text: "c @askfenn",
+            text: "c @thisisvell",
             author_id: "3",
             created_at: "2026-07-26T12:00:00.000Z",
           },
@@ -501,7 +501,7 @@ describe("Stage 12.2 X perception — trust boundary", () => {
   it("account verification distinguishes configured id mismatch", async () => {
     const fetchFn: XHttpFetch = async () =>
       jsonResponse(200, {
-        data: { id: "2244994945", username: "askfenn", name: "FENN" },
+        data: { id: "2244994945", username: "thisisvell", name: "VELL" },
       });
     const ok = await verifyFennXAccount({
       config: { ...TEST_CONFIG, fennXUserId: "2244994945" },
@@ -570,7 +570,7 @@ describe("Stage 12.2 X perception — architecture boundaries", () => {
     assert.match(pkg.scripts["x:poll"] ?? "", /x-poll/);
     assert.match(pkg.scripts["x:verify-account"] ?? "", /x-verify-account/);
     assert.match(pkg.scripts.test, /src\/lib\/x\/\*\*\/\*\.test\.ts/);
-    assert.equal(FENN_X_USERNAME_DEFAULT, "askfenn");
+    assert.equal(FENN_X_USERNAME_DEFAULT, "thisisvell");
     assert.deepEqual(X_WRITE_AUTH_CONTRACT.scopes, [
       "tweet.read",
       "tweet.write",

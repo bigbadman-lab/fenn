@@ -271,7 +271,7 @@ export async function readLaunchPurseFunding(options?: {
     const explorer =
       explorerTxUrl(op.chainId || ROBINHOOD_CHAIN_ID, op.txHash) ?? "";
     const detail = [
-      `amount=${FENN_LAUNCH_PURSE_FUNDING_AMOUNT_DISPLAY} FENN`,
+      `amount=${FENN_LAUNCH_PURSE_FUNDING_AMOUNT_DISPLAY} VELL`,
       `amount_raw_formatted=${op.amountFormatted}`,
       `treasury=${op.treasuryAddress}`,
       `purse=${op.purseAddress}`,

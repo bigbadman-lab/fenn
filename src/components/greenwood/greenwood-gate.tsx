@@ -15,6 +15,7 @@ import {
   ROAD_THRESHOLD_CONTINUATIONS,
   standingFromLifetimeAndThreshold,
 } from "@/lib/road/threshold-presentation";
+import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
 
 function Continuations(props: {
   showRegister?: boolean;
@@ -109,12 +110,12 @@ export function GreenwoodGateStranger({ threshold }: StrangerProps) {
     <article className="place greenwood-gate">
       <header className="greenwood-gate__header">
         <AsciiPageTitle
-          title="THE GREENWOOD"
-          mark="GREENWOOD"
+          title={CANOPY_DISPLAY.title}
+          mark={CANOPY_DISPLAY.mark}
           accent="greenwood"
           subtitle={
             <>
-              <p>The oldest part of FENN.</p>
+              <p>{CANOPY_DISPLAY.subtitle}</p>
               <p>Entry is earned.</p>
             </>
           }
@@ -125,7 +126,7 @@ export function GreenwoodGateStranger({ threshold }: StrangerProps) {
       </header>
 
       <div className="greenwood-gate__body">
-        <p className="greenwood-gate__pause muted">The Greenwood remembers.</p>
+        <p className="greenwood-gate__pause muted">{CANOPY_DISPLAY.remembers}</p>
 
         <div className="greenwood-gate__explain">
           <p className="greenwood-gate__law-heading">THE LAW</p>
@@ -144,7 +145,7 @@ export function GreenwoodGateStranger({ threshold }: StrangerProps) {
         </div>
 
         <p className="muted">
-          Become an Outlaw to let the world remember your standing.
+          Claim a name to let the world remember your standing.
         </p>
 
         <Continuations showRegister showMap />
@@ -161,8 +162,8 @@ export function GreenwoodGateUnnamed({ threshold }: StrangerProps) {
     <article className="place greenwood-gate">
       <header className="greenwood-gate__header">
         <AsciiPageTitle
-          title="THE GREENWOOD"
-          mark="GREENWOOD"
+          title={CANOPY_DISPLAY.title}
+          mark={CANOPY_DISPLAY.mark}
           accent="greenwood"
           subtitle={
             <>
@@ -206,7 +207,7 @@ export function GreenwoodGateListening() {
     >
       <AsciiPageTitle
         title="THE GATE IS LISTENING."
-        mark="GREENWOOD"
+        mark={CANOPY_DISPLAY.mark}
         accent="greenwood"
         subtitle={<p className="muted">the wood is counting.</p>}
       />
@@ -225,13 +226,13 @@ export function GreenwoodGateIneligible({ standing }: IneligibleProps) {
       aria-live="polite"
     >
       <AsciiPageTitle
-        title="THE GREENWOOD"
-        mark="GREENWOOD"
+        title={CANOPY_DISPLAY.title}
+        mark={CANOPY_DISPLAY.mark}
         accent="greenwood"
         subtitle={
           <>
             <p>the road does not open for everyone.</p>
-            <p className="muted">The Greenwood remembers.</p>
+            <p className="muted">{CANOPY_DISPLAY.remembers}</p>
           </>
         }
       />
@@ -272,13 +273,13 @@ export function GreenwoodGateEligible({
   return (
     <article className="place greenwood-gate" aria-live="polite">
       <AsciiPageTitle
-        title="THE GREENWOOD"
-        mark="GREENWOOD"
+        title={CANOPY_DISPLAY.title}
+        mark={CANOPY_DISPLAY.mark}
         accent="greenwood"
         subtitle={
           <>
             <p>You have reached the standing required.</p>
-            <p>The Greenwood now opens.</p>
+            <p>{CANOPY_DISPLAY.nowOpens}</p>
           </>
         }
       />
@@ -333,14 +334,14 @@ export function GreenwoodGateMember({
       aria-live="polite"
     >
       <AsciiPageTitle
-        title={newlyAdmitted ? "THE GATE OPENS." : "THE GREENWOOD KNOWS YOU."}
-        mark="GREENWOOD"
+        title={newlyAdmitted ? CANOPY_DISPLAY.gateOpens : CANOPY_DISPLAY.knowsYou}
+        mark={CANOPY_DISPLAY.mark}
         accent="greenwood"
         subtitle={
           <>
             <p>{outlawLabel}</p>
             {newlyAdmitted ? (
-              <p>you crossed into the Greenwood.</p>
+              <p>{CANOPY_DISPLAY.crossed}</p>
             ) : (
               <p>
                 entered with {member.lifetimeLeafAtEntry} lifetime LEAF.
@@ -385,7 +386,7 @@ export function GreenwoodGateStatusError({
     >
       <AsciiPageTitle
         title="THE GATE CANNOT HEAR YOU."
-        mark="GREENWOOD"
+        mark={CANOPY_DISPLAY.mark}
         accent="greenwood"
         subtitle={<p>something in the wood went quiet.</p>}
       />
@@ -415,7 +416,7 @@ export function GreenwoodGateEnterError({
     <article className="place greenwood-gate" aria-live="polite">
       <AsciiPageTitle
         title="THE GATE DID NOT OPEN."
-        mark="GREENWOOD"
+        mark={CANOPY_DISPLAY.mark}
         accent="greenwood"
         subtitle={<p>the wood held its breath.</p>}
       />

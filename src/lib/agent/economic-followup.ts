@@ -137,13 +137,13 @@ export function buildEconomicCompletionFallback(
   const amount = facts.amountFormatted;
   const explorer = facts.explorerUrl;
   if (facts.actionType === "burn") {
-    return `${amount} FENN will not return. The chain keeps the proof: ${explorer}`.slice(
+    return `${amount} VELL will not return. The chain keeps the proof: ${explorer}`.slice(
       0,
       STAGE12_X_REPLY_MAX_CHARS,
     );
   }
   const short = facts.shortRecipient ?? shortRecipientForSpeech(facts.recipientAddress);
-  return `${amount} FENN left the Purse for ${short}. The chain keeps the receipt: ${explorer}`.slice(
+  return `${amount} VELL left the Purse for ${short}. The chain keeps the receipt: ${explorer}`.slice(
     0,
     STAGE12_X_REPLY_MAX_CHARS,
   );
@@ -167,9 +167,9 @@ export function buildEconomicFollowupDraft(
   // production paths through EconomicCompletionFacts + Book of Speech.
   let text: string;
   if (facts.actionType === "burn") {
-    text = `${amount} FENN left my Purse for the dead address. It will not return. ${shortHash}`;
+    text = `${amount} VELL left my Purse for the dead address. It will not return. ${shortHash}`;
   } else {
-    text = `${amount} FENN left my Purse. ${shortHash}`;
+    text = `${amount} VELL left my Purse. ${shortHash}`;
   }
   if (explorerUrl) {
     text = `${text} ${explorerUrl}`.slice(0, STAGE12_X_REPLY_MAX_CHARS);

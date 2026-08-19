@@ -49,7 +49,7 @@ describe("THE BOOK OF SPEECH v2", () => {
   it("forbids generic AI / product / therapist stock register", () => {
     const block = buildBookOfSpeechCanonBlock().toLowerCase();
     const mustTeach = [
-      "within the fenn world",
+      "within the vell world",
       "reflective and subjective",
       "your journey",
       "ecosystem",

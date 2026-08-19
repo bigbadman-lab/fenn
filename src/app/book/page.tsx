@@ -63,11 +63,11 @@ THE OAK holds what is true.`}
             </li>
             <li>
               <a
-                href="https://x.com/askfenn"
+                href="https://x.com/thisisvell"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                [ ask fenn ]
+                [ ask vell ]
               </a>
             </li>
           </ul>

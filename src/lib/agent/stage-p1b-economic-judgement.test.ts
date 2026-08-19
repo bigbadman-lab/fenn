@@ -339,7 +339,7 @@ describe("Stage P1B economic judgement", () => {
     });
     assert.ok(draft.explorerUrl);
     assert.equal(draft.explorerUrl, explorerTxUrl(ROBINHOOD_CHAIN_ID, TX));
-    assert.match(draft.text, /25000 FENN/);
+    assert.match(draft.text, /25000 VELL/);
     assert.equal(
       replyClaimsCompletedEconomicAction("I am considering your request."),
       false,

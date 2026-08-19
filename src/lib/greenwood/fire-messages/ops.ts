@@ -84,7 +84,7 @@ export function validateFireMessageBody(raw: string): string {
 }
 
 /**
- * Current published FENN SPEAKS body for Greenwood members.
+ * Current published VELL SPEAKS body for Greenwood members.
  * Returns null when none exists (caller may apply static fallback).
  */
 export async function getCurrentPublishedFireMessage(
@@ -100,7 +100,7 @@ export async function getCurrentPublishedFireMessage(
   if (error) {
     throw new GreenwoodError(
       "greenwood_fire_message_failed",
-      "Failed to load FENN SPEAKS",
+      "Failed to load VELL SPEAKS",
       500,
     );
   }
@@ -155,7 +155,7 @@ export async function listOperatorFireMessages(
   if (error) {
     throw new GreenwoodError(
       "greenwood_fire_message_failed",
-      "Failed to list FENN SPEAKS messages",
+      "Failed to list VELL SPEAKS messages",
       500,
     );
   }

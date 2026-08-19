@@ -4,8 +4,7 @@ import {
 } from "@/lib/treasury/fenn-token-public-identity";
 
 /**
- * /commons — stable $FENN identity (no live CA).
- * Contract address is never here; see OfficialFennContract.
+ * /commons — stable $FENN identity (no live contract address on the public surface).
  */
 export function FennTokenIdentity() {
   return (
@@ -15,7 +14,7 @@ export function FennTokenIdentity() {
       </h2>
       <div className="commons-block__body fenn-token-identity">
         <p className="commons-section__lede">
-          on-chain token of the FENN world.
+          on-chain token of the VELL world.
         </p>
         <p className="commons-section__aside muted">
           lives on Robinhood Chain.
@@ -32,8 +31,8 @@ export function FennTokenIdentity() {
           ))}
         </dl>
 
-        <div className="fenn-token-identity__compare" aria-label="LEAF and $FENN">
-          <h3 className="commons-subheading">LEAF IS NOT $FENN</h3>
+        <div className="fenn-token-identity__compare" aria-label="LEAF and $VELL">
+          <h3 className="commons-subheading">LEAF IS NOT $VELL</h3>
           <div className="fenn-token-identity__columns">
             <div className="fenn-token-identity__col">
               <p className="fenn-token-identity__col-title">LEAF</p>
@@ -44,7 +43,7 @@ export function FennTokenIdentity() {
               </p>
             </div>
             <div className="fenn-token-identity__col">
-              <p className="fenn-token-identity__col-title">$FENN</p>
+              <p className="fenn-token-identity__col-title">$VELL</p>
               <p className="muted">
                 on-chain
                 <br />
@@ -53,14 +52,14 @@ export function FennTokenIdentity() {
             </div>
           </div>
           <p className="commons-section__aside muted fenn-token-identity__note">
-            LEAF does not convert, redeem, or buy $FENN here.
+            LEAF does not convert, redeem, or buy $VELL here.
           </p>
         </div>
 
         <p className="commons-section__aside muted fenn-token-identity__note">
           PONS is the launch route. It is not the Treasury. It is not the Purse.
           <br />
-          The Purse is finite $FENN under FENN&apos;s keeping — not the Treasury.
+          The Purse is finite $VELL under VELL&apos;s keeping — not the Treasury.
           <br />
           Initial Purse means launch intent, not a permanent balance.
         </p>

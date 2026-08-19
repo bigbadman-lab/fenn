@@ -185,7 +185,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
     state.characters.set("fenn", {
       id: characterId,
       slug: "fenn",
-      display_name: "FENN",
+      display_name: "VELL",
       prompt_key: "camp.character.fenn",
       is_active: true,
       is_locked: false,
@@ -336,7 +336,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
     state.characters.set("fenn", {
       id: "22222222-2222-4222-8222-222222222222",
       slug: "fenn",
-      display_name: "FENN",
+      display_name: "VELL",
       prompt_key: "camp.character.fenn",
       is_active: true,
       is_locked: false,
@@ -425,7 +425,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
     state.characters.set("fenn", {
       id: characterId,
       slug: "fenn",
-      display_name: "FENN",
+      display_name: "VELL",
       prompt_key: "camp.character.fenn",
       is_active: true,
       is_locked: false,
@@ -489,7 +489,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
     state.characters.set("fenn", {
       id: "22222222-2222-4222-8222-222222222222",
       slug: "fenn",
-      display_name: "FENN",
+      display_name: "VELL",
       prompt_key: "camp.character.fenn",
       is_active: true,
       is_locked: false,
@@ -532,7 +532,7 @@ describe("sendCampMessage idempotency (in-memory admin)", () => {
     state.characters.set("fenn", {
       id: "22222222-2222-4222-8222-222222222222",
       slug: "fenn",
-      display_name: "FENN",
+      display_name: "VELL",
       prompt_key: "camp.character.fenn",
       is_active: true,
       is_locked: false,
@@ -634,7 +634,7 @@ describe("sendCampMessage Stage 11.6 RAG", () => {
     state.characters.set("fenn", {
       id: "22222222-2222-4222-8222-222222222222",
       slug: "fenn",
-      display_name: "FENN",
+      display_name: "VELL",
       prompt_key: "camp.character.fenn",
       is_active: true,
       is_locked: false,
@@ -712,7 +712,7 @@ describe("sendCampMessage Stage 11.6 RAG", () => {
     state.characters.set("fenn", {
       id: "22222222-2222-4222-8222-222222222222",
       slug: "fenn",
-      display_name: "FENN",
+      display_name: "VELL",
       prompt_key: "camp.character.fenn",
       is_active: true,
       is_locked: false,
@@ -766,7 +766,7 @@ describe("sendCampMessage Stage 11.6 RAG", () => {
     state.characters.set("fenn", {
       id: "22222222-2222-4222-8222-222222222222",
       slug: "fenn",
-      display_name: "FENN",
+      display_name: "VELL",
       prompt_key: "camp.character.fenn",
       is_active: true,
       is_locked: false,
@@ -818,7 +818,7 @@ describe("sendCampMessage Stage 11.6 RAG", () => {
     state.characters.set("fenn", {
       id: "22222222-2222-4222-8222-222222222222",
       slug: "fenn",
-      display_name: "FENN",
+      display_name: "VELL",
       prompt_key: "camp.character.fenn",
       is_active: true,
       is_locked: false,
@@ -855,7 +855,7 @@ describe("sendCampMessage Stage 11.6 RAG", () => {
     state.characters.set("fenn", {
       id: "22222222-2222-4222-8222-222222222222",
       slug: "fenn",
-      display_name: "FENN",
+      display_name: "VELL",
       prompt_key: "camp.character.fenn",
       is_active: true,
       is_locked: false,

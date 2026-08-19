@@ -138,13 +138,13 @@ function buildWorldState(input: {
     "Oak",
     "Commons",
     "Ledger",
-    "FENN SPEAKS",
+    "VELL SPEAKS",
     "Gatherings",
     "X agent",
     "Treasury",
   ];
   if (input.tokenConfigured) {
-    liveSurfaces.push("Official $FENN");
+    liveSurfaces.push("Official $VELL");
   }
 
   return {
@@ -167,7 +167,7 @@ function buildWorldState(input: {
       input.campMessages > 0
         ? `Camp recorded ${input.campMessages} messages today (count only; no transcripts).`
         : "Camp is live; today shows no message count in the day snapshot.",
-    clearingNote: "Clearing is a live FENN surface (no private message content attached).",
+    clearingNote: "Clearing is a live VELL surface (no private message content attached).",
     wallNote:
       input.wallCount != null
         ? `Wall has recent public inscriptions available for sampling.`
@@ -182,8 +182,8 @@ function buildWorldState(input: {
     commonsNote: `Commons public state: ${input.commonsState}.`,
     ledgerNote: "Ledger publicly records LEAF recognition (contribution, not price).",
     speaksNote: input.speaksPresent
-      ? "A published FENN SPEAKS message is currently live."
-      : "FENN SPEAKS can be published; none currently published (or unreadable).",
+      ? "A published VELL SPEAKS message is currently live."
+      : "VELL SPEAKS can be published; none currently published (or unreadable).",
     gatheringNote: input.gatheringActive
       ? "A Gathering is active in the world."
       : "No active public world-call Gathering right now.",
@@ -192,8 +192,8 @@ function buildWorldState(input: {
         ? `X agent recorded ${input.xRepliesToday} replies today (count only).`
         : "X agent is a live surface; no replies counted in today's snapshot.",
     tokenNote: input.tokenConfigured
-      ? "Official $FENN public contract is configured."
-      : "No official public $FENN contract configured for citation.",
+      ? "Official $VELL public contract is configured."
+      : "No official public $VELL contract configured for citation.",
     treasuryNote: `Treasury public state: ${input.treasuryState}.`,
   };
 }
@@ -395,7 +395,7 @@ export async function buildEditorialContextPack(options?: {
     newsroomCandidates.push({
       type: "speaks",
       occurredAt: speaks.publishedAt,
-      headline: "FENN SPEAKS is live",
+      headline: "VELL SPEAKS is live",
       detail: trunc(speaks.body, EDITORIAL_CONTEXT_CAPS.detailChars),
       sourceId: null,
       priority: priorityFromAge(hoursAgo(speaks.publishedAt, nowMs), true),
@@ -462,7 +462,7 @@ export async function buildEditorialContextPack(options?: {
     newsroomCandidates.push({
       type: "wall",
       occurredAt: null,
-      headline: `FENN wrote to the Wall ${snapshot.fennWallWrites} time(s) today`,
+      headline: `VELL wrote to the Wall ${snapshot.fennWallWrites} time(s) today`,
       detail: null,
       sourceId: null,
       priority: 1,

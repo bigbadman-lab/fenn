@@ -460,7 +460,7 @@ describe("Stage P1D wallet collection", () => {
 
   it("37–39. fallback speech asks for wallet / confirmation / no completion claim", () => {
     const ask = buildWalletSpeechFallback(speechFactsDestinationRequired("25000"));
-    assert.match(ask, /25000 FENN/i);
+    assert.match(ask, /25000 VELL/i);
     assert.doesNotMatch(ask, /I have sent|confirmed on.?chain/i);
     const conf = buildWalletSpeechFallback(
       speechFactsDestinationConfirmation(WALLET),

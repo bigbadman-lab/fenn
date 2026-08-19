@@ -271,11 +271,11 @@ export type FennWanderPhase =
   | "greenwood_linger";
 
 export type FennAtmosphericLine =
-  | "FENN waits."
-  | "FENN is watching."
-  | "FENN is walking."
-  | "FENN stands at the Greenwood."
-  | "FENN has gone elsewhere."
+  | "VELL waits."
+  | "VELL is watching."
+  | "VELL is walking."
+  | "VELL stands at the Greenwood."
+  | "VELL has gone elsewhere."
   | null;
 
 /** Idle linger bounds (ms) — deliberate stillness. */
@@ -492,18 +492,18 @@ export function atmosphericLineFor(
   at: FennMapWaypointId,
 ): FennAtmosphericLine {
   if (phase === "walking" || phase === "greenwood_approach") {
-    return "FENN is walking.";
+    return "VELL is walking.";
   }
   if (phase === "greenwood_linger") {
-    return "FENN stands at the Greenwood.";
+    return "VELL stands at the Greenwood.";
   }
   if (at === "greenwood" || at === "greenwood_gate") {
-    return "FENN stands at the Greenwood.";
+    return "VELL stands at the Greenwood.";
   }
   if (at === "oak" || at === "book") {
-    return "FENN is watching.";
+    return "VELL is watching.";
   }
-  return "FENN waits.";
+  return "VELL waits.";
 }
 
 /** Timers should run only when the document is visible and motion is allowed. */

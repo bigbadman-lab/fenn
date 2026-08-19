@@ -36,12 +36,12 @@ export function formatTokenAmountWithSeparators(formattedUnits: string): string 
 }
 
 /**
- * Public label: `18,420 $FENN`
+ * Public label: `18,420 $VELL`
  */
 export function formatClearingMarketFennAmount(
   raw: string | bigint,
   decimals: number,
-  symbol = "FENN",
+  symbol = "VELL",
 ): string {
   let rawBig: bigint;
   try {
@@ -54,7 +54,7 @@ export function formatClearingMarketFennAmount(
   }
   const amount = toTreasuryAmount(rawBig, decimals);
   const display = formatTokenAmountWithSeparators(amount.formatted);
-  const sym = symbol.trim() || "FENN";
+  const sym = symbol.trim() || "VELL";
   return `${display} $${sym}`;
 }
 

@@ -67,7 +67,7 @@ function initialState(variant: FennMapVariant): WanderState {
     phase: "idle",
     pos: pointForCell(variant, FENN_MAP_CELLS[variant][at], true),
     pose: "a",
-    line: "FENN waits.",
+    line: "VELL waits.",
   };
 }
 
@@ -158,8 +158,8 @@ export function FennMapWanderer({ variant }: Props) {
         pose: "a",
         line:
           settled === "greenwood"
-            ? "FENN stands at the Greenwood."
-            : "FENN waits.",
+            ? "VELL stands at the Greenwood."
+            : "VELL waits.",
       });
       return;
     }
@@ -227,7 +227,7 @@ export function FennMapWanderer({ variant }: Props) {
           phase: "greenwood_linger",
           pos: pointForCell(variant, FENN_MAP_CELLS[variant][gateId], true),
           pose: "a",
-          line: "FENN stands at the Greenwood.",
+          line: "VELL stands at the Greenwood.",
         });
         const linger = pickBoundedMs(
           rand,
@@ -285,7 +285,7 @@ export function FennMapWanderer({ variant }: Props) {
   const ascii = fennMapAscii(variant, state.pose);
   const showLine =
     state.phase === "greenwood_linger" ||
-    state.line === "FENN stands at the Greenwood.";
+    state.line === "VELL stands at the Greenwood.";
 
   return (
     <div

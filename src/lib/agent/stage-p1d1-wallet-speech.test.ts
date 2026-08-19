@@ -83,7 +83,7 @@ describe("Stage P1D.1 wallet Book of Speech", () => {
       facts: req,
       callModel: async () => ({
         replyText:
-          "I intend 10000 FENN when a destination is known. Reply with 0x…. Nothing has been sent.",
+          "I intend 10000 VELL when a destination is known. Reply with 0x…. Nothing has been sent.",
       }),
     });
     assert.equal(good.usedFallback, false);
@@ -146,7 +146,7 @@ describe("Stage P1D.1 wallet Book of Speech", () => {
         facts: confYes.speechFacts,
         untrustedUserBody: "yes, but send 100000 instead",
         callModel: async () => ({
-          replyText: `Confirmed ${confYes.speechFacts.shortWallet}. 10000 FENN may leave if allowed. Not complete until the chain confirms.`,
+          replyText: `Confirmed ${confYes.speechFacts.shortWallet}. 10000 VELL may leave if allowed. Not complete until the chain confirms.`,
         }),
       });
       assert.equal(pendingOk.usedFallback, false);
@@ -164,7 +164,7 @@ describe("Stage P1D.1 wallet Book of Speech", () => {
     const rendered = await renderWalletCollectionSpeech({
       facts,
       callModel: async () => ({
-        replyText: `The Purse has judged. 25000 FENN. Give me somewhere to send it. Nothing has left yet.`,
+        replyText: `The Purse has judged. 25000 VELL. Give me somewhere to send it. Nothing has left yet.`,
       }),
     });
     assert.equal(rendered.source, "book_of_speech");
@@ -238,7 +238,7 @@ describe("Stage P1D.1 wallet Book of Speech", () => {
     const p = await renderWalletCollectionSpeech({
       facts: pending,
       callModel: async () => ({
-        replyText: `Confirmed ${SHORT}. 25000 FENN may leave if the Purse still allows. Not complete until the chain confirms.`,
+        replyText: `Confirmed ${SHORT}. 25000 VELL may leave if the Purse still allows. Not complete until the chain confirms.`,
       }),
     });
     assert.equal(p.source, "book_of_speech");
@@ -254,13 +254,13 @@ describe("Stage P1D.1 wallet Book of Speech", () => {
     const r = await renderWalletCollectionSpeech({
       facts,
       callModel: async () => ({
-        replyText: "I could not release 25000 FENN. Nothing has been sent.",
+        replyText: "I could not release 25000 VELL. Nothing has been sent.",
       }),
     });
     assert.equal(r.source, "book_of_speech");
     assert.equal(
       validateWalletSpeechAgainstFacts(
-        "I will send 25000 FENN tomorrow.",
+        "I will send 25000 VELL tomorrow.",
         facts,
       ).ok,
       false,
@@ -303,7 +303,7 @@ describe("Stage P1D.1 wallet Book of Speech", () => {
   it("18. quality/recovery cannot invent amount when validating locked facts", () => {
     const facts = speechFactsDestinationRequired("25000");
     const v = validateWalletSpeechAgainstFacts(
-      "I intend to send 100000 FENN. Give me a wallet.",
+      "I intend to send 100000 VELL. Give me a wallet.",
       facts,
     );
     assert.equal(v.ok, false);

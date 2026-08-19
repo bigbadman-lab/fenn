@@ -59,7 +59,7 @@ export function formatOfficialTokenLiveContextBlock(
 ): string {
   const lines = [
     "=== TRUSTED LIVE STATE (official token — calibration/sight) ===",
-    "Official $FENN contract identity is live configuration, not Canon.",
+    "Official $VELL contract identity is live configuration, not Canon.",
     "Never invent a contract address. Never use Purse or Treasury addresses as the token CA.",
   ];
 
@@ -97,7 +97,7 @@ export function buildCandidateVerificationNote(
       });
     if (r.status === "match") {
       parts.push(
-        `candidate ${r.candidateNormalized}: MATCH — this IS the trusted official $FENN contract`,
+        `candidate ${r.candidateNormalized}: MATCH — this IS the trusted official $VELL contract`,
       );
     } else if (r.status === "mismatch") {
       parts.push(

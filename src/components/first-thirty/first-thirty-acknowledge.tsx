@@ -101,9 +101,7 @@ export function FirstThirtyAcknowledge({
 
       {event.milestone === "camp_first" && !greenwoodOpen && until > 0 ? (
         <p className="ft-reveal__next muted ft-reveal__step ft-reveal__step--4">
-          {until} MORE UNTIL
-          <br />
-          THE GREENWOOD OPENS
+          {FIRST_THIRTY_JOURNEY_COPY.untilCanopyOpens(until)}
         </p>
       ) : null}
 
@@ -127,7 +125,7 @@ export function FirstThirtyAcknowledge({
           <p>{FIRST_THIRTY_JOURNEY_COPY.openBody}</p>
           <p>
             <Link href={FIRST_THIRTY_GREENWOOD_HREF} className="btn-text">
-              [ WALK TO THE GREENWOOD ]
+              {FIRST_THIRTY_JOURNEY_COPY.walkToGreenwood}
             </Link>
           </p>
         </div>

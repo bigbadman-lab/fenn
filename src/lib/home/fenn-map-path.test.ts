@@ -39,17 +39,17 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "../../..");
 
 describe("canonical FENN ASCII", () => {
-  it("detailed character keeps hat, eyes, fenn label, and legs", () => {
+  it("detailed character keeps hat, eyes, vell label, and legs", () => {
     assert.match(FENN_ASCII_DETAILED, /\/---\\/);
     assert.match(FENN_ASCII_DETAILED, /o\s+o/);
-    assert.match(FENN_ASCII_DETAILED, /f e n n/);
+    assert.match(FENN_ASCII_DETAILED, /v e l l/);
     assert.match(FENN_ASCII_DETAILED, /\(_\)\s*\(_\)/);
     assert.match(FENN_ASCII_DETAILED, /\/--\//);
   });
 
   it("map variants share recognisable features and walking poses differ", () => {
     assert.match(FENN_ASCII_MAP_A, /\/---\\/);
-    assert.match(FENN_ASCII_MAP_A, /fenn/);
+    assert.match(FENN_ASCII_MAP_A, /vell/);
     assert.match(FENN_ASCII_MAP_COMPACT_A, /o o/);
     assert.notEqual(FENN_ASCII_MAP_A, FENN_ASCII_MAP_B);
     assert.equal(fennMapAscii("desktop", "a"), FENN_ASCII_MAP_A);
@@ -199,7 +199,7 @@ describe("living map does not couple to world systems", () => {
     for (const label of [
       "[ the book ]",
       "[ the oak ]",
-      "[ the greenwood ]",
+      "[ the canopy ]",
       "[ deeds ]",
       "[ the camp ]",
       "[ the ledger ]",
@@ -236,34 +236,33 @@ describe("living map does not couple to world systems", () => {
     assert.match(welcome, /HOMEPAGE_ACTIONS\.outlawThresholdId/);
     assert.doesNotMatch(welcome, /FENN_ASCII_DETAILED/);
     assert.doesNotMatch(welcome, /CANONICAL_WELCOME_TEXT/);
-    assert.match(audience, /WELCOME, STRANGER\./);
-    assert.match(audience, /WELCOME, OUTLAW\./);
-    assert.match(audience, /WELCOME HOME\./);
+    assert.match(audience, /YOU ARRIVE UNNAMED\./);
+    assert.match(audience, /THE REGISTER KNOWS YOU\./);
+    assert.match(audience, /THE CANOPY IS OPEN\./);
     assert.match(audience, /\[ EXPLORE THE MAP \]/);
-    assert.match(audience, /\[ BECOME AN OUTLAW \]/);
-    assert.match(audience, /outlaw-register/);
+    assert.match(audience, /NAMED_DISPLAY\.claimCta|\[ CLAIM A NAME \]/);
+    assert.match(audience, /REGISTER_ANCHOR_ID|outlaw-register/);
     assert.match(audience, /the-map/);
-    assert.match(identity, /THE WORLD|HOMEPAGE_MAP_ORIENTATION/);
+    assert.match(identity, /HOMEPAGE_MAP_ORIENTATION|THE MAP/);
     assert.match(map, /id="the-map"/);
 
     const welcomeOrder = page.indexOf("<HomeWelcome");
     const journeyOrder = page.indexOf("<HomeFirstThirty");
     const identityOrder = page.indexOf("<HomeIdentity");
     const registerOrder = page.indexOf("<HomeOutlawRegister");
-    const voiceOrder = page.indexOf("<HomeFennVoice");
     assert.ok(welcomeOrder >= 0 && identityOrder > welcomeOrder);
     assert.ok(
       journeyOrder < 0 ||
         (journeyOrder > welcomeOrder && journeyOrder < identityOrder),
     );
     assert.ok(registerOrder > identityOrder);
-    assert.ok(voiceOrder > registerOrder);
 
     const voice = readFileSync(
       join(repo, "src/components/home/home-fenn-voice.tsx"),
       "utf8",
     );
     assert.match(voice, /CANONICAL_WELCOME_TEXT/);
+    assert.doesNotMatch(page, /HomeFennVoice/);
   });
 
   it("path module does not write to the database or Stage 12", () => {

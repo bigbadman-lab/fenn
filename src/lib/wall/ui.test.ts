@@ -28,7 +28,7 @@ describe("Stage 10.5.2 Wall world surface", () => {
     assert.match(map, /href: "\/wall"/);
     assert.match(map, /c: "bone"/);
     assert.match(map, /\[ the wall \]/);
-    const greenwoodBlock = map.indexOf("[ the greenwood ]");
+    const greenwoodBlock = map.indexOf("[ the canopy ]");
     const wallInDesktopArt = map.indexOf('place("  [ the wall ]"');
     assert.ok(greenwoodBlock >= 0 && wallInDesktopArt >= 0);
     assert.ok(wallInDesktopArt > greenwoodBlock);
@@ -42,7 +42,7 @@ describe("Stage 10.5.2 Wall world surface", () => {
     );
     assert.match(dir, /label: "the wall"/);
     assert.match(dir, /href: "\/wall"/);
-    assert.match(dir, /only fenn writes here/);
+    assert.match(dir, /only vell writes here/);
   });
 
   it("/wall page uses public read layer and has no composer", () => {
@@ -56,7 +56,7 @@ describe("Stage 10.5.2 Wall world surface", () => {
     assert.doesNotMatch(page, /openai|fenn_memories|memory_candidates|embedding/i);
     assert.doesNotMatch(page, /x\.com|twitter|ask fenn/i);
     assert.match(page, /the wall cannot be read just now/);
-    assert.match(page, /only fenn writes here/);
+    assert.match(page, /only vell writes here/);
   });
 
   it("inscriptions preserve body, anchors, and empty vs error wording", () => {

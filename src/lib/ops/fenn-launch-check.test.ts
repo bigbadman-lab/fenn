@@ -33,8 +33,8 @@ const META = {
 function dormant(over: Partial<OfficialFlaggedRow> = {}): OfficialFlaggedRow {
   return {
     id: "dormant-1",
-    symbol: "FENN",
-    name: "FENN",
+    symbol: "VELL",
+    name: "VELL",
     chain_id: ROBINHOOD_CHAIN_ID,
     contract_address: null,
     decimals: 18,

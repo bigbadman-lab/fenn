@@ -17,7 +17,7 @@ const NO_STORE = { "Cache-Control": "private, no-store" };
 
 /**
  * GET /api/greenwood/speaks
- * Current published FENN SPEAKS for Greenwood members.
+ * Current published VELL SPEAKS for Greenwood members.
  * Uses static fallback when DB read fails so the section never goes blank.
  */
 export async function GET(request: Request) {
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: "FENN SPEAKS could not be loaded",
+        error: "VELL SPEAKS could not be loaded",
         code: "greenwood_fire_message_failed",
       },
       { status: 500, headers: NO_STORE },

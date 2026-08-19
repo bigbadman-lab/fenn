@@ -150,7 +150,7 @@ export function OutlawWallet() {
         <p className="outlaw-wallet__safety muted">
           Keep what Privy reveals private.
           <br />
-          FENN will never ask to see it.
+          VELL will never ask to see it.
         </p>
       ) : null}
 

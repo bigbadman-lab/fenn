@@ -180,7 +180,7 @@ describe("Outlaw wallet ownership surface (source)", () => {
     assert.match(ui, /YOUR CONNECTED WALLET/);
     assert.match(ui, /This mark is carried by your connected wallet/);
     assert.match(ui, /Keep what Privy reveals private/);
-    assert.match(ui, /FENN will never ask to see it/);
+    assert.match(ui, /VELL will never ask to see it/);
     assert.match(ui, /\[ COPY ADDRESS \]/);
     assert.match(ui, /\[ EXPORT WALLET \]/);
     assert.match(ui, /canExport/);

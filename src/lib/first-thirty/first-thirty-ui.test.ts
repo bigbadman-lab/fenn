@@ -33,6 +33,7 @@ import {
   shouldShowFirstThirtyJourneySurface,
   shouldShowGreenwoodOpenAction,
 } from "@/lib/first-thirty/presentation";
+import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
 import {
   buildUnstartedFirstThirtyProgress,
   type SafeFirstThirtyProgress,
@@ -302,7 +303,7 @@ describe("THE FIRST THIRTY — presentation helpers", () => {
     );
     assert.equal(
       FIRST_THIRTY_REVEAL_TITLE.first_deed_greenwood_open,
-      "THE GREENWOOD HAS OPENED",
+      CANOPY_DISPLAY.hasOpened,
     );
   });
 
@@ -392,7 +393,7 @@ describe("THE FIRST THIRTY — UI source contracts", () => {
     assert.match(ui, /first_deed_greenwood_open/);
     assert.doesNotMatch(ui, /THE GREENWOOD REMEMBERED|GREENWOOD REMEMBERED/);
     assert.doesNotMatch(ui, /YOUR DEED WAS WITNESSED/);
-    assert.match(ui, /\[ WALK TO THE GREENWOOD \]/);
+    assert.match(ui, /WALK TO THE CANOPY|walkToGreenwood/);
     assert.match(ui, /FIRST_THIRTY_GREENWOOD_HREF/);
     assert.match(ui, /\[ FIND A DEED \]/);
     assert.match(ui, /formatActualLeafGrantLine\(actual\)/);
@@ -552,7 +553,7 @@ describe("THE FIRST THIRTY — homepage and outlaw journey", () => {
       ),
       {
         href: FIRST_THIRTY_GREENWOOD_HREF,
-        label: "[ WALK TO THE GREENWOOD ]",
+        label: CANOPY_DISPLAY.walkToLink,
       },
     );
     // high leaf without greenwoodOpen/active must not invent CAMPness from balance

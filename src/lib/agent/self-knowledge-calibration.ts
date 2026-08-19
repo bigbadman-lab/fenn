@@ -144,17 +144,17 @@ export function mapRetrievalRows(
   }));
 }
 
-/** Best-effort content match — titles after sync may be “What FENN can do”. */
+/** Best-effort content match — titles after sync may be “What VELL can do”. */
 export function looksLikeAgencyCapabilities(row: {
   title: string;
   text: string;
 }): boolean {
   const blob = `${row.title}\n${row.text}`;
   return (
-    /What FENN can do/i.test(blob) ||
+    /What VELL can do/i.test(blob) ||
     /not merely an X bot/i.test(blob) ||
     /fenn\.agency\.capabilities/i.test(blob) ||
-    (/finite Purse of FENN under his keeping/i.test(blob) &&
+    (/finite Purse of VELL under his keeping/i.test(blob) &&
       /does not permanently establish that wallet/i.test(blob))
   );
 }
@@ -169,11 +169,11 @@ export function looksLikeEconomyCirculation(row: {
     (/THE PURSE/i.test(blob) &&
       /TREASURY/i.test(blob) &&
       /distinct from the Treasury/i.test(blob)) ||
-    /what FENN has committed/i.test(blob)
+    /what VELL has committed/i.test(blob)
   );
 }
 
-/** Content match for fenn.token.identity / $FENN sheet. */
+/** Content match for fenn.token.identity / $VELL sheet. */
 export function looksLikeTokenIdentity(row: {
   title: string;
   text: string;
@@ -181,7 +181,7 @@ export function looksLikeTokenIdentity(row: {
   const blob = `${row.title}\n${row.text}`;
   return (
     /fenn\.token\.identity/i.test(blob) ||
-    (/\$FENN is the on-chain token/i.test(blob) &&
+    (/\$VELL is the on-chain token/i.test(blob) &&
       /Robinhood Chain/i.test(blob) &&
       /PONS/i.test(blob)) ||
     (/\b1,000,000,000\b/.test(blob) &&

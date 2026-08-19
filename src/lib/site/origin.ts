@@ -1,10 +1,10 @@
 /**
- * Canonical site origin for FENN URLs (metadata, robots, sitemap, invites).
+ * Canonical site origin for VELL URLs (metadata, robots, sitemap, invites).
  * No secrets — public host only.
  */
 
-export const PRODUCTION_SITE_ORIGIN = "https://imfenn.com";
-export const PRODUCTION_SITE_HOST = "imfenn.com";
+export const PRODUCTION_SITE_ORIGIN = "https://askvell.com";
+export const PRODUCTION_SITE_HOST = "askvell.com";
 const DEV_FALLBACK_ORIGIN = "http://localhost:3000";
 
 export type SiteRuntimeHints = {
@@ -74,10 +74,15 @@ export function shouldNoIndexDeployment(hints?: SiteRuntimeHints): boolean {
   }
 }
 
-/** Legacy / typo domain — never accept as a FENN origin. */
+/** Legacy / typo domains — never accept as a VELL origin. */
 export function isLegacyOrTypoHost(hostname: string): boolean {
   const host = hostname.trim().toLowerCase();
-  return host === "amfenn.com" || host.endsWith(".amfenn.com");
+  return (
+    host === "amfenn.com" ||
+    host.endsWith(".amfenn.com") ||
+    host === "imfenn.com" ||
+    host.endsWith(".imfenn.com")
+  );
 }
 
 /**
@@ -122,7 +127,7 @@ export function normalizeSiteOrigin(raw: string): string {
   }
 
   if (isLegacyOrTypoHost(host)) {
-    throw new Error(`Site URL host is not allowed for FENN: ${host}`);
+    throw new Error(`Site URL host is not allowed for VELL: ${host}`);
   }
 
   const port = url.port ? `:${url.port}` : "";
@@ -148,8 +153,8 @@ export function resolveAppSiteOrigin(
 /**
  * Origin used for metadataBase, robots, sitemap and public canonical URLs.
  *
- * - Vercel production: must be https://imfenn.com (fails closed if misconfigured).
- * - Vercel preview: always imfenn.com (never *.vercel.app) + noindex via robots.
+ * - Vercel production: must be https://askvell.com (fails closed if misconfigured).
+ * - Vercel preview: always askvell.com (never *.vercel.app) + noindex via robots.
  * - Local development / local production builds: allow localhost from env.
  * - Forbidden hosts never escape into metadata.
  */

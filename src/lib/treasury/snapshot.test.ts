@@ -36,8 +36,8 @@ function dormantFennRow(
 ): TreasuryAssetRow {
   return {
     id: "fenn-dormant",
-    symbol: "FENN",
-    name: "FENN",
+    symbol: "VELL",
+    name: "VELL",
     chain_id: ROBINHOOD_CHAIN_ID,
     contract_address: null,
     decimals: 18,
@@ -204,7 +204,7 @@ describe("getPublicTreasurySnapshot", () => {
     assert.equal(snapshot.state, "unavailable");
     if (snapshot.state !== "unavailable") return;
     assert.equal(snapshot.assets.length, 1);
-    assert.equal(snapshot.assets[0]?.symbol, "FENN");
+    assert.equal(snapshot.assets[0]?.symbol, "VELL");
     assert.equal(snapshot.assets[0]?.state, "unavailable");
     if (snapshot.assets[0]?.state === "unavailable") {
       assert.equal(snapshot.assets[0].reason, "configuration_error");
@@ -244,7 +244,7 @@ describe("getPublicTreasurySnapshot", () => {
     assert.equal(snapshot.officialToken, null);
 
     const eth = snapshot.assets.find((a) => a.symbol === "ETH");
-    const fenn = snapshot.assets.find((a) => a.symbol === "FENN");
+    const fenn = snapshot.assets.find((a) => a.symbol === "VELL");
     assert.ok(eth);
     assert.ok(fenn);
     assert.equal(eth?.state, "available");
@@ -287,7 +287,7 @@ describe("getPublicTreasurySnapshot", () => {
       },
       now: () => OBSERVED,
       getOfficialToken: async () => ({
-        symbol: "FENN",
+        symbol: "VELL",
         chainId: ROBINHOOD_CHAIN_ID,
         contractAddress: fennCa,
         explorerUrl: "https://example.test/token",
@@ -297,7 +297,7 @@ describe("getPublicTreasurySnapshot", () => {
     if (snapshot.state !== "ready") return;
     assert.equal(nativeCalls, 1);
     assert.equal(erc20Calls, 1);
-    const fenn = snapshot.assets.find((a) => a.symbol === "FENN");
+    const fenn = snapshot.assets.find((a) => a.symbol === "VELL");
     assert.equal(fenn?.state, "available");
     if (fenn?.state === "available") {
       assert.equal(fenn.balance, "10");
@@ -614,7 +614,7 @@ describe("getPublicTreasurySnapshot", () => {
 
   it("includes officialToken independently of wallet balances", async () => {
     const official = {
-      symbol: "FENN" as const,
+      symbol: "VELL" as const,
       chainId: ROBINHOOD_CHAIN_ID,
       contractAddress: TOKEN,
       explorerUrl: `https://robinhoodchain.blockscout.com/address/${TOKEN}`,
@@ -647,7 +647,7 @@ describe("getPublicTreasurySnapshot", () => {
 
   it("keeps officialToken when asset RPC fails", async () => {
     const official = {
-      symbol: "FENN" as const,
+      symbol: "VELL" as const,
       chainId: ROBINHOOD_CHAIN_ID,
       contractAddress: TOKEN,
       explorerUrl: `https://robinhoodchain.blockscout.com/address/${TOKEN}`,
@@ -660,8 +660,8 @@ describe("getPublicTreasurySnapshot", () => {
       listAssetRows: async () => [
         erc20Row({
           id: "fenn",
-          symbol: "FENN",
-          name: "FENN",
+          symbol: "VELL",
+          name: "VELL",
           contract_address: TOKEN,
           decimals: 18,
         }),
@@ -742,7 +742,7 @@ describe("GET /api/treasury route", () => {
   it("returns ready snapshot as 200 with safe official token fields", async () => {
     const { handleTreasuryGet } = await import("./route-handler");
     const officialToken = {
-      symbol: "FENN" as const,
+      symbol: "VELL" as const,
       chainId: ROBINHOOD_CHAIN_ID,
       contractAddress: TOKEN,
       explorerUrl: `https://robinhoodchain.blockscout.com/address/${TOKEN}`,
@@ -762,8 +762,8 @@ describe("GET /api/treasury route", () => {
           balance: "5",
         },
         {
-          symbol: "FENN",
-          name: "FENN",
+          symbol: "VELL",
+          name: "VELL",
           chainId: ROBINHOOD_CHAIN_ID,
           contractAddress: TOKEN,
           decimals: 18,
@@ -789,7 +789,7 @@ describe("GET /api/treasury route", () => {
   it("keeps officialToken when FENN balance is rpc-unavailable", async () => {
     const { handleTreasuryGet } = await import("./route-handler");
     const officialToken = {
-      symbol: "FENN" as const,
+      symbol: "VELL" as const,
       chainId: ROBINHOOD_CHAIN_ID,
       contractAddress: TOKEN,
       explorerUrl: `https://robinhoodchain.blockscout.com/address/${TOKEN}`,
@@ -800,8 +800,8 @@ describe("GET /api/treasury route", () => {
       observedAt: OBSERVED.toISOString(),
       assets: [
         {
-          symbol: "FENN",
-          name: "FENN",
+          symbol: "VELL",
+          name: "VELL",
           chainId: ROBINHOOD_CHAIN_ID,
           contractAddress: TOKEN,
           decimals: 18,

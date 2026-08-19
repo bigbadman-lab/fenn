@@ -234,18 +234,18 @@ describe("greenwood gate source safety (Book of the Road threshold)", () => {
 
     // Stranger — identity, earned entry, law, LEAF paths, free road
     assert.match(gate, /GreenwoodGateStranger/);
-    assert.match(gate, /The oldest part of FENN/);
+    assert.match(gate, /CANOPY_DISPLAY\.subtitle/);
     assert.match(gate, /Entry is earned/);
     assert.match(gate, /formatStandingRequiredLaw/);
     assert.match(gate, /Camp, Deeds, and contribution/);
-    assert.match(gate, /BECOME AN OUTLAW/);
-    assert.match(gate, /RETURN TO THE MAP/);
+    assert.match(gate, /CLAIM A NAME|Claim a name/i);
+    assert.match(gate, /ROAD_THRESHOLD_CONTINUATIONS\.map\.label/);
 
     // Unnamed — wallet ≠ standing
     assert.match(gate, /GreenwoodGateUnnamed/);
     assert.match(gate, /Your wallet is known/);
     assert.match(gate, /Your name is not/);
-    assert.match(gate, /CLAIM THE NAME/);
+    assert.match(gate, /ROAD_THRESHOLD_CONTINUATIONS\.claimName\.label/);
     assert.match(gate, /wallet alone cannot carry standing/i);
 
     // Below threshold — measurable standing + remaining + continuations
@@ -254,23 +254,23 @@ describe("greenwood gate source safety (Book of the Road threshold)", () => {
     assert.match(gate, /formatStandingFraction/);
     assert.match(gate, /formatStandingRemainLine/);
     assert.match(gate, /LEAF is not spent/);
-    assert.match(gate, /GO TO CAMP/);
-    assert.match(gate, /FIND A DEED/);
-    assert.match(gate, /\/camp/);
-    assert.match(gate, /\/deeds/);
-    assert.match(gate, /\/#the-map/);
-    assert.match(gate, /\/#outlaw-register/);
+    assert.match(gate, /ROAD_THRESHOLD_CONTINUATIONS\.camp\.label/);
+    assert.match(gate, /ROAD_THRESHOLD_CONTINUATIONS\.deeds\.label/);
+    assert.match(gate, /ROAD_THRESHOLD_CONTINUATIONS\.camp\.href/);
+    assert.match(gate, /ROAD_THRESHOLD_CONTINUATIONS\.deeds\.href/);
+    assert.match(gate, /ROAD_THRESHOLD_CONTINUATIONS\.map\.href/);
+    assert.match(gate, /ROAD_THRESHOLD_CONTINUATIONS\.register\.href/);
     assert.match(gate, /NOTHING IS SPENT HERE/i);
 
     // Eligible — standing met, CROSS ceremony preserved
     assert.match(gate, /GreenwoodGateEligible/);
     assert.match(gate, /You have reached the standing required/);
-    assert.match(gate, /The Greenwood now opens/);
+    assert.match(gate, /CANOPY_DISPLAY\.nowOpens/);
     assert.match(gate, /\[\s*CROSS\s*\]/);
     assert.doesNotMatch(gate, /auto.?admit/i);
 
     // Law + lore both present
-    assert.match(gate, /The Greenwood remembers/);
+    assert.match(gate, /CANOPY_DISPLAY\.remembers/);
     assert.match(gate, /THE LAW/);
 
     // Language: one word, one action — no ENTER overload for auth/membership

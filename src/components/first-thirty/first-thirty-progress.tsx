@@ -30,13 +30,13 @@ export function FirstThirtyProgressPanel({
   if (progress.greenwoodOpen) {
     return (
       <div className="ft-progress ft-progress--open">
-        <p className="ft-progress__title">THE GREENWOOD IS OPEN</p>
+        <p className="ft-progress__title">{FIRST_THIRTY_JOURNEY_COPY.openTitle}</p>
         <p className="ft-progress__open-body">
           {FIRST_THIRTY_JOURNEY_COPY.openBody}
         </p>
         <p className="ft-progress__cta">
           <Link href={FIRST_THIRTY_GREENWOOD_HREF} className="btn-text">
-            [ WALK TO THE GREENWOOD ]
+            {FIRST_THIRTY_JOURNEY_COPY.walkToGreenwood}
           </Link>
         </p>
       </div>
@@ -100,7 +100,7 @@ export function FirstThirtyProgressPanel({
       ) : null}
       {until > 0 && progress.nextMilestone !== "first_deed" ? (
         <p className="muted ft-progress__until">
-          {until} MORE UNTIL THE GREENWOOD OPENS
+          {FIRST_THIRTY_JOURNEY_COPY.untilCanopyOpens(until)}
         </p>
       ) : null}
     </div>

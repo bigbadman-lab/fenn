@@ -144,7 +144,7 @@ const DESKTOP_LINKS: readonly MapLink[] = [
   { label: "[ the book ]", href: "/book", c: "book" },
   { label: "[ the oak ]", href: "/oak", c: "oak" },
   {
-    label: "[ the greenwood ]",
+    label: "[ the canopy ]",
     href: "/greenwood?crossing=1",
     c: "leaf",
   },
@@ -206,7 +206,7 @@ const DESKTOP_LINES: string[] = [
   fit("                    Y Y ^^^ ^^^ [|||] ^^^ ^^^ Y Y ^^^ Y ^^^ ^^^"),
   fit("                   ^^^ Y ^^^ ^^ [|||] ^^ ^^^ Y ^^^ ^^^ ^^^ ^^^"),
   fit("                  ^^^ ^^^ ^^^ ^^[|||]^^ ^^^ ^^^ ^^^ ^^^ ^^^ ^^^"),
-  fit("                            [ the greenwood ]"),
+  fit("                            [ the canopy ]"),
   fit("                          the wood remembers."),
   "",
   place(
@@ -277,7 +277,7 @@ const MOBILE_LINES: string[] = [
     ".................",
     MOBILE_WIDTH,
   ),
-  place("  |||||", "\\", "[ the greenwood ]", MOBILE_WIDTH),
+  place("  |||||", "\\", "[ the canopy ]", MOBILE_WIDTH),
   place(
     "[ the commons ]{~~~}",
     "--/",

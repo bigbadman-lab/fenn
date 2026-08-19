@@ -14,40 +14,40 @@ const RETRIEVAL_ACCEPTANCE: readonly {
   facts: readonly RegExp[];
 }[] = [
   {
-    query: "What is $FENN?",
+    query: "What is $VELL?",
     facts: [
-      /\$FENN is the on-chain token/i,
+      /\$VELL is the on-chain token/i,
       /Robinhood Chain/i,
       /ERC-20/i,
       /1,000,000,000/,
     ],
   },
   {
-    query: "What chain is FENN on?",
+    query: "What chain is VELL on?",
     facts: [/Robinhood Chain/i, /4663/],
   },
   {
-    query: "How many FENN exist?",
+    query: "How many VELL exist?",
     facts: [/1,000,000,000/, /Total supply/i],
   },
   {
-    query: "How many decimals does FENN have?",
+    query: "How many decimals does VELL have?",
     facts: [/Decimals:\s*18/i],
   },
   {
-    query: "Is LEAF the same as FENN?",
+    query: "Is LEAF the same as VELL?",
     facts: [
       /LEAF is not/i,
       /not an ERC-20/i,
-      /does not mean owning \$FENN/i,
+      /does not mean owning \$VELL/i,
     ],
   },
   {
-    query: "Can I swap my LEAF for FENN?",
-    facts: [/not automatically convertible|redeemable for \$FENN/i],
+    query: "Can I swap my LEAF for VELL?",
+    facts: [/not automatically convertible|redeemable for \$VELL/i],
   },
   {
-    query: "Where was FENN launched?",
+    query: "Where was VELL launched?",
     facts: [
       /through PONS/i,
       /launchpad/i,
@@ -62,9 +62,9 @@ const RETRIEVAL_ACCEPTANCE: readonly {
     ],
   },
   {
-    query: "Does PONS control FENN?",
+    query: "Does PONS control VELL?",
     facts: [
-      /not FENN's owner/i,
+      /not VELL's owner/i,
       /does not gain ongoing economic authority/i,
       /not the Treasury/i,
       /does not become the Purse/i,
@@ -77,7 +77,7 @@ const RETRIEVAL_ACCEPTANCE: readonly {
   {
     query: "What is the Purse?",
     facts: [
-      /finite body of \$FENN/i,
+      /finite body of \$VELL/i,
       /not the Treasury/i,
       /10,000,000/,
       /one percent/i,
@@ -85,7 +85,7 @@ const RETRIEVAL_ACCEPTANCE: readonly {
     ],
   },
   {
-    query: "What is the FENN contract?",
+    query: "What is the VELL contract?",
     facts: [
       /does not include the official contract address/i,
       /trusted live state/i,
@@ -94,7 +94,7 @@ const RETRIEVAL_ACCEPTANCE: readonly {
     ],
   },
   {
-    query: "Has FENN launched?",
+    query: "Has VELL launched?",
     facts: [
       /does not by itself mean the official live contract is configured/i,
       /trusted live state/i,
@@ -107,7 +107,7 @@ describe("P2D fenn.token.identity canon sheet", () => {
     const doc = getFennCanonDocument("fenn.token.identity");
     assert.ok(doc);
     assert.equal(doc.visibility, "public");
-    assert.equal(doc.title, "$FENN");
+    assert.equal(doc.title, "$VELL");
     assert.ok(listFennCanonDocuments().some((d) => d.key === "fenn.token.identity"));
   });
 
@@ -135,6 +135,6 @@ describe("P2D fenn.token.identity canon sheet", () => {
   it("does not invent market data or LEAF conversion", () => {
     const doc = getFennCanonDocument("fenn.token.identity")!;
     assert.match(doc.content, /Do not invent price/i);
-    assert.doesNotMatch(doc.content, /LEAF\s*→\s*\$FENN|swap LEAF for \$FENN at/i);
+    assert.doesNotMatch(doc.content, /LEAF\s*→\s*\$VELL|swap LEAF for \$VELL at/i);
   });
 });

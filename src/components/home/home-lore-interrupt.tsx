@@ -1,4 +1,5 @@
 import { LORE_INTERRUPT_ASCII } from "@/content/home-ascii";
+import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
 
 export function HomeLoreInterrupt() {
   return (
@@ -8,12 +9,12 @@ export function HomeLoreInterrupt() {
       </pre>
       <p className="muted">a hoard is a failure of circulation.</p>
       <p className="home-lore__offset muted">
-        the road is free. the greenwood is earned.
+        the road is free. {CANOPY_DISPLAY.the} is earned.
       </p>
       <p className="home-lore__drift muted">
         The Treasury is where things arrive.
         <br />
-        The Commons is what FENN has committed to move.
+        The Commons is what VELL has committed to move.
       </p>
       <p className="home-lore__aside muted">
         the man in the castle built a road.

@@ -142,8 +142,8 @@ describe("toTrackedAsset", () => {
   it("null contract alone does not mark dormant FENN as native", () => {
     const asset = toTrackedAsset({
       id: "fenn",
-      symbol: "FENN",
-      name: "FENN",
+      symbol: "VELL",
+      name: "VELL",
       chain_id: ROBINHOOD_CHAIN_ID,
       contract_address: null,
       decimals: 18,

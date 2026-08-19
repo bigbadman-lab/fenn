@@ -240,7 +240,7 @@ describe("Stage 2 public fact readers", () => {
   it("token reader uses official public token source", async () => {
     const fact = await readOfficialFennToken({
       loadToken: async () => ({
-        symbol: "FENN",
+        symbol: "VELL",
         chainId: 4663,
         contractAddress: "0x" + "ab".repeat(20),
         explorerUrl: "https://example.invalid/token",

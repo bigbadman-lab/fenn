@@ -17,7 +17,7 @@ const fennPrivyLogo = (
     height={68}
     viewBox="0 0 72 68"
     role="img"
-    aria-label="FENN"
+    aria-label="VELL"
   >
     <text
       fill="#E7E3D4"
@@ -38,7 +38,7 @@ const fennPrivyLogo = (
         {"    ||"}
       </tspan>
       <tspan x={4} y={62}>
-        {"   FENN"}
+        {"   VELL"}
       </tspan>
     </text>
   </svg>

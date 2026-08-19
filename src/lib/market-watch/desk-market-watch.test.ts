@@ -271,7 +271,7 @@ describe("Market Watch Desk cursor state and errors", () => {
     );
     assert.match(
       mapMarketWatchErrorPlain("token_address_mismatch_official") ?? "",
-      /OFFICIAL \$FENN/,
+      /OFFICIAL \$VELL/,
     );
   });
 

@@ -460,8 +460,8 @@ describe("P2A Purse Executor runtime", () => {
         } as never,
       },
       getOfficialToken: async () => ({
-        symbol: "FENN",
-        name: "FENN",
+        symbol: "VELL",
+        name: "VELL",
         chainId: 1,
         contractAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         decimals: 18,
@@ -533,8 +533,8 @@ describe("P2A Purse Executor runtime", () => {
         economicSettlementEnabled: false,
       }),
       getOfficialToken: async () => ({
-        symbol: "FENN",
-        name: "FENN",
+        symbol: "VELL",
+        name: "VELL",
         chainId: 1,
         contractAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         decimals: 18,
@@ -593,8 +593,8 @@ describe("P2A Purse Executor runtime", () => {
         economicSettlementEnabled: true,
       }),
       getOfficialToken: async () => ({
-        symbol: "FENN",
-        name: "FENN",
+        symbol: "VELL",
+        name: "VELL",
         chainId: 1,
         contractAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         decimals: 18,
@@ -675,7 +675,7 @@ describe("P2A Purse Executor runtime", () => {
 
     assert.doesNotThrow(() =>
       validateXAgentRuntimeEnv({
-        NEXT_PUBLIC_SITE_URL: "https://imfenn.com",
+        NEXT_PUBLIC_SITE_URL: "https://askvell.com",
         NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
         NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon",
         NEXT_PUBLIC_PRIVY_APP_ID: "privy",

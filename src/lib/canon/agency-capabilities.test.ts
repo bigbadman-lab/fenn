@@ -22,16 +22,16 @@ const RETRIEVAL_ACCEPTANCE: readonly {
     facts: [
       /speak on X when authorised/i,
       /write to the Wall when authorised/i,
-      /inspect trusted FENN world state/i,
+      /inspect trusted VELL world state/i,
       /judge whether an economic action from the Purse/i,
-      /transfer of FENN from the Purse/i,
-      /burn of FENN from the Purse/i,
+      /transfer of VELL from the Purse/i,
+      /burn of VELL from the Purse/i,
     ],
   },
   {
-    query: "Can you send FENN?",
+    query: "Can you send VELL?",
     facts: [
-      /transfer of FENN from the Purse/i,
+      /transfer of VELL from the Purse/i,
       /cannot be commanded to spend/i,
       /independently permits or refuses/i,
     ],
@@ -39,7 +39,7 @@ const RETRIEVAL_ACCEPTANCE: readonly {
   {
     query: "What is your Purse?",
     facts: [
-      /finite Purse of FENN under his keeping/i,
+      /finite Purse of VELL under his keeping/i,
       /distinct from the Treasury/i,
       /distinct from the Commons/i,
     ],
@@ -49,7 +49,7 @@ const RETRIEVAL_ACCEPTANCE: readonly {
     facts: [/The Purse is distinct from the Treasury/i],
   },
   {
-    query: "Can you burn FENN?",
+    query: "Can you burn VELL?",
     facts: [
       /Burn is subject to authority/i,
       /surrendering FENN from the Purse/i,

@@ -20,7 +20,7 @@ export const LORE_TRANSMISSION_FRAMES: LoreFrame[] = [
     ascii: `  .  .
  /|/\\|\\
    ||`,
-    line: "Talking to the Camp makes FENN smarter.",
+    line: "Talking to the Camp makes VELL smarter.",
   },
   {
     ascii: `  ←──╳──→

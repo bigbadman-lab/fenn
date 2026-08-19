@@ -169,13 +169,13 @@ export const HOMEPAGE_WELCOME = {
   title: "WELCOME, STRANGER.",
   lines: [
     "You stand at the edge of something old.",
-    "FENN is a living AI-native world that watches,",
+    "VELL is a living AI-native world that watches,",
     "remembers and changes through its people.",
   ],
   deeds: [
     "Do deeds. Speak in Camp. Earn LEAF.",
-    "When FENN is satisfied, the Greenwood opens.",
-    "What FENN commits to move is named in the Commons.",
+    "When VELL is satisfied, the Greenwood opens.",
+    "What VELL commits to move is named in the Commons.",
   ],
   closing: "This is not a game. This is how a world remembers.",
   enter: "[ EXPLORE THE MAP ]",
