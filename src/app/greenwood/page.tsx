@@ -5,7 +5,6 @@ import { GreenwoodGateway } from "@/components/greenwood/greenwood-gateway";
 import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import { getConfiguredGreenwoodLifetimeThreshold } from "@/lib/leaf/standing";
 import { buildPublicMetadata } from "@/lib/site/metadata";
-
 import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
 
 export const metadata: Metadata = buildPublicMetadata({
@@ -13,8 +12,6 @@ export const metadata: Metadata = buildPublicMetadata({
   description: "The path is free to see. Entry is earned.",
   path: "/greenwood",
 });
-
-import { CANOPY_DISPLAY } from "@/lib/site/world-vocabulary";
 
 /** Threshold law is configuration — never invent a number at build time. */
 export const dynamic = "force-dynamic";

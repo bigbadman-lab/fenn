@@ -9,6 +9,7 @@ import { useFirstThirtyProgress } from "@/hooks/use-first-thirty";
 import {
   FIRST_THIRTY_DEEDS_COPY,
   FIRST_THIRTY_GREENWOOD_HREF,
+  FIRST_THIRTY_JOURNEY_COPY,
   firstDeedEventFromTransition,
   firstThirtyEventSessionKey,
   shouldAnnounceFirstThirtyEvent,
