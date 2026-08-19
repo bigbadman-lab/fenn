@@ -11,15 +11,6 @@ export function SiteFooter() {
           @thisisvell
         </a>
       </p>
-      <p>
-        <a
-          href="https://t.me/fennspeaks"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          vell speaks
-        </a>
-      </p>
       <p className="muted">what the crown keeps, the canopy shares.</p>
       <p className="muted">the wood was listening.</p>
     </footer>
