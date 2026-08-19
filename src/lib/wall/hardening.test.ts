@@ -228,7 +228,7 @@ describe("Stage 10.5.4 world surface regressions", () => {
     );
     assert.match(dir, /number: "08"/);
     assert.match(dir, /label: "the wall"/);
-    assert.match(dir, /only fenn writes here/);
+    assert.match(dir, /only vell writes here/);
     const wallEntry = dir.slice(
       dir.indexOf('number: "08"'),
       dir.indexOf("];", dir.indexOf('number: "08"')),

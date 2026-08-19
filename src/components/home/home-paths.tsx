@@ -18,15 +18,7 @@ type DirectoryEntry = {
   href: string;
   tone: DirectoryTone;
   note: string;
-  region:
-    | "camp"
-    | "greenwood"
-    | "deeds"
-    | "commons"
-    | "ledger"
-    | "book"
-    | "oak"
-    | "wall";
+  featured?: boolean;
 };
 
 const DIRECTORY: DirectoryEntry[] = [
@@ -36,7 +28,6 @@ const DIRECTORY: DirectoryEntry[] = [
     href: "/camp",
     tone: "camp",
     note: "the fire is low.",
-    region: "camp",
   },
   {
     number: "02",
@@ -44,7 +35,6 @@ const DIRECTORY: DirectoryEntry[] = [
     href: "/deeds",
     tone: "deeds",
     note: "work waits.",
-    region: "deeds",
   },
   {
     number: "03",
@@ -52,7 +42,7 @@ const DIRECTORY: DirectoryEntry[] = [
     href: "/greenwood?crossing=1",
     tone: "greenwood",
     note: "the road continues upward.",
-    region: "greenwood",
+    featured: true,
   },
   {
     number: "04",
@@ -60,7 +50,6 @@ const DIRECTORY: DirectoryEntry[] = [
     href: "/book",
     tone: "book",
     note: "knowledge kept in the open.",
-    region: "book",
   },
   {
     number: "05",
@@ -68,7 +57,6 @@ const DIRECTORY: DirectoryEntry[] = [
     href: "/commons",
     tone: "commons",
     note: "what may move.",
-    region: "commons",
   },
   {
     number: "06",
@@ -76,7 +64,6 @@ const DIRECTORY: DirectoryEntry[] = [
     href: "/ledger",
     tone: "ledger",
     note: "what moved remains.",
-    region: "ledger",
   },
   {
     number: "07",
@@ -84,7 +71,6 @@ const DIRECTORY: DirectoryEntry[] = [
     href: "/oak",
     tone: "oak",
     note: "it was here before you.",
-    region: "oak",
   },
   {
     number: "08",
@@ -92,120 +78,76 @@ const DIRECTORY: DirectoryEntry[] = [
     href: "/wall",
     tone: "wall",
     note: "only vell writes here.",
-    region: "wall",
   },
 ];
 
-const GREENWOOD_ASCII = `  ^^  Y  ^^^  Y
-^^^   [|||]   ^^^
- Y    [|||]    Y`;
-
-function DirectoryCell({ entry }: { entry: DirectoryEntry }) {
-  const isGreenwood = entry.region === "greenwood";
-
-  return (
-    <div
-      className={`old-dir__cell old-dir__cell--${entry.region} old-dir__cell--${entry.tone}`}
-    >
-      <span className="old-dir__num" aria-hidden="true">
-        {entry.number}
-      </span>
-      <Link
-        href={entry.href}
-        className={`old-dir__link old-dir__link--${entry.tone}`}
-      >
-        [ {entry.label} ]
-      </Link>
-      {isGreenwood ? (
-        <pre className="ascii old-dir__forest" aria-hidden="true">
-          {GREENWOOD_ASCII}
-        </pre>
-      ) : null}
-      <p className="old-dir__note">{entry.note}</p>
-    </div>
-  );
-}
-
 /**
- * Homepage bottom navigation — THE OLD DIRECTORY.
- * One hard-edged terminal panel; irregular inner partitions.
+ * Homepage bottom navigation — VELL directory index.
  */
 export function HomePaths() {
-  const byRegion = Object.fromEntries(
-    DIRECTORY.map((entry) => [entry.region, entry]),
-  ) as Record<DirectoryEntry["region"], DirectoryEntry>;
-
   return (
     <section
-      className="home-section home-paths old-dir"
-      aria-labelledby="old-dir-title"
+      className="home-section home-paths vell-dir"
+      aria-labelledby="vell-dir-title"
     >
-      <div className="old-dir__panel">
-        <header className="old-dir__head">
-          <h2 id="old-dir-title" className="old-dir__title">
-            START WHEREVER YOU LIKE
-          </h2>
-          <p className="old-dir__mark" aria-hidden="true">
-            VELL // DIRECTORY
-          </p>
-        </header>
+      <header className="vell-dir__head">
+        <p className="vell-dir__kicker" aria-hidden="true">
+          VELL // DIRECTORY
+        </p>
+        <h2 id="vell-dir-title" className="vell-dir__title">
+          START WHEREVER YOU LIKE
+        </h2>
+      </header>
 
-        <div className="old-dir__body" role="navigation" aria-label="directory">
-          <DirectoryCell entry={byRegion.camp} />
-          <DirectoryCell entry={byRegion.greenwood} />
-          <DirectoryCell entry={byRegion.deeds} />
-          <DirectoryCell entry={byRegion.commons} />
-          <DirectoryCell entry={byRegion.ledger} />
-          <DirectoryCell entry={byRegion.book} />
-          <DirectoryCell entry={byRegion.oak} />
-          <DirectoryCell entry={byRegion.wall} />
-        </div>
-
-        <div className="old-dir__ask">
-          <span className="old-dir__ask-prefix" aria-hidden="true">
-            &gt;
-          </span>
-          <a
-            href="https://x.com/thisisvell"
-            className="old-dir__ask-link"
-            target="_blank"
-            rel="noopener noreferrer"
+      <nav className="vell-dir__grid" aria-label="directory">
+        {DIRECTORY.map((entry) => (
+          <Link
+            key={entry.href}
+            href={entry.href}
+            className={[
+              "vell-dir__entry",
+              `vell-dir__entry--${entry.tone}`,
+              entry.featured ? "vell-dir__entry--featured" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
           >
-            ask vell
-          </a>
-          <span className="old-dir__ask-sep" aria-hidden="true">
-            ·
-          </span>
-          <a
-            href="https://t.me/fennspeaks"
-            className="old-dir__ask-link"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            fenn speaks
-          </a>
-          <span className="old-dir__ask-cursor" aria-hidden="true">
-            _
-          </span>
-        </div>
+            <span className="vell-dir__num" aria-hidden="true">
+              {entry.number}
+            </span>
+            <span className="vell-dir__label">{entry.label}</span>
+            <span className="vell-dir__note">{entry.note}</span>
+          </Link>
+        ))}
+      </nav>
 
-        <aside className="old-dir__leaf" aria-label="leaf record">
-          <p className="old-dir__leaf-label" aria-hidden="true">
-            LEAF RECORD
-          </p>
-          <p className="old-dir__leaf-copy">
-            LEAF measures what you gave {CANOPY_DISPLAY.the}.
-            <br />
-            It does not promise what {CANOPY_DISPLAY.the} will give you back.
-          </p>
-        </aside>
-
-        <div className="old-dir__foot" aria-hidden="true">
-          <span className="old-dir__foot-left">└──</span>
-          <span className="old-dir__foot-gap"> </span>
-          <span className="old-dir__foot-right">──────────────┘</span>
-        </div>
+      <div className="vell-dir__prompt" aria-label="contact">
+        <span className="vell-dir__prompt-prefix" aria-hidden="true">
+          &gt;
+        </span>
+        <a
+          href="https://x.com/thisisvell"
+          className="vell-dir__prompt-link"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ask vell
+        </a>
+        <span className="vell-dir__cursor" aria-hidden="true">
+          _
+        </span>
       </div>
+
+      <aside className="vell-dir__leaf" aria-label="leaf record">
+        <p className="vell-dir__leaf-label" aria-hidden="true">
+          LEAF RECORD
+        </p>
+        <p className="vell-dir__leaf-copy">
+          LEAF measures what you gave {CANOPY_DISPLAY.the}.
+          <br />
+          It does not promise what {CANOPY_DISPLAY.the} will give you back.
+        </p>
+      </aside>
     </section>
   );
 }

@@ -56,7 +56,7 @@ export function Providers({ children }: ProvidersProps) {
         appearance: {
           // Night background — Privy modulates FG/BG from this hex.
           theme: "#0A0B09",
-          accentColor: "#B7F34A",
+          accentColor: "#9945FF",
           logo: fennPrivyLogo,
           landingHeader: "",
           loginMessage: "bring a wallet.",
