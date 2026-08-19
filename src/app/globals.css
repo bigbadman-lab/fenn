@@ -971,6 +971,94 @@ button.btn-text:disabled {
   background: transparent;
 }
 
+/* Homepage top — official contract strip (live DB, no redeploy) */
+.home-header-contract {
+  margin: 0 0 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--color-hoard) 32%, transparent);
+  background: color-mix(in srgb, #050504 90%, var(--color-night));
+}
+
+.home-header-contract__inner {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "meta meta"
+    "title title"
+    "address actions"
+    "feedback feedback";
+  gap: 0.2rem 0.85rem;
+  align-items: center;
+  padding: 0.55rem 0.85rem;
+}
+
+.home-header-contract__meta {
+  grid-area: meta;
+  margin: 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-header-contract__title {
+  grid-area: title;
+  margin: 0 0 0.15rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-hoard);
+}
+
+.home-header-contract__address {
+  grid-area: address;
+  margin: 0;
+}
+
+.home-header-contract__address-code {
+  font-family: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+}
+
+.home-header-contract__actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  justify-content: flex-end;
+}
+
+.home-header-contract__feedback {
+  grid-area: feedback;
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.home-header-contract__pending {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 40rem) {
+  .home-header-contract__inner {
+    grid-template-columns: auto auto 1fr auto;
+    grid-template-areas:
+      "meta title address actions"
+      "feedback feedback feedback feedback";
+    gap: 0.35rem 1rem;
+  }
+
+  .home-header-contract__title {
+    margin: 0;
+  }
+
+  .home-header-contract__pending {
+    grid-column: meta / -1;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Homepage live ticker — slim wire inside the hero frame              */
 /* ------------------------------------------------------------------ */

@@ -235,15 +235,15 @@ describe("official FENN source safety + surfaces", () => {
     assert.match(page, /WORLD_PULSE_COMMONS_MS/);
   });
 
-  it("homepage world/map section has no public contract strip", () => {
+  it("homepage header shows official contract from live DB poll", () => {
     const page = readFileSync(join(repo, "src/app/page.tsx"), "utf8");
     const identity = readFileSync(
       join(repo, "src/components/home/home-identity.tsx"),
       "utf8",
     );
+    assert.match(page, /HomeHeaderContract/);
     assert.match(page, /HomeIdentity/);
     assert.match(page, /revalidate\s*=\s*60/);
-    assert.doesNotMatch(page, /HomeOfficialContract|OfficialFennContract/);
     assert.match(page, /HomeFirstThirty[\s\S]*HomeIdentity[\s\S]*HomeOutlawRegister/);
     assert.doesNotMatch(identity, /HomeOfficialContract|OfficialFennContract/);
     assert.match(

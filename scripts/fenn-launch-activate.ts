@@ -1,11 +1,12 @@
 /**
- * P2C.2 — One-command official FENN contract configuration.
+ * P2C.2 — One-command official $VELL contract configuration.
  *
  * Usage:
- *   npm run launch:activate -- --contract 0x…
+ *   npm run vell:activate -- --contract 0x…
+ *   npm run launch:activate -- --contract 0x…   (alias)
  *
- * Updates only dormant official treasury_assets.contract_address.
- * Does not activate settlement, fund Purse, or broadcast.
+ * Writes treasury_assets.contract_address on the dormant official row.
+ * Homepage header polls /api/home/official-token — no redeploy required.
  */
 
 // Force ES module scope so Next/tsc does not merge `main` with sibling scripts.

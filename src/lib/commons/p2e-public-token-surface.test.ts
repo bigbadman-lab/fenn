@@ -39,19 +39,19 @@ describe("P2E stable public identity constants", () => {
 });
 
 describe("P2E public token surface wiring", () => {
-  it("homepage and commons preserve live update path without public contract strip", () => {
+  it("homepage header polls live official token without redeploy", () => {
     const page = read("src/app/page.tsx");
-    const commons = read("src/app/commons/page.tsx");
-    const identity = read("src/components/home/home-identity.tsx");
-    assert.match(page, /revalidate\s*=\s*60/);
-    assert.match(page, /HomeIdentity/);
-    assert.doesNotMatch(page, /HomeOfficialContract|OfficialFennContract/);
-    assert.doesNotMatch(identity, /HomeOfficialContract|OfficialFennContract/);
-    assert.match(identity, /home-map-preface[\s\S]*FennWorldMap/);
-    assert.match(commons, /dynamic\s*=\s*"force-dynamic"/);
-    assert.match(commons, /FennTokenIdentity/);
-    assert.doesNotMatch(commons, /OfficialFennContract/);
-    assert.match(commons, /officialToken != null/);
+    const header = read("src/components/home/home-header-contract.tsx");
+    const route = read("src/app/api/home/official-token/route.ts");
+    assert.match(page, /HomeHeaderContract/);
+    assert.match(page, /HomeHeaderContract[\s\S]*HomeLiveTicker/);
+    assert.match(header, /\/api\/home\/official-token/);
+    assert.match(header, /OFFICIAL CONTRACT/);
+    assert.match(header, /NOT YET INSCRIBED/);
+    assert.match(header, /FENN_TOKEN_PUBLIC_TICKER/);
+    assert.match(route, /getPublicOfficialFennToken/);
+    assert.match(route, /no-store/);
+    assert.doesNotMatch(header, /0x[a-fA-F0-9]{40}/);
   });
 });
 
@@ -75,7 +75,7 @@ describe("P2E Commons $VELL identity surface", () => {
     assert.match(purse, /awaiting official token/);
     assert.match(purse, /LIVE BALANCES/);
     assert.match(purse, /ETH HELD/);
-    assert.match(purse, /FENN HELD/);
+    assert.match(purse, /VELL HELD/);
     assert.doesNotMatch(purse, /CURRENT \$VELL BALANCE|CURRENT \$VELL/);
     assert.match(purse, /not the \$VELL token contract/);
     assert.match(purse, /FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED/);

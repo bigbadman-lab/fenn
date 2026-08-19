@@ -4,8 +4,8 @@ Operations only. Contract address remains in Supabase `treasury_assets` — neve
 
 Canonical law: [P2C audit](./agent-purse-p1c.md) + `src/lib/treasury/official-token.ts` + P2A Purse Executor + P0 `launch:fund-purse`.
 
-**Primary contract configuration:** `npm run launch:activate -- --contract <addr>`  
-**Primary Purse funding:** `npm run launch:fund-purse` (local Treasury signer only)
+**Primary contract configuration:** `npm run vell:activate -- --contract <addr>` (alias: `launch:activate`)  
+**Homepage:** header polls live DB — no redeploy after activate.
 
 ---
 
@@ -45,7 +45,7 @@ Expect `official_fenn=unresolved settlement=idle chainBroadcastAttempted=false`.
 3. **Configure official identity in DB**:
 
 ```bash
-npm run launch:activate -- --contract 0xYOUR_VERIFIED_FENN_CONTRACT
+npm run vell:activate -- --contract 0xYOUR_VERIFIED_VELL_CONTRACT
 ```
 
 4. **Do not fund** until the address is confirmed correct on Blockscout.

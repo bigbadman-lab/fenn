@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { HomeFirstThirty } from "@/components/home/home-first-thirty";
 import { HomeGreenwoodTeaser } from "@/components/home/home-greenwood-teaser";
+import { HomeHeaderContract } from "@/components/home/home-header-contract";
 import { HomeIdentity } from "@/components/home/home-identity";
 import { HomeLiveTicker } from "@/components/home/home-live-ticker";
 import { HomeLoreInterrupt } from "@/components/home/home-lore-interrupt";
@@ -25,6 +26,7 @@ export const revalidate = 60;
 export default function HomePage() {
   return (
     <div className="home">
+      <HomeHeaderContract />
       <HomeLiveTicker />
 
       <div className="home-stage">

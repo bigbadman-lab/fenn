@@ -157,8 +157,9 @@ function successConfigured(
     next:
       status === "CONFIGURED"
         ? [
+            "homepage header will show the contract within ~30s (no redeploy)",
             "wait for Purse Executor tick",
-            "fund Purse with exactly 10,000,000 FENN",
+            "fund Purse with exactly 10,000,000 VELL",
             "run: npm run launch:check",
           ]
         : null,
@@ -476,6 +477,7 @@ export async function runFennLaunchActivate(
 
   return successConfigured(contractAddress, true, "CONFIGURED", [
     "updated treasury_assets.contract_address only on dormant official FENN row",
+    "homepage polls /api/home/official-token — refresh to verify",
   ]);
 }
 
