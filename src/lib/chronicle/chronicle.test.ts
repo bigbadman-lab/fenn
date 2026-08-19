@@ -16,7 +16,7 @@ import {
   buildDailyChronicleUserPayload,
 } from "./generate-prompt";
 import { validateGeneratedAgainstSnapshot } from "./generate";
-import { chronicleEntryHeading } from "./format";
+import { chronicleEntryHeading, formatChronicleBodyDisplay } from "./format";
 import { isQuietDay, snapshotFactCatalog } from "./snapshot";
 import type { DailyWorldSnapshot, PublicChronicleEntry } from "./types";
 
@@ -53,10 +53,10 @@ describe("Oak doctrine", () => {
   it("includes the ten approved rings with growth and crypto doctrine", () => {
     const titles = OAK_SECTIONS.map((s) => s.title);
     assert.deepEqual(titles, [
-      "WHAT IS FENN?",
+      "WHAT IS VELL?",
       "THE WORLD EXISTS",
-      "FENN REMEMBERS",
-      "FENN HAS SKILLS",
+      "VELL REMEMBERS",
+      "VELL HAS SKILLS",
       "THE WORLD BUILDS ITSELF",
       "LEAF & STANDING",
       "THE GREENWOOD",
@@ -112,6 +112,7 @@ describe("Living Book generation grounding", () => {
     const system = buildDailyChronicleSystemPrompt();
     assert.match(system, /may NOT invent facts/i);
     assert.match(system, /DATABASE SUPPLIES THE HISTORY/);
+    assert.match(system, /— VELL/);
     assert.doesNotMatch(system, /Stage 12 effect|executePending/i);
 
     const snap = quietSnapshot({ campMessages: 2, quiet: false });
@@ -128,7 +129,7 @@ describe("Living Book generation grounding", () => {
         validateGeneratedAgainstSnapshot(
           {
             title: "BUSY",
-            body: "122 LEAF entered the Ledger.\n\n— FENN",
+            body: "122 LEAF entered the Ledger.\n\n— VELL",
             referencedFacts: ["quiet"],
             tone: "quiet",
           },
@@ -143,7 +144,7 @@ describe("Living Book generation grounding", () => {
     validateGeneratedAgainstSnapshot(
       {
         title: "VERY LITTLE HAPPENED",
-        body: "The road was quiet.\n\nI watched anyway.\n\n— FENN",
+        body: "The road was quiet.\n\nI watched anyway.\n\n— VELL",
         referencedFacts: ["quiet", "coveredDate"],
         tone: "quiet",
       },
@@ -192,8 +193,24 @@ describe("Living Book persistence and surfaces", () => {
     );
     const errors = readFileSync(join(repo, "src/lib/chronicle/errors.ts"), "utf8");
     assert.match(routeErrors, /deskFacingChronicleError/);
-    assert.match(errors, /FENN could not write this entry to the Book/);
-    assert.match(errors, /FENN could not compose this entry/);
+    assert.match(errors, /VELL could not write this entry to the Book/);
+    assert.match(errors, /VELL could not compose this entry/);
+  });
+
+  it("normalizes legacy FENN signatures on public display", () => {
+    assert.equal(
+      formatChronicleBodyDisplay("The road was quiet.\n\n— FENN"),
+      "The road was quiet.\n\n— VELL",
+    );
+    assert.equal(
+      formatChronicleBodyDisplay("Already signed.\n\n— VELL"),
+      "Already signed.\n\n— VELL",
+    );
+  });
+
+  it("Book page renders entries with VELL display normalization", () => {
+    const page = readFileSync(join(repo, "src/app/book/page.tsx"), "utf8");
+    assert.match(page, /formatChronicleBodyDisplay/);
   });
 
   it("Book page lists reverse-chronological public entries without Realtime or Stage 12 execute", () => {

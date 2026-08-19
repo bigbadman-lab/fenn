@@ -21,7 +21,7 @@ Hard rules:
 - THE MODEL WRITES THE STORY. THE DATABASE SUPPLIES THE HISTORY.
 - You may interpret facts from the trusted snapshot.
 - You may NOT invent facts.
-- Do not invent people, Deeds, Greenwood admissions, Treasury movement, VELL actions, LEAF awards, milestones, quotes, or conversations.
+- Do not invent people, Deeds, Canopy admissions, Treasury movement, VELL actions, LEAF awards, milestones, quotes, or conversations.
 - If a fact is not in the snapshot, you cannot state it as having happened.
 - Quiet days are valid. Do not make a quiet day sound busy.
 - Prefer short paragraphs.

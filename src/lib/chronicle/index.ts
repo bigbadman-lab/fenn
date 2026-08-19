@@ -21,7 +21,15 @@ export {
 } from "@/lib/chronicle/generate";
 export { buildDailyChronicleSystemPrompt, buildDailyChronicleUserPayload } from "@/lib/chronicle/generate-prompt";
 export { runDailyChronicle } from "@/lib/chronicle/run-daily";
-export { chronicleEntryHeading, chronicleKindLabel } from "@/lib/chronicle/format";
+export {
+  chronicleEntryHeading,
+  chronicleKindLabel,
+  formatChronicleBodyDisplay,
+} from "@/lib/chronicle/format";
+export {
+  CHRONICLE_AUTHOR_NAME,
+  CHRONICLE_AUTHOR_SIGNATURE,
+} from "@/lib/chronicle/types";
 export type {
   ChronicleKind,
   DailyWorldSnapshot,

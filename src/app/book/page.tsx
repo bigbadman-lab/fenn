@@ -5,6 +5,7 @@ import { AsciiPageTitle } from "@/components/ui/ascii-page-title";
 import {
   chronicleEntryHeading,
   chronicleKindLabel,
+  formatChronicleBodyDisplay,
   listPublicChronicleEntries,
 } from "@/lib/chronicle";
 import { ChronicleError } from "@/lib/chronicle/errors";
@@ -101,7 +102,9 @@ THE OAK holds what is true.`}
                   entry
                 </h2>
               )}
-              <pre className="ascii book-entry__body">{entry.body}</pre>
+              <pre className="ascii book-entry__body">
+                {formatChronicleBodyDisplay(entry.body)}
+              </pre>
             </section>
           ))
         )}

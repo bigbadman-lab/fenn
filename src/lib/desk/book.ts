@@ -105,7 +105,7 @@ export async function getDeskBookHealth(
     recentDays,
     gapCount,
     cronHint:
-      "FENN is scheduled to write the previous day automatically. This page shows whether the entry was actually written.",
+      "VELL is scheduled to write the previous day automatically. This page shows whether the entry was actually written.",
     serverNow: now.toISOString(),
   };
 }

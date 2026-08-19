@@ -93,7 +93,7 @@ describe("LG5.5 Desk Book", () => {
     assert.match(lib, /Never overwrites|already_exists|fill-if-missing/i);
     assert.doesNotMatch(lib, /CRON_SECRET|OPENAI_API_KEY|prompt/);
     assert.doesNotMatch(generate, /CRON_SECRET|\/api\/cron/);
-    assert.match(panel, /Generate with FENN/);
+    assert.match(panel, /Generate with VELL/);
     assert.match(panel, /Already written|Entry written/);
     assert.doesNotMatch(panel, /confirm write/i);
     assert.doesNotMatch(panel, /Could not find the/);

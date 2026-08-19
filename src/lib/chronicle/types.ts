@@ -1,6 +1,10 @@
 export const CHRONICLE_KINDS = ["daily", "chronicle"] as const;
 export type ChronicleKind = (typeof CHRONICLE_KINDS)[number];
 
+/** Signature line appended to generated Book entries. */
+export const CHRONICLE_AUTHOR_SIGNATURE = "— VELL" as const;
+export const CHRONICLE_AUTHOR_NAME = "VELL" as const;
+
 export const CHRONICLE_PUBLIC_DEFAULT_LIMIT = 60;
 export const CHRONICLE_PUBLIC_MAX_LIMIT = 120;
 

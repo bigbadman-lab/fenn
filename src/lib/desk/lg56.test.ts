@@ -101,7 +101,7 @@ describe("LG5.6 confirmation consistency", () => {
     );
     assert.match(
       read("src/components/desk/desk-book-panel.tsx"),
-      /Generate with FENN/,
+      /Generate with VELL/,
     );
     assert.doesNotMatch(
       read("src/components/desk/desk-book-panel.tsx"),

@@ -8,6 +8,9 @@ import {
   buildDailyChronicleUserPayload,
 } from "@/lib/chronicle/generate-prompt";
 import {
+  CHRONICLE_AUTHOR_SIGNATURE,
+} from "@/lib/chronicle/types";
+import {
   assertNoAuthorityFields,
   dailyChronicleModelSchema,
   parseDailyChronicleModelOutput,
@@ -17,6 +20,7 @@ import type {
   DailyWorldSnapshot,
   GeneratedDailyChronicle,
 } from "@/lib/chronicle/types";
+import { chronicleBodyEndsWithAuthorSignature } from "@/lib/chronicle/format";
 
 export const DAILY_CHRONICLE_OPENAI_MODEL = "gpt-4o-mini";
 export const DAILY_CHRONICLE_MAX_COMPLETION_TOKENS = 900;
@@ -60,7 +64,7 @@ async function defaultCaller(args: {
     ],
     response_format: zodResponseFormat(
       dailyChronicleModelSchema,
-      "fenn_daily_chronicle",
+      "vell_daily_chronicle",
     ),
   });
 
@@ -133,10 +137,6 @@ export function validateGeneratedAgainstSnapshot(
       }
     }
   }
-
-  if (!generated.body.includes("FENN")) {
-    // Prefer signed entries; append if missing rather than fail.
-  }
 }
 
 export async function generateDailyChronicle(
@@ -163,10 +163,10 @@ export async function generateDailyChronicle(
     );
   }
 
-  if (!generated.body.trim().endsWith("FENN")) {
+  if (!chronicleBodyEndsWithAuthorSignature(generated.body)) {
     generated = {
       ...generated,
-      body: `${generated.body.trim()}\n\n— FENN`,
+      body: `${generated.body.trim()}\n\n${CHRONICLE_AUTHOR_SIGNATURE}`,
     };
   }
 
