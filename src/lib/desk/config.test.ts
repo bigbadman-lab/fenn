@@ -11,9 +11,8 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-const A = "0xABCDEF0123456789ABCDEF0123456789ABCDEF01";
-const A_LOWER = "0xabcdef0123456789abcdef0123456789abcdef01";
-const B = "0x0000000000000000000000000000000000000001";
+const A = "11111111111111111111111111111111";
+const B = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
 
 describe("desk allowlist config", () => {
   it("empty FENN_DESK_WALLETS yields no authorised wallets", () => {
@@ -22,16 +21,13 @@ describe("desk allowlist config", () => {
     assert.deepEqual(parseDeskWalletAllowlist(null), []);
   });
 
-  it("parses one and multiple comma-separated wallets to lowercase", () => {
-    assert.deepEqual(parseDeskWalletAllowlist(A), [A_LOWER]);
-    assert.deepEqual(parseDeskWalletAllowlist(`${A}, ${B}`), [
-      A_LOWER,
-      B.toLowerCase(),
-    ]);
+  it("parses one and multiple comma-separated Solana wallets", () => {
+    assert.deepEqual(parseDeskWalletAllowlist(A), [A]);
+    assert.deepEqual(parseDeskWalletAllowlist(`${A}, ${B}`), [A, B]);
   });
 
   it("duplicates collapse", () => {
-    assert.deepEqual(parseDeskWalletAllowlist(`${A},${A_LOWER}`), [A_LOWER]);
+    assert.deepEqual(parseDeskWalletAllowlist(`${A},${A}`), [A]);
   });
 
   it("malformed address fails closed", () => {
@@ -43,7 +39,7 @@ describe("desk allowlist config", () => {
 
   it("substring does not match", () => {
     const list = parseDeskWalletAllowlist(A);
-    assert.equal(isWalletInDeskAllowlist(A_LOWER.slice(2), list), false);
+    assert.equal(isWalletInDeskAllowlist(A.slice(2), list), false);
   });
 
   it("env example and server env keep Desk allowlist server-only", () => {
@@ -51,7 +47,7 @@ describe("desk allowlist config", () => {
     assert.match(example, /FENN_DESK_WALLETS=/);
     assert.match(
       example,
-      /Comma-separated EVM wallets authorised to access `\/desk`/,
+      /Comma-separated Solana wallets authorised to access `\/desk`/,
     );
     assert.doesNotMatch(example, /NEXT_PUBLIC_FENN_DESK_WALLETS/);
     assert.doesNotMatch(

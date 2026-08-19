@@ -16,9 +16,9 @@ function read(rel: string): string {
   return readFileSync(join(repo, rel), "utf8");
 }
 
-const EMBEDDED = "0x1111111111111111111111111111111111111111";
-const EXTERNAL = "0x2222222222222222222222222222222222222222";
-const OTHER = "0x3333333333333333333333333333333333333333";
+const EMBEDDED = "11111111111111111111111111111111";
+const EXTERNAL = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
+const OTHER = "7EcDhSYGxXyoWPo9a6p9q7q7q7q7q7q7q7q7q7q7q7q7";
 
 function embeddedWallet(address: string, imported = false) {
   return {
@@ -32,7 +32,7 @@ function embeddedWallet(address: string, imported = false) {
 function metamaskWallet(address: string) {
   return {
     address,
-    walletClientType: "metamask" as const,
+    walletClientType: "phantom" as const,
     connectorType: "injected" as const,
     imported: false,
   };
@@ -83,8 +83,8 @@ describe("resolveProfileWalletPresentation", () => {
     });
     assert.equal(result.kind, "embedded");
     assert.equal(result.canExport, true);
-    assert.equal(result.exportAddress, EMBEDDED.toLowerCase());
-    assert.equal(result.address, EMBEDDED.toLowerCase());
+    assert.equal(result.exportAddress, EMBEDDED);
+    assert.equal(result.address, EMBEDDED);
   });
 
   it("never exports a different linked wallet than the profile", () => {
@@ -97,7 +97,7 @@ describe("resolveProfileWalletPresentation", () => {
     assert.equal(result.kind, "external");
     assert.equal(result.canExport, false);
     assert.equal(result.exportAddress, null);
-    assert.equal(result.address, EXTERNAL.toLowerCase());
+    assert.equal(result.address, EXTERNAL);
   });
 
   it("hides export for pure external profile wallet", () => {
@@ -126,7 +126,7 @@ describe("resolveProfileWalletPresentation", () => {
     });
     assert.equal(result.kind, "embedded");
     assert.equal(result.canExport, true);
-    assert.equal(result.exportAddress, OTHER.toLowerCase());
+    assert.equal(result.exportAddress, OTHER);
   });
 
   it("pending while wallets are not ready — no export claim", () => {
@@ -139,7 +139,7 @@ describe("resolveProfileWalletPresentation", () => {
     assert.equal(result.kind, "pending");
     assert.equal(result.canExport, false);
     assert.equal(result.exportAddress, null);
-    assert.equal(result.address, EMBEDDED.toLowerCase());
+    assert.equal(result.address, EMBEDDED);
   });
 
   it("ready with missing connector marks profile as external (no export)", () => {

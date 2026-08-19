@@ -8,7 +8,7 @@ import {
 import { useState } from "react";
 
 import { useFennAuth } from "@/components/auth/fenn-auth-provider";
-import { abbreviateEvmAddress } from "@/lib/wallet/evm";
+import { abbreviateSolanaAddress } from "@/lib/wallet/solana";
 import { resolveProfileWalletPresentation } from "@/lib/wallet/privy-embedded";
 
 async function copyText(value: string): Promise<boolean> {
@@ -54,7 +54,7 @@ export function OutlawWallet() {
   });
 
   const address = presentation.address || profile.walletAddress;
-  const abbreviated = abbreviateEvmAddress(address);
+  const abbreviated = abbreviateSolanaAddress(address);
   const isEmbedded = presentation.kind === "embedded";
   const isExternal = presentation.kind === "external";
 

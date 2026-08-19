@@ -51,7 +51,7 @@ export function Providers({ children }: ProvidersProps) {
       config={{
         // Order is controlled by loginMethodsAndOrder (takes precedence over loginMethods).
         loginMethodsAndOrder: {
-          primary: ["email", "metamask"],
+          primary: ["email", "phantom"],
         },
         appearance: {
           // Night background — Privy modulates FG/BG from this hex.
@@ -61,13 +61,13 @@ export function Providers({ children }: ProvidersProps) {
           landingHeader: "",
           loginMessage: "bring a wallet.",
           showWalletLoginFirst: false,
-          walletList: ["metamask"],
-          walletChainType: "ethereum-only",
+          walletList: ["phantom"],
+          walletChainType: "solana-only",
         },
         embeddedWallets: {
-          ethereum: {
-            // Create embedded EVM wallet only when the user has none yet
-            // (email users). MetaMask users already have an external wallet.
+          solana: {
+            // Create embedded Solana wallet only when the user has none yet
+            // (email users). Phantom users already have an external wallet.
             createOnLogin: "users-without-wallets",
           },
         },

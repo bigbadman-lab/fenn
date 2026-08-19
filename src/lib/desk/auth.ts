@@ -71,7 +71,7 @@ export type RequireFennDeskAccessOptions = {
 
 /**
  * Require authenticated Privy identity + registered FENN profile whose
- * permanent EVM wallet is on the server-only FENN_DESK_WALLETS allowlist.
+ * permanent Solana wallet is on the server-only FENN_DESK_WALLETS allowlist.
  *
  * Never trusts wallet flags from the request body, query, or client claims.
  * Independent of FENN_ADMIN_WALLETS and GREENWOOD_ACCESS_WALLETS.

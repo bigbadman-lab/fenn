@@ -1,4 +1,7 @@
-import { normalizeEvmAddress } from "@/lib/wallet/evm";
+import {
+  normalizeSolanaAddress,
+  solanaAddressesEqual,
+} from "@/lib/wallet/solana";
 
 /**
  * Wallet ownership surface for /outlaw.
@@ -68,7 +71,7 @@ export function resolveProfileWalletPresentation(input: {
   /** When false, wallet connectors are not ready — do not claim external yet. */
   walletsReady: boolean;
 }): ProfileWalletPresentation {
-  const address = normalizeEvmAddress(input.profileAddress);
+  const address = normalizeSolanaAddress(input.profileAddress);
 
   if (!address) {
     return {
@@ -80,11 +83,11 @@ export function resolveProfileWalletPresentation(input: {
   }
 
   const officialEmbedded = input.embeddedConnectedAddress
-    ? normalizeEvmAddress(input.embeddedConnectedAddress)
+    ? normalizeSolanaAddress(input.embeddedConnectedAddress)
     : null;
 
   // Primary: official SDK helper points at the profile wallet.
-  if (officialEmbedded && officialEmbedded === address) {
+  if (officialEmbedded && solanaAddressesEqual(officialEmbedded, address)) {
     return {
       address,
       kind: "embedded",
@@ -95,8 +98,8 @@ export function resolveProfileWalletPresentation(input: {
 
   // Multi-wallet / multi-HD: profile may be a non-primary embedded wallet.
   // Apply the same connector signature the helper uses, but for this address.
-  const profileConnected = input.connectedWallets.find(
-    (wallet) => normalizeEvmAddress(wallet.address) === address,
+  const profileConnected = input.connectedWallets.find((wallet) =>
+    solanaAddressesEqual(wallet.address, address),
   );
 
   if (profileConnected && matchesPrivyEmbeddedConnectedWallet(profileConnected)) {

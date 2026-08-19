@@ -2,9 +2,13 @@ import {
   isNormalizedEvmAddress,
   normalizeEvmAddress,
 } from "@/lib/wallet/evm";
+import {
+  isNormalizedSolanaAddress,
+  normalizeSolanaAddress,
+} from "@/lib/wallet/solana";
 
 /**
- * Parse a comma-separated EVM wallet allowlist.
+ * Parse a comma-separated EVM wallet allowlist (treasury / on-chain ops).
  *
  * - Trims whitespace, ignores empty entries
  * - Normalizes to lowercase 0x…
@@ -48,5 +52,50 @@ export function isWalletInEvmAllowlist(
 ): boolean {
   const normalized = normalizeEvmAddress(walletAddress);
   if (!isNormalizedEvmAddress(normalized)) return false;
+  return allowlist.includes(normalized);
+}
+
+/**
+ * Parse a comma-separated Solana wallet allowlist (identity / access gates).
+ *
+ * - Trims whitespace, ignores empty entries
+ * - Preserves base58 casing
+ * - Deduplicates
+ * - Empty / null / undefined → []
+ * - Any malformed non-empty entry throws (fail-loud)
+ */
+export function parseSolanaWalletAllowlist(
+  raw: string | null | undefined,
+  label: string,
+): string[] {
+  if (raw == null) return [];
+
+  const entries = raw.split(",");
+  const allowlist: string[] = [];
+  const seen = new Set<string>();
+
+  for (const entry of entries) {
+    const trimmed = entry.trim();
+    if (trimmed.length === 0) continue;
+
+    const normalized = normalizeSolanaAddress(trimmed);
+    if (!isNormalizedSolanaAddress(normalized)) {
+      throw new Error(`Invalid address in ${label}: "${trimmed}"`);
+    }
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    allowlist.push(normalized);
+  }
+
+  return allowlist;
+}
+
+/** Exact membership after trim. Solana addresses are case-sensitive. */
+export function isWalletInSolanaAllowlist(
+  walletAddress: string,
+  allowlist: readonly string[],
+): boolean {
+  const normalized = normalizeSolanaAddress(walletAddress);
+  if (!isNormalizedSolanaAddress(normalized)) return false;
   return allowlist.includes(normalized);
 }

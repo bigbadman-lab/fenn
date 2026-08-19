@@ -1,13 +1,14 @@
 import "server-only";
 
 import {
-  isNormalizedEvmAddress,
-  normalizeEvmAddress,
-} from "@/lib/wallet/evm";
+  isNormalizedSolanaAddress,
+  normalizeSolanaAddress,
+  solanaAddressesEqual,
+} from "@/lib/wallet/solana";
 
 /**
- * Parse GREENWOOD_ACCESS_WALLETS (comma-separated EVM addresses).
- * Trims whitespace, ignores empty/malformed entries, normalizes to lowercase 0x…,
+ * Parse GREENWOOD_ACCESS_WALLETS (comma-separated Solana addresses).
+ * Trims whitespace, ignores empty/malformed entries, preserves base58 casing,
  * and de-duplicates. Never throws for bad entries.
  */
 export function parseGreenwoodAccessWallets(
@@ -22,8 +23,8 @@ export function parseGreenwoodAccessWallets(
     const trimmed = entry.trim();
     if (trimmed.length === 0) continue;
 
-    const normalized = normalizeEvmAddress(trimmed);
-    if (!isNormalizedEvmAddress(normalized)) continue;
+    const normalized = normalizeSolanaAddress(trimmed);
+    if (!isNormalizedSolanaAddress(normalized)) continue;
     if (seen.has(normalized)) continue;
     seen.add(normalized);
     allowlist.push(normalized);
@@ -36,9 +37,9 @@ export function isWalletInGreenwoodAccessAllowlist(
   walletAddress: string,
   allowlist: readonly string[],
 ): boolean {
-  const normalized = normalizeEvmAddress(walletAddress);
-  if (!isNormalizedEvmAddress(normalized)) return false;
-  return allowlist.includes(normalized);
+  const normalized = normalizeSolanaAddress(walletAddress);
+  if (!isNormalizedSolanaAddress(normalized)) return false;
+  return allowlist.some((entry) => solanaAddressesEqual(entry, normalized));
 }
 
 /**

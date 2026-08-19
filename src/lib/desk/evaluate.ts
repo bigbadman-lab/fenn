@@ -1,8 +1,9 @@
 import { isWalletInDeskAllowlist } from "@/lib/desk/config";
 import {
-  isNormalizedEvmAddress,
-  normalizeEvmAddress,
-} from "@/lib/wallet/evm";
+  isNormalizedSolanaAddress,
+  normalizeSolanaAddress,
+  solanaAddressesEqual,
+} from "@/lib/wallet/solana";
 
 /**
  * Internal Desk access outcomes (deny reasons).
@@ -49,13 +50,13 @@ export function evaluateDeskAccess(input: {
     return { ok: false, reason: "profile_required", status: 403 };
   }
 
-  const walletAddress = normalizeEvmAddress(input.profile.wallet_address);
-  if (!isNormalizedEvmAddress(walletAddress)) {
+  const walletAddress = normalizeSolanaAddress(input.profile.wallet_address);
+  if (!isNormalizedSolanaAddress(walletAddress)) {
     return { ok: false, reason: "desk_not_allowed", status: 403 };
   }
 
-  const owned = input.identity.wallets.some(
-    (wallet) => normalizeEvmAddress(wallet.address) === walletAddress,
+  const owned = input.identity.wallets.some((wallet) =>
+    solanaAddressesEqual(wallet.address, walletAddress),
   );
   if (!owned) {
     return { ok: false, reason: "wallet_not_owned", status: 403 };

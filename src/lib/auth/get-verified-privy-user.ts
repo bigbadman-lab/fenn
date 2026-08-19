@@ -5,9 +5,10 @@ import { PrivyClient, type LinkedAccount } from "@privy-io/node";
 import { publicEnv } from "@/lib/env/public";
 import { serverEnv } from "@/lib/env/server";
 import {
-  isNormalizedEvmAddress,
-  normalizeEvmAddress,
-} from "@/lib/wallet/evm";
+  isNormalizedSolanaAddress,
+  normalizeSolanaAddress,
+  solanaAddressesEqual,
+} from "@/lib/wallet/solana";
 
 export type VerifiedPrivyWallet = {
   address: string;
@@ -54,17 +55,19 @@ function extractBearerToken(authorizationHeader: string | null): string {
   return token.trim();
 }
 
-function extractEvmWallets(linkedAccounts: LinkedAccount[]): VerifiedPrivyWallet[] {
+function extractSolanaWallets(
+  linkedAccounts: LinkedAccount[],
+): VerifiedPrivyWallet[] {
   const wallets: VerifiedPrivyWallet[] = [];
   const seen = new Set<string>();
 
   for (const account of linkedAccounts) {
     if (account.type !== "wallet") continue;
-    if (!("chain_type" in account) || account.chain_type !== "ethereum") continue;
+    if (!("chain_type" in account) || account.chain_type !== "solana") continue;
     if (!("address" in account) || typeof account.address !== "string") continue;
 
-    const address = normalizeEvmAddress(account.address);
-    if (!isNormalizedEvmAddress(address)) continue;
+    const address = normalizeSolanaAddress(account.address);
+    if (!isNormalizedSolanaAddress(address)) continue;
     if (seen.has(address)) continue;
 
     seen.add(address);
@@ -109,7 +112,7 @@ export async function getVerifiedPrivyUser(request: Request): Promise<VerifiedPr
 
   return {
     privyUserId: user.id,
-    wallets: extractEvmWallets(user.linked_accounts ?? []),
+    wallets: extractSolanaWallets(user.linked_accounts ?? []),
   };
 }
 
@@ -117,15 +120,17 @@ export function assertWalletOwnedByIdentity(
   identity: VerifiedPrivyIdentity,
   walletAddress: string,
 ): string {
-  const normalized = normalizeEvmAddress(walletAddress);
-  if (!isNormalizedEvmAddress(normalized)) {
+  const normalized = normalizeSolanaAddress(walletAddress);
+  if (!isNormalizedSolanaAddress(normalized)) {
     throw new AuthError("Invalid wallet address", 400);
   }
 
-  const owned = identity.wallets.some((wallet) => wallet.address === normalized);
+  const owned = identity.wallets.some((wallet) =>
+    solanaAddressesEqual(wallet.address, normalized),
+  );
   if (!owned) {
     throw new AuthError(
-      "Wallet is not among the authenticated Privy user's verified EVM wallets",
+      "Wallet is not among the authenticated Privy user's verified Solana wallets",
       400,
     );
   }

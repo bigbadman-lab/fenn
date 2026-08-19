@@ -13,9 +13,10 @@ import { serverEnv } from "@/lib/env/server";
 import { findProfileByPrivyUserId } from "@/lib/profiles/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  isNormalizedEvmAddress,
-  normalizeEvmAddress,
-} from "@/lib/wallet/evm";
+  isNormalizedSolanaAddress,
+  normalizeSolanaAddress,
+  solanaAddressesEqual,
+} from "@/lib/wallet/solana";
 
 /**
  * Verified FENN admin identity for future privileged routes.
@@ -73,7 +74,7 @@ function getConfiguredAdminAllowlist(): string[] {
 
 /**
  * Require authenticated Privy identity + registered FENN profile whose
- * permanent EVM wallet is on the server-only FENN_ADMIN_WALLETS allowlist.
+ * permanent Solana wallet is on the server-only FENN_ADMIN_WALLETS allowlist.
  *
  * 401 — missing/invalid Privy session
  * 403 — authenticated but not an authorized FENN admin
@@ -100,8 +101,8 @@ export async function requireFennAdmin(
     throw new AdminAuthError("Not authorized", 403);
   }
 
-  const walletAddress = normalizeEvmAddress(profile.wallet_address);
-  if (!isNormalizedEvmAddress(walletAddress)) {
+  const walletAddress = normalizeSolanaAddress(profile.wallet_address);
+  if (!isNormalizedSolanaAddress(walletAddress)) {
     throw new AdminAuthError("Not authorized", 403);
   }
 

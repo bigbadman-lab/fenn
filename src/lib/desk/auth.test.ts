@@ -14,9 +14,9 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "../../..");
 
-const WALLET_A = "0xabcdef0123456789abcdef0123456789abcdef01";
-const WALLET_B = "0x0000000000000000000000000000000000000001";
-const WALLET_C = "0x1111111111111111111111111111111111111111";
+const WALLET_A = "11111111111111111111111111111111";
+const WALLET_B = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
+const WALLET_C = "7EcDhSYGxXyoWPo9a6p9q7q7q7q7q7q7q7q7q7q7q7q7";
 
 function identity(wallets: string[]): DeskEvalIdentity {
   return {
@@ -245,13 +245,13 @@ describe("Desk surface privacy and architecture", () => {
       join(repo, "src/lib/admin/config.ts"),
       "utf8",
     );
-    assert.match(adminConfig, /parseEvmWalletAllowlist/);
+    assert.match(adminConfig, /parseSolanaWalletAllowlist/);
     assert.match(adminConfig, /FENN_ADMIN_WALLETS/);
     const greenwood = readFileSync(
       join(repo, "src/lib/greenwood/access-wallets.ts"),
       "utf8",
     );
-    assert.doesNotMatch(greenwood, /parseEvmWalletAllowlist/);
+    assert.doesNotMatch(greenwood, /parseSolanaWalletAllowlist/);
     assert.match(greenwood, /ignores empty\/malformed|Malformed entries ignored/i);
   });
 });

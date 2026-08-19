@@ -30,7 +30,7 @@ const requiredSecret = z.preprocess(
   z.string().min(1, "required"),
 );
 
-/** Comma-separated EVM admin wallets. Empty/missing = no admins. Invalid entries fail loud. */
+/** Comma-separated Solana admin wallets. Empty/missing = no admins. Invalid entries fail loud. */
 const fennAdminWallets = z.preprocess(
   (value) => (typeof value === "string" ? value : ""),
   z.string().superRefine((value, ctx) => {
@@ -48,7 +48,7 @@ const fennAdminWallets = z.preprocess(
   }),
 );
 
-/** Comma-separated EVM Desk wallets. Empty/missing = no Desk access. Invalid entries fail loud. */
+/** Comma-separated Solana Desk wallets. Empty/missing = no Desk access. Invalid entries fail loud. */
 const fennDeskWallets = z.preprocess(
   (value) => (typeof value === "string" ? value : ""),
   z.string().superRefine((value, ctx) => {
@@ -96,14 +96,14 @@ const serverOnlySchema = z.object({
   FENN_X_USERNAME: optionalSecret,
   FENN_ADMIN_WALLETS: fennAdminWallets,
   /**
-   * Comma-separated EVM wallets authorised to access `/desk`.
+   * Comma-separated Solana wallets authorised to access `/desk`.
    * Empty/missing = no Desk access. Invalid entries fail loud at boot.
    * Never NEXT_PUBLIC_*. Independent of FENN_ADMIN_WALLETS.
    */
   FENN_DESK_WALLETS: fennDeskWallets,
   /**
    * Trusted Greenwood access override wallets (test/founder).
-   * Comma-separated EVM addresses. Malformed entries ignored at use time.
+   * Comma-separated Solana addresses. Malformed entries ignored at use time.
    * Eligibility only — never awards LEAF. Never NEXT_PUBLIC_*.
    */
   GREENWOOD_ACCESS_WALLETS: z.preprocess(

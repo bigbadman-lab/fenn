@@ -30,7 +30,7 @@ import {
   isLegacyOrNamedInviteFrom,
   normalizeInviteFromLabel,
 } from "@/lib/site/world-vocabulary";
-import { abbreviateEvmAddress } from "@/lib/wallet/evm";
+import { abbreviateSolanaAddress } from "@/lib/wallet/solana";
 
 function formatJoinedDate(iso: string): string {
   const date = new Date(iso);
@@ -363,7 +363,7 @@ export function OutlawRegisterPanel({
         <p>
           wallet:
           <br />
-          {abbreviateEvmAddress(profile.walletAddress)}
+          {abbreviateSolanaAddress(profile.walletAddress)}
         </p>
         <p>
           leaf:
@@ -394,7 +394,7 @@ export function OutlawRegisterPanel({
 
   if (wallets.length === 0) {
     return wrap(
-      <p className="muted">no verified evm wallet is ready yet.</p>,
+      <p className="muted">no verified solana wallet is ready yet.</p>,
     );
   }
 
@@ -472,7 +472,7 @@ export function OutlawRegisterPanel({
           <p>
             wallet:
             <br />
-            {abbreviateEvmAddress(selectedWallet)}
+            {abbreviateSolanaAddress(selectedWallet)}
           </p>
         ) : (
           <>
@@ -488,7 +488,7 @@ export function OutlawRegisterPanel({
               <option value="">choose a verified wallet</option>
               {wallets.map((wallet) => (
                 <option key={wallet} value={wallet}>
-                  {abbreviateEvmAddress(wallet)}
+                  {abbreviateSolanaAddress(wallet)}
                 </option>
               ))}
             </select>

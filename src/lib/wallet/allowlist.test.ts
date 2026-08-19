@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 
 import {
   isWalletInEvmAllowlist,
+  isWalletInSolanaAllowlist,
   parseEvmWalletAllowlist,
+  parseSolanaWalletAllowlist,
 } from "@/lib/wallet/allowlist";
 
 const A = "0xABCDEF0123456789ABCDEF0123456789ABCDEF01";
@@ -57,6 +59,21 @@ describe("parseEvmWalletAllowlist", () => {
     assert.equal(
       isWalletInEvmAllowlist(`${A_LOWER}00`, allowlist),
       false,
+    );
+  });
+});
+
+describe("parseSolanaWalletAllowlist", () => {
+  const A = "11111111111111111111111111111111";
+  const B = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
+
+  it("parses Solana identity allowlists", () => {
+    assert.deepEqual(parseSolanaWalletAllowlist(`${A},${B}`, "TEST"), [A, B]);
+    const list = parseSolanaWalletAllowlist(A, "TEST");
+    assert.equal(isWalletInSolanaAllowlist(A, list), true);
+    assert.throws(
+      () => parseSolanaWalletAllowlist("0xdeadbeef", "TEST"),
+      /Invalid address in TEST/,
     );
   });
 });

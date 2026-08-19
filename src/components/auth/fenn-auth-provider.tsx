@@ -47,7 +47,7 @@ type FennAuthContextValue = {
   /** True after bootstrap finished (success or handled error) for current session. */
   profileResolved: boolean;
   /**
-   * Authenticated, unregistered, and still waiting for a verified EVM wallet
+   * Authenticated, unregistered, and still waiting for a verified Solana wallet
    * (e.g. Privy embedded wallet provisioning after email login).
    */
   walletResolving: boolean;
@@ -283,7 +283,7 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [ready, authenticated, refreshMe]);
 
-  // After email login, Privy may need a moment to attach the embedded EVM wallet.
+  // After email login, Privy may need a moment to attach the embedded Solana wallet.
   useEffect(() => {
     if (
       !ready ||
@@ -347,7 +347,7 @@ export function FennAuthProvider({ children }: { children: React.ReactNode }) {
       wallets,
       error:
         walletWaitExhausted && wallets.length === 0 && !registered && !error
-          ? "No verified EVM wallet is available yet"
+          ? "No verified Solana wallet is available yet"
           : error,
       loading: !ready || (authenticated && !profileResolved),
       bootstrapGeneration,

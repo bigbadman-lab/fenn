@@ -16,7 +16,7 @@ import { CONTRIBUTION_TYPES } from "@/lib/profiles/constants";
 import { profileDto } from "@/lib/profiles/queries";
 import type { SafeApplicationSummary, SafeProfile } from "@/lib/profiles/types";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { parseEvmAddress } from "@/lib/wallet/evm";
+import { parseSolanaAddress } from "@/lib/wallet/solana";
 
 export { CONTRIBUTION_TYPES } from "@/lib/profiles/constants";
 
@@ -165,7 +165,7 @@ export async function registerOutlaw(
     throw error;
   }
 
-  parseEvmAddress(walletAddress);
+  parseSolanaAddress(walletAddress);
   const xHandle = normalizeXHandle(input.xHandle);
   const admin = createAdminClient();
 
