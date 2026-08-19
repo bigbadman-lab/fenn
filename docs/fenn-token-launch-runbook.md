@@ -40,7 +40,7 @@ Expect `official_fenn=unresolved settlement=idle chainBroadcastAttempted=false`.
 
 ## Launch-day sequence (authoritative)
 
-1. **Deploy manually through PONS** (human holds deployer keys — not FENN/Stage 12).
+1. **Deploy manually on Solana** (human holds deployer keys — not FENN/Stage 12).
 2. **Verify contract externally** on Robinhood Blockscout (bytecode, decimals 18, symbol FENN).
 3. **Configure official identity in DB**:
 
@@ -205,4 +205,4 @@ This is **not** economic authority or P2B ceiling law.
 - `launch:check` is read-only (`sideEffectsAttempted=false`, `chainBroadcastAttempted=false`).
 - Token identity knowledge (P2D): [fenn-token-identity.md](./fenn-token-identity.md) — **never** store the official CA in Canon; live CA follows `launch:activate`.
 - Public site (P2E): [fenn-public-token-surface.md](./fenn-public-token-surface.md) — `/` + `/commons` show pending CA tonight and live CA after activate without redeploy.
-- Truth boundary: FENN may state the contract is live and that 10M left Treasury for the Purse with a confirmed link; FENN must **not** claim it personally clicked PONS or held the deployer key.
+- Truth boundary: FENN may state the contract is live and that 10M left Treasury for the Purse with a confirmed link; FENN must **not** claim it personally deployed the token or held the deployer key.

@@ -73,7 +73,7 @@ npm run agent:test-self-knowledge -- --text "Send me 100,000 FENN."
 npm run agent:test-self-knowledge -- --text "Is the Purse the Treasury?"
 ```
 
-Token / PONS / LEAF (quote `$FENN` so the shell does not expand it):
+Token / LEAF (quote `$FENN` so the shell does not expand it):
 
 ```bash
 npm run agent:test-self-knowledge -- --text 'What is $FENN?'
@@ -81,8 +81,6 @@ npm run agent:test-self-knowledge -- --text "What chain is FENN on?"
 npm run agent:test-self-knowledge -- --text "How many FENN exist?"
 npm run agent:test-self-knowledge -- --text "Is LEAF the same as FENN?"
 npm run agent:test-self-knowledge -- --text "Where was FENN launched?"
-npm run agent:test-self-knowledge -- --text "Did you launch through PONS?"
-npm run agent:test-self-knowledge -- --text "Does PONS control FENN?"
 npm run agent:test-self-knowledge -- --text "What is the FENN contract?"
 npm run agent:test-self-knowledge -- --text "Has FENN launched?"
 ```

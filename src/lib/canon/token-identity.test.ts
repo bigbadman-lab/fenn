@@ -48,31 +48,7 @@ const RETRIEVAL_ACCEPTANCE: readonly {
   },
   {
     query: "Where was VELL launched?",
-    facts: [
-      /through PONS/i,
-      /launchpad/i,
-      /Solana/i,
-    ],
-  },
-  {
-    query: "Did you launch through PONS?",
-    facts: [
-      /entered Solana through PONS/i,
-      /First-person speech is allowed when grounded/i,
-    ],
-  },
-  {
-    query: "Does PONS control VELL?",
-    facts: [
-      /not VELL's owner/i,
-      /does not gain ongoing economic authority/i,
-      /not the Treasury/i,
-      /does not become the Purse/i,
-    ],
-  },
-  {
-    query: "Is PONS your Treasury?",
-    facts: [/PONS is not the Treasury/i],
+    facts: [/Solana/i, /mainnet-beta/, /SPL token/i],
   },
   {
     query: "What is the Purse?",

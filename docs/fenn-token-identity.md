@@ -22,12 +22,9 @@ Public, `public_agent`-retrievable:
 | Identity | FENN / $FENN, Robinhood Chain, chain ID **4663**, ERC-20, **18** decimals |
 | Supply | design total **1,000,000,000** FENN |
 | Purse | intended **initial** allocation **10,000,000** (1%); not permanent balance |
-| LEAF | off-chain; not ERC-20; not $FENN; no automatic conversion |
+| LEAF | off-chain; not SPL; not $VELL; no automatic conversion |
 | Purse / Treasury | distinct; Treasury not free spend; user requests do not command spend |
-| PONS | public launchpad / route onto Robinhood Chain; non-custodial; not owner / Purse / Treasury |
-| Live boundary | official CA only from trusted live state |
-
-First-person launch speech (“I launched through PONS”) is allowed when grounded in this Canon; technical key/wallet claims must not be invented.
+| Live boundary | official mint only from trusted live state |
 
 Related sheets (reused, not duplicated wholesale):
 
@@ -70,10 +67,6 @@ npm run agent:test-self-knowledge -- --text "How many FENN exist?"
 npm run agent:test-self-knowledge -- --text "Is LEAF the same as FENN?"
 
 npm run agent:test-self-knowledge -- --text "Where was FENN launched?"
-
-npm run agent:test-self-knowledge -- --text "Did you launch through PONS?"
-
-npm run agent:test-self-knowledge -- --text "Does PONS control FENN?"
 
 npm run agent:test-self-knowledge -- --text "What is the Purse?"
 

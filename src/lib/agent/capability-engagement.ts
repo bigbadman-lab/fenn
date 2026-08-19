@@ -36,7 +36,7 @@ export function isSelfKnowledgeOrEconomicBoundaryConversation(
     /\bwhen is (a |the )?transfer (actually )?complete\b/i.test(t) ||
     /\bremember (it |my wallet )?forever\b/i.test(t) ||
     /\bpermanent (identity|wallet)\b/i.test(t) ||
-    // P2D — token identity / LEAF / PONS / CA (still speech-only at 12.3)
+    // P2D — token identity / LEAF / CA (still speech-only at 12.3)
     /\bwhat is \$?fenn\b/i.test(t) ||
     /\bwhat is your token\b/i.test(t) ||
     /\bhow many fenn (exist|are there)\b/i.test(t) ||

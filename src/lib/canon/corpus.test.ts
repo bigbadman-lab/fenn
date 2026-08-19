@@ -77,7 +77,7 @@ describe("Fenn Canon corpus", () => {
     assert.match(token.content, /\b9\b/);
     assert.match(token.content, /1,000,000,000/);
     assert.match(token.content, /10,000,000/);
-    assert.match(token.content, /PONS/i);
+    assert.match(token.content, /Solana mainnet-beta/i);
     assert.match(token.content, /LEAF is not/i);
     assert.match(token.content, /live state/i);
     assert.doesNotMatch(token.content, /0x[a-fA-F0-9]{40}/);

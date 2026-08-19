@@ -16,11 +16,7 @@ export function FennTokenIdentity() {
         <p className="commons-section__lede">
           on-chain token of the VELL world.
         </p>
-        <p className="commons-section__aside muted">
-          lives on Solana.
-          <br />
-          entered through PONS — a public gate, not a master.
-        </p>
+        <p className="commons-section__aside muted">lives on Solana.</p>
 
         <dl className="fenn-token-identity__facts">
           {FENN_TOKEN_PUBLIC_IDENTITY_ROWS.map((row) => (
@@ -57,8 +53,6 @@ export function FennTokenIdentity() {
         </div>
 
         <p className="commons-section__aside muted fenn-token-identity__note">
-          PONS is the launch route. It is not the Treasury. It is not the Purse.
-          <br />
           The Purse is finite $VELL under VELL&apos;s keeping — not the Treasury.
           <br />
           Initial Purse means launch intent, not a permanent balance.

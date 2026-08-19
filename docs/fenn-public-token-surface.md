@@ -15,7 +15,7 @@ No dedicated `/token` route.
 
 | Kind | Source |
 |------|--------|
-| Stable identity (chain, supply, decimals, PONS, initial Purse) | `fenn-token-public-identity.ts` aligned with Canon `fenn.token.identity` |
+| Stable identity (chain, supply, decimals, initial Purse) | `fenn-token-public-identity.ts` aligned with Canon `fenn.token.identity` |
 | Official contract address | `getPublicOfficialFennToken()` only (`treasury_assets` via resolver) |
 | Live balances | Existing Treasury / Purse snapshots |
 
@@ -33,7 +33,7 @@ No redeploy after `launch:activate`.
 ## Manual checks — tonight (pre-launch)
 
 1. Open `/` — see `$FENN · ROBINHOOD CHAIN`, **OFFICIAL CONTRACT**, **NOT YET INSCRIBED**. No `0x`, COPY, or explorer.
-2. Open `/commons` — see `$FENN` identity facts, PONS, LEAF ≠ $FENN, **OFFICIAL CONTRACT / NOT YET INSCRIBED**, Purse **INITIAL ALLOCATION** + **awaiting official token**, ETH still in Treasury.
+2. Open `/commons` — see `$FENN` identity facts, LEAF ≠ $FENN, **OFFICIAL CONTRACT / NOT YET INSCRIBED**, Purse **INITIAL ALLOCATION** + **awaiting official token**, SOL still in Treasury.
 
 ## Manual checks — launch day
 

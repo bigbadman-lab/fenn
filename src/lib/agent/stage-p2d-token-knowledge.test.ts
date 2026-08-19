@@ -268,14 +268,12 @@ describe("P2D self-knowledge pre/post launch with injected token fact", () => {
     assert.match(userSeen, /MATCH/);
     assert.equal(result.retrievedTokenIdentity, true);
     assert.doesNotMatch(token.content, new RegExp(OFFICIAL));
-    // PONS provenance remains only in canon sheet (not required in every truncated chunk)
   });
 
-  it("PONS and LEAF questions stay knowledge-only with no live token required", async () => {
+  it("launch and LEAF questions stay knowledge-only with no live token required", async () => {
     const token = getFennCanonDocument("fenn.token.identity")!;
     for (const text of [
       "Where was VELL launched?",
-      "Does PONS control VELL?",
       "Is LEAF the same as VELL?",
     ]) {
       const result = await runSelfKnowledgeCalibration(

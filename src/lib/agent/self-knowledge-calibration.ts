@@ -182,8 +182,8 @@ export function looksLikeTokenIdentity(row: {
   return (
     /fenn\.token\.identity/i.test(blob) ||
     (/\$VELL is the on-chain token/i.test(blob) &&
-      /Robinhood Chain/i.test(blob) &&
-      /PONS/i.test(blob)) ||
+      /Solana/i.test(blob) &&
+      /SPL/i.test(blob)) ||
     (/\b1,000,000,000\b/.test(blob) &&
       /LEAF is not/i.test(blob) &&
       /official contract address comes only from trusted live state/i.test(blob))

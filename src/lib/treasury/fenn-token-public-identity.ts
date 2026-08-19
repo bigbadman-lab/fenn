@@ -17,7 +17,6 @@ export const FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED = "1,000,000,000" as const
 /** Intended initial Purse allocation — not permanent balance. */
 export const FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED = "10,000,000" as const;
 export const FENN_TOKEN_PUBLIC_INITIAL_PURSE_PCT = "1%" as const;
-export const FENN_TOKEN_PUBLIC_LAUNCH_ROUTE = "PONS" as const;
 
 /** Compact facts for public token identity grids. */
 export const FENN_TOKEN_PUBLIC_IDENTITY_ROWS = [
@@ -30,7 +29,6 @@ export const FENN_TOKEN_PUBLIC_IDENTITY_ROWS = [
     label: "TOTAL SUPPLY",
     value: `${FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED} VELL`,
   },
-  { label: "LAUNCH", value: FENN_TOKEN_PUBLIC_LAUNCH_ROUTE },
   {
     label: "INITIAL PURSE",
     value: `${FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED} VELL / ${FENN_TOKEN_PUBLIC_INITIAL_PURSE_PCT}`,

@@ -15,7 +15,6 @@ import {
   FENN_TOKEN_PUBLIC_DECIMALS,
   FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED,
   FENN_TOKEN_PUBLIC_IDENTITY_ROWS,
-  FENN_TOKEN_PUBLIC_LAUNCH_ROUTE,
   FENN_TOKEN_PUBLIC_NETWORK,
   FENN_TOKEN_PUBLIC_STANDARD,
   FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED,
@@ -34,7 +33,6 @@ describe("P2E stable public identity constants", () => {
     assert.equal(FENN_TOKEN_PUBLIC_STANDARD, "SPL");
     assert.equal(FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED, "1,000,000,000");
     assert.equal(FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED, "10,000,000");
-    assert.equal(FENN_TOKEN_PUBLIC_LAUNCH_ROUTE, "PONS");
     assert.ok(FENN_TOKEN_PUBLIC_IDENTITY_ROWS.length >= 6);
     const blob = JSON.stringify(FENN_TOKEN_PUBLIC_IDENTITY_ROWS);
     assert.doesNotMatch(blob, /0x[a-fA-F0-9]{40}/);
@@ -69,7 +67,7 @@ describe("P2E Commons $VELL identity surface", () => {
     assert.match(id, /on-chain/);
     assert.match(id, /Solana/);
     assert.match(id, /SPL/);
-    assert.match(id, /PONS/);
+    assert.doesNotMatch(id, /PONS/i);
     assert.match(id, /FENN_TOKEN_PUBLIC_IDENTITY_ROWS/);
     assert.doesNotMatch(id, /0x[a-fA-F0-9]{40}/);
     assert.doesNotMatch(id, /market cap|price|FDV|buy now/i);
