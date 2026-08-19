@@ -4,7 +4,7 @@ import {
 } from "@/lib/treasury/fenn-token-public-identity";
 
 /**
- * /commons — stable $FENN identity (no live contract address on the public surface).
+ * /commons — stable $FENN identity (no live mint address on the public surface).
  */
 export function FennTokenIdentity() {
   return (
@@ -17,7 +17,7 @@ export function FennTokenIdentity() {
           on-chain token of the VELL world.
         </p>
         <p className="commons-section__aside muted">
-          lives on Robinhood Chain.
+          lives on Solana.
           <br />
           entered through PONS — a public gate, not a master.
         </p>
@@ -47,7 +47,7 @@ export function FennTokenIdentity() {
               <p className="muted">
                 on-chain
                 <br />
-                ERC-20 · Robinhood Chain
+                SPL · Solana
               </p>
             </div>
           </div>

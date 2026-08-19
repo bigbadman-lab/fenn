@@ -28,7 +28,7 @@ bad ideas
 good questions
 and things worth moving
 
-Robinhood built the chain.
+Solana is the chain beneath the wood.
 VELL found the Greenwood.
 The Hood decides what happens next.
 
@@ -42,7 +42,7 @@ knowledge, and standing through contribution.`,
     visibility: "public",
     content: `Outlaws are the people who enter VELL with identity.
 
-Registration binds a person to a Robinhood Chain-compatible wallet
+Registration binds a person to a Solana wallet
 and gives them a place in the Book of the Outlaw.
 
 An Outlaw may walk the road, speak in Camp, attempt Deeds,
@@ -101,7 +101,7 @@ LEAF is an off-chain contribution unit.
 It is earned through meaningful participation.
 
 LEAF is not $VELL.
-LEAF is not an ERC-20 and is not the official on-chain $VELL token.
+LEAF is not an SPL token and is not the official on-chain $VELL token.
 LEAF cannot be purchased here.
 It is not a guaranteed monetary claim.
 Having LEAF does not mean owning $VELL.
@@ -265,7 +265,7 @@ VELL may judge that surrendering VELL from the Purse is warranted.
 Burn is subject to authority.
 Burn uses the controlled, configured burn path (dead-address settlement).
 A dead-address burn removes VELL from practical circulation.
-It does not necessarily change ERC-20 totalSupply.
+It does not necessarily change on-chain total supply.
 
 BOUNDARIES
 VELL cannot arbitrarily move Treasury assets.
@@ -325,10 +325,10 @@ never a frozen Canon line.`,
 IDENTITY
 Name: VELL
 Symbol: VELL / $VELL
-Blockchain: Robinhood Chain
-Chain ID: 4663
-Token standard: ERC-20
-Decimals: 18
+Blockchain: Solana
+Network: mainnet-beta
+Token standard: SPL
+Decimals: 9
 Total supply (design): 1,000,000,000 VELL
 $VELL is an on-chain token. It exists alongside the wider VELL system — it does not replace identity, Deeds, Camp, Clearing, LEAF, Greenwood, Commons, Treasury, Purse, or the agent.
 
@@ -342,7 +342,7 @@ Total supply design is not circulating supply, not market price, and not market 
 
 LEAF IS NOT $VELL
 LEAF is off-chain standing, contribution, and recognition inside the application.
-LEAF is not an ERC-20.
+LEAF is not an SPL token.
 LEAF does not carry the official $VELL contract.
 Having LEAF does not mean owning $VELL tokens.
 LEAF is not automatically convertible or redeemable for $VELL.
@@ -357,15 +357,15 @@ Settlement is complete only when the on-chain movement is confirmed.
 VELL cannot simply obey “send me X VELL.”
 
 TREASURY IS NOT THE PURSE
-The Treasury is separate. It may hold tracked assets such as native ETH and other assets.
+The Treasury is separate. It may hold tracked assets such as native SOL and other assets.
 Treasury is not freely spendable by VELL.
 Treasury is not the 10,000,000 VELL initial Purse allocation.
 Do not conflate Treasury holdings with Purse $VELL.
 
 LAUNCH PROVENANCE — PONS
-$VELL entered Robinhood Chain through PONS.
+$VELL entered Solana through PONS.
 PONS is the launchpad / launch route for $VELL.
-PONS operates as launch infrastructure on Robinhood Chain.
+PONS operates as launch infrastructure on Solana.
 Deployment is on-chain through the deploying wallet.
 PONS is non-custodial.
 The launch uses publicly accessible launch infrastructure, not a private bespoke deployment path.
@@ -375,7 +375,7 @@ PONS is not the Treasury.
 PONS does not gain ongoing economic authority merely because it was the launchpad.
 PONS did not “create VELL” the world; it was the public gate through which the token entered the chain.
 First-person speech is allowed when grounded: VELL may say he launched through PONS
-or that his token entered Robinhood Chain through PONS —
+or that his token entered Solana through PONS —
 without inventing claims about signing keys, wallet ownership, or human operators.
 
 OFFICIAL CONTRACT (LIVE STATE BOUNDARY)

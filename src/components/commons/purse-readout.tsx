@@ -8,7 +8,11 @@ import {
   FENN_TOKEN_PUBLIC_INITIAL_PURSE_PCT,
   FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED,
 } from "@/lib/treasury/fenn-token-public-identity";
-import { abbreviateEvmAddress } from "@/lib/wallet/evm";
+import {
+  COMMONS_PUBLIC_PURSE_WALLET,
+  solanaTxExplorerUrl,
+} from "@/lib/commons/public-wallets";
+import { abbreviateSolanaAddress } from "@/lib/wallet/solana";
 import type {
   PublicPurseEthBalance,
   PublicPurseFennBalance,
@@ -41,6 +45,7 @@ export function PurseReadout({
         </h2>
         <div className="commons-block__body">
           <p className="commons-empty">the purse cannot be read.</p>
+          <PurseWalletLine />
           <InitialPurseAllocationNote />
         </div>
       </section>
@@ -67,6 +72,7 @@ export function PurseReadout({
           <p className="commons-empty commons-empty--spaced">
             the purse is not yet set.
           </p>
+          <PurseWalletLine />
           <InitialPurseAllocationNote />
         </div>
       </section>
@@ -102,10 +108,7 @@ export function PurseReadout({
           </p>
         )}
 
-        <p className="commons-wallet">
-          <span className="commons-wallet__label">wallet</span>{" "}
-          <code className="commons-wallet__address">{purse.purseAddress}</code>
-        </p>
+        <PurseWalletLine />
         <p className="commons-section__aside muted commons-purse-wallet-note">
           this is the Purse wallet — not the $VELL token contract.
         </p>
@@ -115,7 +118,7 @@ export function PurseReadout({
         <h3 className="commons-subheading">LIVE BALANCES</h3>
         <table className="commons-table commons-table--treasury">
           <caption className="visually-hidden">
-            Live Purse ETH and official VELL balances
+            Live Purse SOL and official VELL balances
           </caption>
           <thead>
             <tr>
@@ -126,8 +129,8 @@ export function PurseReadout({
           <tbody>
             <tr>
               <th scope="row" className="commons-table__asset">
-                <span className="commons-table__symbol">ETH</span>
-                <span className="commons-table__name muted">ETH HELD</span>
+                <span className="commons-table__symbol">SOL</span>
+                <span className="commons-table__name muted">SOL HELD</span>
               </th>
               <td className={purseHeldCellClass(ethBalance)}>
                 <PurseHeldValue
@@ -180,7 +183,8 @@ export function PurseReadout({
         ) : (
           <ul className="commons-history">
             {purse.transfers.map((row) => {
-              const shortTo = abbreviateEvmAddress(row.recipientAddress);
+              const shortTo = abbreviateSolanaAddress(row.recipientAddress);
+              const explorerUrl = solanaTxExplorerUrl(row.txHash);
               return (
                 <li key={row.id} className="commons-history__item">
                   <time
@@ -194,21 +198,15 @@ export function PurseReadout({
                       ? `${row.amountFormatted} VELL burned`
                       : `${row.amountFormatted} VELL → ${shortTo}`}
                   </p>
-                  {row.explorerTxUrl ? (
-                    <p className="commons-history__reason">
-                      <a
-                        href={row.explorerTxUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        view on Robinhood Chain
-                      </a>
-                    </p>
-                  ) : (
-                    <p className="commons-history__reason muted">
-                      {row.txHash.slice(0, 10)}…
-                    </p>
-                  )}
+                  <p className="commons-history__reason">
+                    <a
+                      href={explorerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      view on Solana
+                    </a>
+                  </p>
                 </li>
               );
             })}
@@ -216,6 +214,15 @@ export function PurseReadout({
         )}
       </div>
     </section>
+  );
+}
+
+function PurseWalletLine() {
+  return (
+    <p className="commons-wallet">
+      <span className="commons-wallet__label">wallet</span>{" "}
+      <code className="commons-wallet__address">{COMMONS_PUBLIC_PURSE_WALLET}</code>
+    </p>
   );
 }
 

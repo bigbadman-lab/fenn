@@ -56,7 +56,7 @@ so it moved
 centuries later
 you built robinhood
 
-then robinhood built a chain
+then Solana became the chain beneath the wood
 
 humans do enjoy accidentally completing metaphors
 

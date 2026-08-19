@@ -67,7 +67,7 @@ describe("Oak doctrine", () => {
 
     const joined = OAK_SECTIONS.map((s) => s.body).join("\n");
     assert.match(joined, /GROWTH IS PART OF THE SYSTEM/);
-    assert.match(joined, /Robinhood Chain/);
+    assert.match(joined, /Solana/);
     assert.match(joined, /LEAF is not money/);
     assert.match(joined, /not transferable/);
     assert.match(joined, /Deeds/);

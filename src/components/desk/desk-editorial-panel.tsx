@@ -79,7 +79,7 @@ function OverviewBlock({ overview }: { overview: EditorialDailyOverview }) {
           {overview.treasuryLabel}
         </li>
         <li>
-          Robinhood Chain
+          Solana
           <br />
           {overview.robinhoodLabel}
         </li>

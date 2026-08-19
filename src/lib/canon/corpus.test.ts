@@ -71,10 +71,10 @@ describe("Fenn Canon corpus", () => {
     const token = getFennCanonDocument("fenn.token.identity");
     assert.ok(token);
     assert.equal(token.visibility, "public");
-    assert.match(token.content, /Robinhood Chain/i);
-    assert.match(token.content, /4663/);
-    assert.match(token.content, /ERC-20/i);
-    assert.match(token.content, /\b18\b/);
+    assert.match(token.content, /Solana/i);
+    assert.match(token.content, /mainnet-beta/);
+    assert.match(token.content, /SPL/i);
+    assert.match(token.content, /\b9\b/);
     assert.match(token.content, /1,000,000,000/);
     assert.match(token.content, /10,000,000/);
     assert.match(token.content, /PONS/i);
@@ -114,7 +114,7 @@ describe("Fenn Canon corpus", () => {
     assert.match(agency.content, /interaction only/i);
     assert.match(agency.content, /Settlement is real only after chain confirmation/i);
     assert.match(agency.content, /cannot arbitrarily move Treasury/i);
-    assert.match(agency.content, /does not necessarily change ERC-20 totalSupply/i);
+    assert.match(agency.content, /does not necessarily change on-chain total supply/i);
     assert.doesNotMatch(agency.content, /P1[A-E]|Stage 12|idempotenc|FENN_PURSE|OPENAI|RPC/i);
   });
 

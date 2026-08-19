@@ -1,5 +1,5 @@
 /**
- * P2E — public $VELL surface: homepage + /commons contracts, identity, ETH+FENN.
+ * P2E — public $VELL surface: homepage + /commons contracts, identity, SOL+VELL.
  * Structural tests (source content / wiring). No chain writes, no DB mutations.
  */
 import assert from "node:assert/strict";
@@ -8,11 +8,15 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import {
-  FENN_TOKEN_PUBLIC_CHAIN_ID,
+  COMMONS_PUBLIC_PURSE_WALLET,
+  COMMONS_PUBLIC_TREASURY_WALLET,
+} from "@/lib/commons/public-wallets";
+import {
   FENN_TOKEN_PUBLIC_DECIMALS,
   FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED,
   FENN_TOKEN_PUBLIC_IDENTITY_ROWS,
   FENN_TOKEN_PUBLIC_LAUNCH_ROUTE,
+  FENN_TOKEN_PUBLIC_NETWORK,
   FENN_TOKEN_PUBLIC_STANDARD,
   FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED,
 } from "@/lib/treasury/fenn-token-public-identity";
@@ -24,10 +28,10 @@ function read(rel: string): string {
 }
 
 describe("P2E stable public identity constants", () => {
-  it("matches launch design without any contract address", () => {
-    assert.equal(FENN_TOKEN_PUBLIC_CHAIN_ID, 4663);
-    assert.equal(FENN_TOKEN_PUBLIC_DECIMALS, 18);
-    assert.equal(FENN_TOKEN_PUBLIC_STANDARD, "ERC-20");
+  it("matches launch design without any mint address", () => {
+    assert.equal(FENN_TOKEN_PUBLIC_NETWORK, "mainnet-beta");
+    assert.equal(FENN_TOKEN_PUBLIC_DECIMALS, 9);
+    assert.equal(FENN_TOKEN_PUBLIC_STANDARD, "SPL");
     assert.equal(FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED, "1,000,000,000");
     assert.equal(FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED, "10,000,000");
     assert.equal(FENN_TOKEN_PUBLIC_LAUNCH_ROUTE, "PONS");
@@ -49,6 +53,7 @@ describe("P2E public token surface wiring", () => {
     assert.match(header, /OFFICIAL CONTRACT/);
     assert.match(header, /NOT YET INSCRIBED/);
     assert.match(header, /FENN_TOKEN_PUBLIC_TICKER/);
+    assert.match(header, /Solana explorer/);
     assert.match(route, /getPublicOfficialFennToken/);
     assert.match(route, /no-store/);
     assert.doesNotMatch(header, /0x[a-fA-F0-9]{40}/);
@@ -62,20 +67,24 @@ describe("P2E Commons $VELL identity surface", () => {
     assert.match(id, /LEAF IS NOT \$VELL/);
     assert.match(id, /off-chain/);
     assert.match(id, /on-chain/);
+    assert.match(id, /Solana/);
+    assert.match(id, /SPL/);
     assert.match(id, /PONS/);
     assert.match(id, /FENN_TOKEN_PUBLIC_IDENTITY_ROWS/);
     assert.doesNotMatch(id, /0x[a-fA-F0-9]{40}/);
     assert.doesNotMatch(id, /market cap|price|FDV|buy now/i);
   });
 
-  it("purse labels initial allocation and live ETH/FENN held", () => {
+  it("purse labels initial allocation and live SOL/VELL held", () => {
     const purse = read("src/components/commons/purse-readout.tsx");
     assert.match(purse, /INITIAL ALLOCATION/);
     assert.match(purse, /launch intent/);
     assert.match(purse, /awaiting official token/);
     assert.match(purse, /LIVE BALANCES/);
-    assert.match(purse, /ETH HELD/);
+    assert.match(purse, /SOL HELD/);
     assert.match(purse, /VELL HELD/);
+    assert.match(purse, /COMMONS_PUBLIC_PURSE_WALLET/);
+    assert.match(purse, /view on Solana/);
     assert.doesNotMatch(purse, /CURRENT \$VELL BALANCE|CURRENT \$VELL/);
     assert.match(purse, /not the \$VELL token contract/);
     assert.match(purse, /FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED/);
@@ -83,11 +92,14 @@ describe("P2E Commons $VELL identity surface", () => {
     assert.doesNotMatch(purse, /permanently contains 10/);
   });
 
-  it("treasury remains distinct from purse and lists native/null-contract assets generically", () => {
+  it("treasury shows public Solana wallet and remains distinct from purse", () => {
     const treasury = read("src/components/commons/treasury-readout.tsx");
+    assert.match(treasury, /COMMONS_PUBLIC_TREASURY_WALLET/);
     assert.match(treasury, /not the Purse/);
     assert.match(treasury, /contractAddress \?\? "native"/);
     assert.doesNotMatch(treasury, /getPublicOfficialFennToken/);
+    assert.ok(COMMONS_PUBLIC_TREASURY_WALLET.length >= 32);
+    assert.ok(COMMONS_PUBLIC_PURSE_WALLET.length >= 32);
   });
 });
 

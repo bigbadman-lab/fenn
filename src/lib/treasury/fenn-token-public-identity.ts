@@ -1,19 +1,17 @@
 /**
  * P2E — stable public $VELL identity facts for the website.
  *
- * Matches P2D Canon (`fenn.token.identity`). Never includes contract address.
- * Live CA comes only from getPublicOfficialFennToken / resolveOfficialFennToken.
+ * Matches P2D Canon (`fenn.token.identity`). Never includes mint address here.
+ * Live mint/contract comes only from getPublicOfficialFennToken / resolveOfficialFennToken.
  */
-
-import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
 
 /** Shared with launch readiness semantics — design identity only. */
 export const FENN_TOKEN_PUBLIC_SYMBOL = "VELL" as const;
 export const FENN_TOKEN_PUBLIC_TICKER = "$VELL" as const;
-export const FENN_TOKEN_PUBLIC_CHAIN_NAME = "ROBINHOOD CHAIN" as const;
-export const FENN_TOKEN_PUBLIC_CHAIN_ID = ROBINHOOD_CHAIN_ID;
-export const FENN_TOKEN_PUBLIC_STANDARD = "ERC-20" as const;
-export const FENN_TOKEN_PUBLIC_DECIMALS = 18 as const;
+export const FENN_TOKEN_PUBLIC_CHAIN_NAME = "SOLANA" as const;
+export const FENN_TOKEN_PUBLIC_NETWORK = "mainnet-beta" as const;
+export const FENN_TOKEN_PUBLIC_STANDARD = "SPL" as const;
+export const FENN_TOKEN_PUBLIC_DECIMALS = 9 as const;
 /** Design total supply — not circulating supply or market data. */
 export const FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED = "1,000,000,000" as const;
 /** Intended initial Purse allocation — not permanent balance. */
@@ -25,7 +23,7 @@ export const FENN_TOKEN_PUBLIC_LAUNCH_ROUTE = "PONS" as const;
 export const FENN_TOKEN_PUBLIC_IDENTITY_ROWS = [
   { label: "TOKEN", value: FENN_TOKEN_PUBLIC_TICKER },
   { label: "CHAIN", value: FENN_TOKEN_PUBLIC_CHAIN_NAME },
-  { label: "CHAIN ID", value: String(FENN_TOKEN_PUBLIC_CHAIN_ID) },
+  { label: "NETWORK", value: FENN_TOKEN_PUBLIC_NETWORK },
   { label: "STANDARD", value: FENN_TOKEN_PUBLIC_STANDARD },
   { label: "DECIMALS", value: String(FENN_TOKEN_PUBLIC_DECIMALS) },
   {

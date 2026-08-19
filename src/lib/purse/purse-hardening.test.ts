@@ -98,22 +98,11 @@ describe("Purse P0 architecture hardening", () => {
     assert.throws(() => read("src/app/api/purse/transfer/route.ts"));
   });
 
-  it("Purse movements use canonical Robinhood Blockscout explorer helper", () => {
-    const query = read("src/lib/purse/transfers-query.ts");
-    assert.match(query, /explorerTxUrl/);
-    assert.match(query, /@\/lib\/greenwood\/hollow\/explorer/);
-    assert.doesNotMatch(query, /explorer\.robinhood\.com|blockscout/);
-
+  it("Purse movements on /commons link to Solana explorer", () => {
     const readout = read("src/components/commons/purse-readout.tsx");
-    assert.match(readout, /explorerTxUrl/);
-    assert.match(readout, /view on Robinhood Chain/);
-
-    const explorer = read("src/lib/greenwood/hollow/explorer.ts");
-    assert.match(
-      explorer,
-      /ROBINHOOD_CHAIN_EXPLORER_BASE\s*=\s*"https:\/\/robinhoodchain\.blockscout\.com"/,
-    );
-    assert.doesNotMatch(explorer, /explorer\.robinhood\.com/);
+    assert.match(readout, /solanaTxExplorerUrl/);
+    assert.match(readout, /view on Solana/);
+    assert.doesNotMatch(readout, /view on Robinhood Chain/);
   });
 
   it("normal transfer path ignores FENN_PURSE_TEST_MODE envs", () => {
@@ -139,8 +128,8 @@ describe("Purse P0 architecture hardening", () => {
     assert.match(readout, /not the Treasury/i);
     assert.match(readout, /authority may refuse/i);
     assert.match(readout, /only confirmed movements/i);
-    assert.match(readout, /ETH HELD/);
-    assert.match(readout, /FENN HELD/);
+    assert.match(readout, /SOL HELD/);
+    assert.match(readout, /VELL HELD/);
   });
 
   it("public purse snapshot reuses treasury native helper and official FENN only", () => {

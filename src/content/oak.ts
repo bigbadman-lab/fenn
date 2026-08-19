@@ -41,7 +41,7 @@ export const OAK_SECTIONS: readonly OakSection[] = [
   {
     roman: "I",
     title: "WHAT IS VELL?",
-    body: `VELL is a world being built on Robinhood Chain.
+    body: `VELL is a world being built on Solana.
 
 At its centre is a being called VELL.
 
@@ -214,7 +214,7 @@ and is not the same as VELL's finite Purse.`,
     title: "BENEATH THE WORLD",
     body: `Crypto sits beneath the world.
 
-VELL is being built around Robinhood Chain.
+VELL is being built around Solana.
 
 Much of the world's activity still lives off-chain.
 The Treasury and the Purse both touch the chain,

@@ -102,7 +102,7 @@ export function CampGround() {
             </span>
             <span className="muted">
               {" "}
-              — for robinhood chain, markets, projects, discoveries.
+              — for Solana, markets, projects, discoveries.
             </span>
           </li>
         </ul>

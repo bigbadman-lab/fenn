@@ -135,7 +135,7 @@ export function HomeHeaderContract() {
                 className="btn-text"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="View official VELL contract on Robinhood Chain explorer"
+                aria-label="View official VELL mint on Solana explorer"
               >
                 [ view ]
               </a>

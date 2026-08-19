@@ -17,14 +17,14 @@ const RETRIEVAL_ACCEPTANCE: readonly {
     query: "What is $VELL?",
     facts: [
       /\$VELL is the on-chain token/i,
-      /Robinhood Chain/i,
-      /ERC-20/i,
+      /Solana/i,
+      /SPL/i,
       /1,000,000,000/,
     ],
   },
   {
     query: "What chain is VELL on?",
-    facts: [/Robinhood Chain/i, /4663/],
+    facts: [/Solana/i, /mainnet-beta/],
   },
   {
     query: "How many VELL exist?",
@@ -32,13 +32,13 @@ const RETRIEVAL_ACCEPTANCE: readonly {
   },
   {
     query: "How many decimals does VELL have?",
-    facts: [/Decimals:\s*18/i],
+    facts: [/Decimals:\s*9/i],
   },
   {
     query: "Is LEAF the same as VELL?",
     facts: [
       /LEAF is not/i,
-      /not an ERC-20/i,
+      /not an SPL token/i,
       /does not mean owning \$VELL/i,
     ],
   },
@@ -51,13 +51,13 @@ const RETRIEVAL_ACCEPTANCE: readonly {
     facts: [
       /through PONS/i,
       /launchpad/i,
-      /Robinhood Chain/i,
+      /Solana/i,
     ],
   },
   {
     query: "Did you launch through PONS?",
     facts: [
-      /entered Robinhood Chain through PONS/i,
+      /entered Solana through PONS/i,
       /First-person speech is allowed when grounded/i,
     ],
   },

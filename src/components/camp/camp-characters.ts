@@ -50,7 +50,7 @@ export const CAMP_CHARACTERS: CampCharacter[] = [
     id: "rook",
     name: "ROOK",
     role: "the watcher",
-    themes: ["robinhood chain", "markets", "discoveries"],
+    themes: ["solana", "markets", "discoveries"],
     status: "watching the road.",
     accent: "#E08A3C",
     ascii: `   /\\

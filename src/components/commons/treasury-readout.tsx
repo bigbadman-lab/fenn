@@ -2,6 +2,7 @@ import {
   formatTreasuryObservedAt,
   treasuryAssetBalanceDisplay,
 } from "@/lib/commons/format";
+import { COMMONS_PUBLIC_TREASURY_WALLET } from "@/lib/commons/public-wallets";
 import type { CommonsPageTreasury } from "@/lib/commons/page-data";
 import type { PublicTreasuryContribution } from "@/lib/treasury/types";
 
@@ -22,6 +23,12 @@ export function TreasuryReadout({ treasury }: Props) {
         </h2>
         <div className="commons-block__body">
           <p className="commons-empty">the account cannot be read.</p>
+          <p className="commons-wallet">
+            <span className="commons-wallet__label">wallet</span>{" "}
+            <code className="commons-wallet__address">
+              {COMMONS_PUBLIC_TREASURY_WALLET}
+            </code>
+          </p>
         </div>
       </section>
     );
@@ -35,6 +42,15 @@ export function TreasuryReadout({ treasury }: Props) {
         </h2>
         <div className="commons-block__body">
           <p className="commons-section__lede">what VELL holds.</p>
+          <p className="commons-section__aside muted">
+            where things arrive — not the Purse.
+          </p>
+          <p className="commons-wallet">
+            <span className="commons-wallet__label">wallet</span>{" "}
+            <code className="commons-wallet__address">
+              {COMMONS_PUBLIC_TREASURY_WALLET}
+            </code>
+          </p>
           <p className="commons-empty">
             nothing has been fixed here yet.
           </p>
@@ -60,7 +76,7 @@ export function TreasuryReadout({ treasury }: Props) {
         <p className="commons-wallet">
           <span className="commons-wallet__label">wallet</span>{" "}
           <code className="commons-wallet__address">
-            {treasury.treasuryAddress}
+            {COMMONS_PUBLIC_TREASURY_WALLET}
           </code>
         </p>
 
