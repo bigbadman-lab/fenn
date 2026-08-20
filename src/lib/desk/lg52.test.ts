@@ -142,8 +142,9 @@ describe("Desk Register API and privacy", () => {
     assert.match(gate, /href="\/desk\/deeds"/);
     assert.match(gate, /href="\/desk\/treasury"/);
     assert.match(gate, /href="\/desk\/book"/);
+    assert.match(gate, /href="\/desk\/wall"/);
     assert.match(gate, /href="\/desk\/agent"/);
-    assert.doesNotMatch(gate, /\/desk\/memory|\/desk\/camp|\/desk\/wall|\/desk\/audit/);
+    assert.doesNotMatch(gate, /\/desk\/memory|\/desk\/camp|\/desk\/audit/);
     assert.doesNotMatch(gate, /\/admin/);
   });
 

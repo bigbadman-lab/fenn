@@ -5049,6 +5049,78 @@ button.wall-mark__action:focus-visible {
   font-size: 0.8rem;
 }
 
+.desk-wall__hint,
+.desk-wall__count {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+}
+
+.desk-wall__status {
+  margin: 0 0 0.75rem;
+  color: var(--color-hoard);
+}
+
+.desk-wall__compose {
+  margin: 0 0 1.5rem;
+}
+
+.desk-wall__textarea {
+  display: block;
+  width: 100%;
+  max-width: 40rem;
+  min-height: 10rem;
+  margin: 0 0 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-bone) 28%, transparent);
+  background: color-mix(in srgb, var(--color-night) 88%, var(--color-bone));
+  color: var(--color-bone);
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.desk-wall__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: baseline;
+  margin-top: 0.5rem;
+}
+
+.desk-wall__confirm p {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.desk-wall__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.desk-wall__item {
+  margin: 0;
+  max-width: 40rem;
+}
+
+.desk-wall__time {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+}
+
+.desk-wall__body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  color: var(--color-bone);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .desk-speaks__status {
   margin: 0 0 0.75rem;
   color: var(--color-hoard);

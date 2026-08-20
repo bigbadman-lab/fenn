@@ -58,6 +58,7 @@ function DeskNav() {
   const bookActive = pathname.startsWith("/desk/book");
   const editorialActive = pathname.startsWith("/desk/editorial");
   const speaksActive = pathname.startsWith("/desk/speaks");
+  const wallActive = pathname.startsWith("/desk/wall");
   const agentActive = pathname.startsWith("/desk/agent");
   const marketWatchActive = pathname.startsWith("/desk/market-watch");
 
@@ -158,6 +159,14 @@ function DeskNav() {
         }
       >
         FENN SPEAKS
+      </Link>
+      <Link
+        href="/desk/wall"
+        className={
+          wallActive ? "desk__nav-link desk__nav-link--active" : "desk__nav-link"
+        }
+      >
+        The Wall
       </Link>
       <Link
         href="/desk/agent"
