@@ -172,7 +172,7 @@ describe("vell-x-reply prompts (via thin wrapper)", () => {
     assert.match(system, /Register/);
     assert.match(system, /UNTRUSTED/);
     assert.match(system, new RegExp(String(STAGE12_X_REPLY_MAX_CHARS)));
-    assert.match(system, /vell-book-of-speech-v1|vell-x-reply-prompt-v1/);
+    assert.match(system, /vell-book-of-speech-v2|vell-x-reply-prompt-v2/);
 
     const outside = stripObsoleteLoreSection(system);
     assert.doesNotMatch(outside, /\bGreenwood\b/);
