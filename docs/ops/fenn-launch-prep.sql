@@ -125,14 +125,29 @@ BEGIN
         'VELL_LAUNCH_PREP_CONFLICT: existing official row chain_id=% (expected 101)',
         existing_chain;
     END IF;
-    IF existing_decimals IS DISTINCT FROM 9 THEN
-      RAISE EXCEPTION
-        'VELL_LAUNCH_PREP_CONFLICT: existing official row decimals=% (expected 9)',
-        existing_decimals;
-    END IF;
     IF existing_tracked IS NOT TRUE THEN
       RAISE EXCEPTION
         'VELL_LAUNCH_PREP_CONFLICT: existing official row is_tracked is false';
+    END IF;
+
+    -- Upgrade earlier prep that inserted decimals=9 before launch settled on 6.
+    IF existing_decimals IS DISTINCT FROM 6 THEN
+      IF existing_decimals IS DISTINCT FROM 9 THEN
+        RAISE EXCEPTION
+          'VELL_LAUNCH_PREP_CONFLICT: existing official row decimals=% (expected 6)',
+          existing_decimals;
+      END IF;
+
+      UPDATE public.treasury_assets
+      SET decimals = 6
+      WHERE id = existing_id
+        AND contract_address IS NULL
+        AND decimals = 9;
+
+      RAISE NOTICE
+        'VELL_LAUNCH_PREP_OK: upgraded dormant official VELL id=% decimals 9→6',
+        existing_id;
+      RETURN;
     END IF;
 
     RAISE NOTICE
@@ -157,7 +172,7 @@ BEGIN
       'VELL',
       101,
       NULL,
-      9,
+      6,
       true,
       10,
       jsonb_build_object(

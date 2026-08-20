@@ -40,7 +40,7 @@ function dormant(over: Partial<OfficialFlaggedRow> = {}): OfficialFlaggedRow {
     name: "VELL",
     chain_id: SOLANA_MAINNET_CHAIN_ID,
     contract_address: null,
-    decimals: 9,
+    decimals: 6,
     is_tracked: true,
     metadata: { ...META },
     ...over,
@@ -88,7 +88,7 @@ describe("P2C.1 dormant official row + resolver", () => {
     assert.equal(r.status, "ok");
     if (r.status === "ok") {
       assert.equal(r.token.contractAddress, live().contract_address);
-      assert.equal(r.token.decimals, 9);
+      assert.equal(r.token.decimals, 6);
       assert.equal(r.token.chainId, 101);
     }
   });
@@ -101,9 +101,9 @@ describe("P2C.1 dormant official row + resolver", () => {
     if (r.status === "invalid") assert.equal(r.reason, "invalid_decimals");
   });
 
-  it("5b. resolver accepts integer 6 but launch law requires 9 (CONFIG_ERROR)", () => {
+  it("5b. resolver accepts integer 9 but launch law requires 6 (CONFIG_ERROR)", () => {
     const liv = live();
-    liv.decimals = 6;
+    liv.decimals = 9;
     const lookup = resolveOfficialFennToken([asCandidate(liv)]);
     assert.equal(lookup.status, "ok");
     const c = classifyFennLaunchStatus({
@@ -118,7 +118,7 @@ describe("P2C.1 dormant official row + resolver", () => {
       confirmedOfficialMovements: 0,
     });
     assert.equal(c.status, "CONFIG_ERROR");
-    assert.ok(c.errors.includes("resolved_decimals_not_9"));
+    assert.ok(c.errors.includes("resolved_decimals_not_6"));
   });
 
   it("4. duplicate official candidates → ambiguous", () => {
@@ -189,7 +189,7 @@ describe("P2C.1 classifyFennLaunchStatus", () => {
       confirmedOfficialMovements: null,
     });
     assert.equal(c.status, "CONFIG_ERROR");
-    assert.ok(c.errors.includes("official_row_decimals_not_9"));
+    assert.ok(c.errors.includes("official_row_decimals_not_6"));
   });
 
   it("7. address configured but activation null → AWAITING_ACTIVATION", () => {
@@ -341,7 +341,7 @@ describe("P2C.1 runFennLaunchCheck side-effect free", () => {
       loadLaunchFundingOperation: async () => null,
       readOfficialPurseBalance: async (input) => {
         assert.equal(input.tokenAddress, liv.contract_address);
-        assert.equal(input.decimals, 9);
+        assert.equal(input.decimals, 6);
         return "10000000";
       },
       countConfirmedOfficialMovements: async () => 0,
@@ -418,7 +418,7 @@ describe("P2C.1 ops artifacts", () => {
 
     const prepSql = readFileSync(prep, "utf8");
     assert.match(prepSql, /contract_address/i);
-    assert.match(prepSql, /NULL,\s*\n\s*9/);
+    assert.match(prepSql, /NULL,\s*\n\s*6/);
     assert.match(prepSql, /'official',\s*true/);
     assert.match(prepSql, /'public_contract',\s*true/);
     assert.match(prepSql, /VELL_LAUNCH_PREP/);

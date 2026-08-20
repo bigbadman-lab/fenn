@@ -57,7 +57,7 @@ BEGIN
   FROM public.treasury_assets
   WHERE chain_id = 101
     AND upper(trim(symbol)) = 'VELL'
-    AND decimals = 9
+    AND decimals = 6
     AND is_tracked = true
     AND (metadata->>'official') = 'true'
     AND (metadata->>'public_contract') = 'true'

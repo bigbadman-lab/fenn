@@ -31,7 +31,7 @@ No dedicated `/token` route.
 ## Manual checks — tonight (pre-launch)
 
 1. Open `/` — see `$VELL · SOLANA`, **OFFICIAL CONTRACT**, **NOT YET INSCRIBED**. No mint, COPY, or explorer.
-2. Open `/commons` — see `$VELL` identity facts (SPL, 9 decimals, mainnet-beta), LEAF ≠ $VELL, mint pending.
+2. Open `/commons` — see `$VELL` identity facts (SPL, 6 decimals, mainnet-beta), LEAF ≠ $VELL, mint pending.
 
 ## Manual checks — launch day
 

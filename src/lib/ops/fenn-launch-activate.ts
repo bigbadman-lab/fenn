@@ -21,7 +21,7 @@ import {
 export const FENN_LAUNCH_ACTIVATE_MODE = "FENN_LAUNCH_ACTIVATE" as const;
 
 export const EXPECTED_OFFICIAL_SYMBOL = "VELL" as const;
-export const EXPECTED_OFFICIAL_DECIMALS = 9 as const;
+export const EXPECTED_OFFICIAL_DECIMALS = 6 as const;
 export const EXPECTED_ASSET_TYPE = "spl" as const;
 
 export type FennLaunchActivateStatus =
@@ -35,7 +35,7 @@ export type FennLaunchActivateErrorCode =
   | "official_row_missing"
   | "multiple_official_candidates"
   | "symbol_mismatch"
-  | "decimals_not_9"
+  | "decimals_not_6"
   | "chain_mismatch"
   | "not_tracked"
   | "asset_type_not_spl"
@@ -204,7 +204,7 @@ export function validateActivateCandidateIdentity(
 ): FennLaunchActivateErrorCode | null {
   if (row.chain_id !== SOLANA_MAINNET_CHAIN_ID) return "chain_mismatch";
   if (row.symbol.trim().toLowerCase() !== "vell") return "symbol_mismatch";
-  if (row.decimals !== EXPECTED_OFFICIAL_DECIMALS) return "decimals_not_9";
+  if (row.decimals !== EXPECTED_OFFICIAL_DECIMALS) return "decimals_not_6";
   if (!row.is_tracked) return "not_tracked";
   if (!row.metadata || typeof row.metadata !== "object") {
     return "official_flag_missing";

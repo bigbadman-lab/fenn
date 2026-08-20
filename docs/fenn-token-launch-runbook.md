@@ -7,7 +7,7 @@ Canonical law: `src/lib/treasury/official-token.ts` + [ops/fenn-launch-prep.sql]
 **Primary mint configuration:** `npm run vell:activate -- --contract <SolanaMintBase58>` (alias: `launch:activate`)  
 **Homepage:** header polls live DB — no redeploy after activate.
 
-Official public identity is **Solana SPL** (`chain_id` sentinel **101**, decimals **9**, symbol **VELL**).  
+Official public identity is **Solana SPL** (`chain_id` sentinel **101**, decimals **6**, symbol **VELL**).  
 Robinhood EVM Purse / fund-purse paths are **not** the site mint path; do not pass `0x…` to `vell:activate`.
 
 ---
@@ -37,7 +37,7 @@ npm run launch:check
 ## Launch-day sequence (authoritative)
 
 1. **Deploy the SPL mint on Solana** (human holds deployer keys — not Stage 12).
-2. **Verify mint externally** on Solscan (mint address, decimals **9**, symbol **VELL**).
+2. **Verify mint externally** on Solscan (mint address, decimals **6**, symbol **VELL**).
 3. **Configure official identity in DB**:
 
 ```bash
@@ -64,7 +64,7 @@ mode=FENN_LAUNCH_ACTIVATE
 status=CONFIGURED
 symbol=VELL
 chainId=101
-decimals=9
+decimals=6
 contractAddress=<SolanaMintBase58>
 official=true
 publicContract=true

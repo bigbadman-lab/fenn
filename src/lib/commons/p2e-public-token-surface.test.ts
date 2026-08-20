@@ -29,7 +29,7 @@ function read(rel: string): string {
 describe("P2E stable public identity constants", () => {
   it("matches launch design without any mint address", () => {
     assert.equal(FENN_TOKEN_PUBLIC_NETWORK, "mainnet-beta");
-    assert.equal(FENN_TOKEN_PUBLIC_DECIMALS, 9);
+    assert.equal(FENN_TOKEN_PUBLIC_DECIMALS, 6);
     assert.equal(FENN_TOKEN_PUBLIC_STANDARD, "SPL");
     assert.equal(FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED, "1,000,000,000");
     assert.equal(FENN_TOKEN_PUBLIC_INITIAL_PURSE_FORMATTED, "10,000,000");

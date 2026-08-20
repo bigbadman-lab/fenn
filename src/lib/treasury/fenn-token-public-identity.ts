@@ -11,7 +11,7 @@ export const FENN_TOKEN_PUBLIC_TICKER = "$VELL" as const;
 export const FENN_TOKEN_PUBLIC_CHAIN_NAME = "SOLANA" as const;
 export const FENN_TOKEN_PUBLIC_NETWORK = "mainnet-beta" as const;
 export const FENN_TOKEN_PUBLIC_STANDARD = "SPL" as const;
-export const FENN_TOKEN_PUBLIC_DECIMALS = 9 as const;
+export const FENN_TOKEN_PUBLIC_DECIMALS = 6 as const;
 /** Design total supply — not circulating supply or market data. */
 export const FENN_TOKEN_PUBLIC_TOTAL_SUPPLY_FORMATTED = "1,000,000,000" as const;
 /** Intended initial Purse allocation — not permanent balance. */

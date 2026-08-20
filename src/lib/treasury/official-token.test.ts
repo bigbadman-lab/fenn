@@ -27,7 +27,7 @@ function candidate(
     name: "VELL",
     chain_id: SOLANA_MAINNET_CHAIN_ID,
     contract_address: VELL_MINT,
-    decimals: 9,
+    decimals: 6,
     is_tracked: true,
     metadata: { official: true, public_contract: true, asset_type: "spl" },
     ...overrides,
@@ -54,7 +54,7 @@ describe("resolveOfficialFennToken", () => {
     assert.equal(result.token.symbol, "VELL");
     assert.equal(result.token.chainId, SOLANA_MAINNET_CHAIN_ID);
     assert.equal(result.token.contractAddress, VELL_MINT);
-    assert.equal(result.token.decimals, 9);
+    assert.equal(result.token.decimals, 6);
   });
 
   it("accepts case-insensitive VELL/FENN symbol", () => {
@@ -157,7 +157,7 @@ describe("toPublicOfficialFennToken", () => {
       name: "VELL",
       chainId: SOLANA_MAINNET_CHAIN_ID,
       contractAddress: VELL_MINT,
-      decimals: 9,
+      decimals: 6,
     });
     assert.ok(token);
     assert.equal(token!.symbol, "VELL");
@@ -201,7 +201,7 @@ describe("getPublicOfficialFennToken fail-closed", () => {
         name: "VELL",
         chainId: SOLANA_MAINNET_CHAIN_ID,
         contractAddress: VELL_MINT,
-        decimals: 9,
+        decimals: 6,
       },
     }));
     assert.ok(publicToken);

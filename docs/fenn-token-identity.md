@@ -19,7 +19,7 @@ Public, `public_agent`-retrievable:
 
 | Area | Facts |
 |------|--------|
-| Identity | VELL / $VELL, Solana, chain sentinel **101**, SPL, **9** decimals |
+| Identity | VELL / $VELL, Solana, chain sentinel **101**, SPL, **6** decimals |
 | Supply | design total **1,000,000,000** VELL |
 | Purse | intended **initial** allocation **10,000,000** (1%); not permanent balance |
 | LEAF | off-chain; not SPL; not $VELL; no automatic conversion |

@@ -196,8 +196,8 @@ export function classifyFennLaunchStatus(input: {
     if (dormant.symbol.trim().toLowerCase() !== "vell") {
       errors.push("official_row_symbol_mismatch");
     }
-    if (dormant.decimals !== 9) {
-      errors.push("official_row_decimals_not_9");
+    if (dormant.decimals !== 6) {
+      errors.push("official_row_decimals_not_6");
     }
     if (!dormant.is_tracked) {
       errors.push("official_row_not_tracked");
@@ -233,7 +233,7 @@ export function classifyFennLaunchStatus(input: {
         compareEconomicAmountFormatted(
           input.officialBalance,
           EXPECTED_INITIAL_PURSE_ALLOCATION_FORMATTED,
-          9,
+          6,
         ) >= 0;
     } catch {
       errors.push("purse_balance_unparseable");
@@ -332,10 +332,10 @@ export function classifyFennLaunchStatus(input: {
       allocationSatisfied,
     };
   }
-  if (token.decimals !== 9) {
+  if (token.decimals !== 6) {
     return {
       status: "CONFIG_ERROR",
-      errors: [...errors, "resolved_decimals_not_9"],
+      errors: [...errors, "resolved_decimals_not_6"],
       notes,
       officialRowPrepared: true,
       officialRowId: rowId,

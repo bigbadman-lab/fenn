@@ -38,7 +38,7 @@ function dormant(over: Partial<ActivateCandidateRow> = {}): ActivateCandidateRow
     name: "VELL",
     chain_id: SOLANA_MAINNET_CHAIN_ID,
     contract_address: null,
-    decimals: 9,
+    decimals: 6,
     is_tracked: true,
     metadata: { ...META },
     ...over,
@@ -106,8 +106,8 @@ describe("P2C.2 validateActivateCandidateIdentity", () => {
 
   it("8. wrong decimals", () => {
     assert.equal(
-      validateActivateCandidateIdentity(dormant({ decimals: 6 })),
-      "decimals_not_9",
+      validateActivateCandidateIdentity(dormant({ decimals: 9 })),
+      "decimals_not_6",
     );
   });
 
@@ -167,7 +167,7 @@ describe("P2C.2 runFennLaunchActivate", () => {
     assert.equal(report.mode, "FENN_LAUNCH_ACTIVATE");
     assert.equal(report.symbol, "VELL");
     assert.equal(report.chainId, 101);
-    assert.equal(report.decimals, 9);
+    assert.equal(report.decimals, 6);
     assert.equal(report.contractAddress, OFFICIAL_MINT);
     assert.equal(report.official, true);
     assert.equal(report.publicContract, true);
@@ -293,7 +293,7 @@ describe("P2C.2 runFennLaunchActivate", () => {
     const report = await runFennLaunchActivate(
       { contract: OFFICIAL_MINT },
       {
-        listActivateCandidates: async () => [dormant({ decimals: 6 })],
+        listActivateCandidates: async () => [dormant({ decimals: 9 })],
         guardedSetOfficialContract: async () => {
           writeCalls += 1;
           return { updated: true, row: live() };
@@ -301,7 +301,7 @@ describe("P2C.2 runFennLaunchActivate", () => {
       },
     );
     assert.equal(report.status, "REFUSED");
-    assert.equal(report.errorCode, "decimals_not_9");
+    assert.equal(report.errorCode, "decimals_not_6");
     assert.equal(writeCalls, 0);
   });
 
