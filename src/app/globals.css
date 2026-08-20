@@ -59,6 +59,7 @@
 html {
   background: var(--background);
   color: var(--foreground);
+  overflow-x: clip;
 }
 
 body {
@@ -71,6 +72,7 @@ body {
   line-height: 1.55;
   letter-spacing: 0.01em;
   text-rendering: geometricPrecision;
+  overflow-x: clip;
 }
 
 ::selection {
@@ -222,6 +224,7 @@ button.btn-text:disabled {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 /* Homepage needs width for the landscape world map */
@@ -823,6 +826,9 @@ button.btn-text:disabled {
 /* Homepage world artifact */
 .home {
   display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -834,6 +840,9 @@ button.btn-text:disabled {
   display: grid;
   gap: 0;
   margin: 0 0 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: 1px solid color-mix(in srgb, var(--color-bone) 12%, transparent);
   background: color-mix(in srgb, #060705 94%, var(--color-night));
   overflow: hidden;
@@ -893,6 +902,8 @@ button.btn-text:disabled {
 .home-stage__intro {
   position: relative;
   z-index: 1;
+  min-width: 0;
+  max-width: 100%;
   padding: 1rem 1rem 0.5rem;
   border-bottom: 1px solid color-mix(in srgb, var(--color-leaf) 16%, transparent);
   background:
@@ -916,6 +927,8 @@ button.btn-text:disabled {
 .home-stage__map-vault {
   position: relative;
   z-index: 1;
+  min-width: 0;
+  max-width: 100%;
   padding: 1.1rem 1rem 1.25rem;
   background:
     radial-gradient(
@@ -966,6 +979,70 @@ button.btn-text:disabled {
     grid-row: 2;
     clip-path: polygon(1.5rem 0, 100% 0, 100% 100%, 0 100%);
     margin-left: -1.5rem;
+  }
+}
+
+/*
+ * Stacked stage (below desktop split): use the narrower landscape map
+ * inside a touch scrollport so the page never grows sideways.
+ */
+@media (max-width: 55.99rem) {
+  .home-stage__watermark {
+    font-size: clamp(2.75rem, 14vw, 5.5rem);
+    letter-spacing: 0.14em;
+    padding: 0.1rem 0.4rem 0;
+  }
+
+  .home-stage__intro {
+    padding: 0.85rem 0.75rem 0.35rem;
+  }
+
+  .home-stage__map-vault {
+    padding: 0.85rem 0.75rem 1rem;
+  }
+
+  .home-stage__intro .home-welcome,
+  .home-stage__intro .home-first-thirty {
+    padding-inline: 0;
+  }
+
+  .home-stage__intro .home-first-thirty {
+    padding-top: 0.5rem;
+    padding-bottom: 0.55rem;
+  }
+
+  .fenn-map__desktop {
+    display: none;
+  }
+
+  .fenn-map__mobile {
+    display: block;
+    max-width: 100%;
+  }
+
+  .fenn-map__viewport {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .fenn-map__art--mobile {
+    display: block;
+  }
+
+  .fenn-map__hint {
+    display: block;
+    margin: 0.55rem 0 0;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+  }
+
+  .shell:has(.home) .shell__inner {
+    max-width: var(--max-width);
   }
 }
 
@@ -1024,6 +1101,8 @@ button.btn-text:disabled {
   font-family: inherit;
   font-size: 0.82rem;
   letter-spacing: 0.03em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .home-header-contract__actions {
@@ -1032,6 +1111,7 @@ button.btn-text:disabled {
   flex-wrap: wrap;
   gap: 0.35rem 0.75rem;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .home-header-contract__feedback {
@@ -1063,6 +1143,42 @@ button.btn-text:disabled {
 
   .home-header-contract__pending {
     grid-column: meta / -1;
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .home-header-contract__inner {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "meta"
+      "title"
+      "address"
+      "actions"
+      "feedback";
+    gap: 0.25rem;
+    padding: 0.5rem 0.7rem;
+  }
+
+  .home-header-contract__actions {
+    justify-content: flex-start;
+  }
+
+  .home-header-contract__title {
+    letter-spacing: 0.1em;
+  }
+
+  .home-live-ticker {
+    font-size: 0.64rem;
+  }
+
+  .home-live-ticker__bar {
+    gap: 0.45rem;
+    padding: 0.3rem 0.7rem 0.4rem;
+  }
+
+  .home-live-ticker__status {
+    letter-spacing: 0.08em;
+    padding: 0.1rem 0.35rem;
   }
 }
 
@@ -1278,18 +1394,27 @@ button.btn-text:disabled {
 /* Homepage ASCII world map — terminal geography + navigation */
 .fenn-map {
   margin: 0 0 1.75rem;
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
 }
 
 .fenn-map__desktop {
   display: block;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .fenn-map__mobile {
   display: none;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .fenn-map__stage {
@@ -1347,6 +1472,8 @@ button.btn-text:disabled {
   padding: 0.45rem 0 0.2rem;
   letter-spacing: 0;
   white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
   color: var(--color-bone);
   font-variant-ligatures: none;
 }
@@ -1622,12 +1749,15 @@ a.fenn-map__link:focus-visible {
 .home-arrival__title,
 .home-welcome__title {
   margin: 0;
-  font-size: clamp(1.35rem, 3vw, 2rem);
+  font-size: clamp(1.15rem, 4.2vw, 2rem);
   font-weight: 400;
   letter-spacing: 0.06em;
-  line-height: 1.15;
+  line-height: 1.2;
   color: var(--color-leaf);
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .home-welcome__title--pending {
@@ -2428,6 +2558,8 @@ a.home-welcome__inline-link:focus-visible {
 .home-identity {
   border-top: 1px solid color-mix(in srgb, var(--color-bone) 16%, transparent);
   padding-top: 1.35rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .home-fenn-voice__text {
@@ -5651,16 +5783,23 @@ button.wall-mark__action:focus-visible {
     padding-top: 0.65rem;
   }
 
-  .home-welcome {
-    padding-inline: 0.65rem;
+  .home-stage__intro .home-welcome {
+    padding: 0.25rem 0 0.5rem;
   }
 
-  .home-first-thirty {
-    padding-inline: 0.65rem;
+  .home-arrival__title,
+  .home-welcome__title {
+    letter-spacing: 0.04em;
+    font-size: clamp(1.1rem, 5.5vw, 1.45rem);
   }
 
-  .home-welcome {
-    padding: 0.35rem 0.65rem 0.65rem;
+  .home-arrival__panel {
+    padding: 0.7rem 0.75rem;
+  }
+
+  .home-arrival__guide,
+  .home-welcome__begin {
+    padding: 0.7rem 0.75rem;
   }
 
   .home-arrival__actions,
@@ -5672,43 +5811,28 @@ button.wall-mark__action:focus-visible {
   .home-welcome__action {
     flex: 1 1 auto;
     text-align: center;
+    min-width: 0;
+  }
+
+  .home-map-preface {
+    padding: 0.7rem 0.75rem;
+  }
+
+  .home-register {
+    padding: 1rem 0.75rem;
   }
 
   .home-identity {
     padding-top: 1rem;
   }
 
-  .fenn-map__desktop {
-    display: none;
+  .shell__brand-row {
+    gap: 0.5rem 1rem;
   }
 
-  .fenn-map__mobile {
-    display: block;
+  .shell__controls {
     max-width: 100%;
-  }
-
-  .fenn-map__viewport {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-  }
-
-  .fenn-map__art--mobile {
-    display: block;
-  }
-
-  .fenn-map__hint {
-    display: block;
-    margin: 0.55rem 0 0;
-    font-size: 0.78rem;
-    letter-spacing: 0.06em;
-  }
-
-  .shell:has(.home) .shell__inner {
-    max-width: var(--max-width);
+    justify-content: flex-start;
   }
 
   .home-lore__offset,
@@ -5724,16 +5848,12 @@ button.wall-mark__action:focus-visible {
     flex-direction: column;
   }
 
-  .vell-dir__grid {
-    grid-template-columns: 1fr;
+  .vell-dir__head {
+    padding: 0.75rem 0.85rem 0.65rem;
   }
 
   .vell-dir__entry {
-    border-right: none;
-  }
-
-  .vell-dir__entry--featured {
-    order: -1;
+    padding: 0.75rem 0.85rem;
   }
 
   .ascii-page-title__mark {

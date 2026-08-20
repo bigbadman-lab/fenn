@@ -6,14 +6,19 @@ let client: OpenAI | null = null;
 /** `undefined` = use env; `null` = force missing (tests). */
 let testApiKeyOverride: string | null | undefined = undefined;
 
+/**
+ * Read OPENAI_API_KEY from process.env only.
+ * Do not load full serverEnv — wallet allowlists / Privy / etc. must not block
+ * Living Book, Camp, or other AI surfaces when those unrelated vars are stale.
+ */
 function resolveApiKey(): string | undefined {
   if (testApiKeyOverride !== undefined) {
     return testApiKeyOverride ?? undefined;
   }
-  // Lazy: Camp unit tests with injected model callers never load server env.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports -- sync lazy load
-  const { serverEnv } = require("@/lib/env/server") as typeof import("@/lib/env/server");
-  return serverEnv.OPENAI_API_KEY;
+  const raw = process.env.OPENAI_API_KEY;
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 /**

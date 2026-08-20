@@ -69,8 +69,8 @@ function MapArt({
 
 /**
  * Homepage world map — geography + primary Stage 5 navigation.
- * Desktop: centred landscape canvas.
- * Mobile: horizontal landscape inside a native scroll viewport.
+ * Desktop (≥56rem split): centred landscape canvas.
+ * Narrower viewports: horizontal landscape inside a native scroll viewport.
  * FENN wanders as an atmospheric overlay (pointer-events: none).
  */
 export function FennWorldMap() {
