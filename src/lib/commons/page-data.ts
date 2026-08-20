@@ -74,7 +74,7 @@ function mapTreasuryResult(
   result: PromiseSettledResult<PublicTreasurySnapshot>,
 ): CommonsPageTreasury {
   if (result.status === "fulfilled") {
-    return result.value;
+    return omitLegacyFennFromTreasury(result.value);
   }
   const reason = result.reason;
   if (reason instanceof TreasuryError) {
@@ -89,7 +89,7 @@ function mapCommonsResult(
   result: PromiseSettledResult<PublicCommonsSnapshot>,
 ): CommonsPageCommons {
   if (result.status === "fulfilled") {
-    return result.value;
+    return omitLegacyFennFromCommons(result.value);
   }
   const reason = result.reason;
   if (reason instanceof CommonsError) {
@@ -98,6 +98,42 @@ function mapCommonsResult(
     console.error("[commons page] commons", reason);
   }
   return { state: "error" };
+}
+
+/** Legacy Robinhood $FENN must not appear on the public VELL Commons. */
+function isLegacyFennSymbol(symbol: string): boolean {
+  return symbol.trim().toLowerCase() === "fenn";
+}
+
+function omitLegacyFennFromTreasury(
+  snapshot: PublicTreasurySnapshot,
+): PublicTreasurySnapshot {
+  if (snapshot.state === "unconfigured") return snapshot;
+  return {
+    ...snapshot,
+    assets: snapshot.assets.filter((a) => !isLegacyFennSymbol(a.symbol)),
+    contributions: snapshot.contributions.filter(
+      (c) => !isLegacyFennSymbol(c.assetSymbol),
+    ),
+  };
+}
+
+function omitLegacyFennFromCommons(
+  snapshot: PublicCommonsSnapshot,
+): PublicCommonsSnapshot {
+  const commitments = snapshot.commitments.filter(
+    (c) => !isLegacyFennSymbol(c.assetSymbol),
+  );
+  const allocationHistory =
+    snapshot.allocationHistory.state === "available"
+      ? {
+          state: "available" as const,
+          items: snapshot.allocationHistory.items.filter(
+            (item) => !isLegacyFennSymbol(item.assetSymbol),
+          ),
+        }
+      : snapshot.allocationHistory;
+  return { ...snapshot, commitments, allocationHistory };
 }
 
 function mapPurseResult(

@@ -21,14 +21,14 @@ import type {
 type Props = {
   purse: CommonsPagePurse;
   /**
-   * Whether official $FENN contract is resolved (DB-backed).
+   * Whether official $VELL mint is resolved (DB-backed).
    * Distinct from whether chain balance read succeeded.
    */
   officialTokenResolved?: boolean;
 };
 
 /**
- * THE PURSE OF FENN — dedicated hot wallet of official FENN (+ native gas).
+ * THE PURSE OF VELL — dedicated hot wallet of official $VELL (+ native gas).
  * Presentation only. Live balances + confirmed outbound history.
  * No pending/failed settlement internals. No private keys.
  * Initial 10m allocation is context — never presented as permanent balance.

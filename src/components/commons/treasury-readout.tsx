@@ -11,7 +11,7 @@ type Props = {
 };
 
 /**
- * THE TREASURY — what FENN holds (live chain reads).
+ * THE TREASURY — what VELL holds (live chain reads).
  * Presentation only; no accounting.
  */
 export function TreasuryReadout({ treasury }: Props) {
@@ -110,7 +110,9 @@ export function TreasuryReadout({ treasury }: Props) {
                   <tr key={`${asset.chainId}:${asset.symbol}:${asset.contractAddress ?? "native"}`}>
                     <th scope="row" className="commons-table__asset">
                       <span className="commons-table__symbol">{asset.symbol}</span>
-                      {asset.name ? (
+                      {asset.name &&
+                      asset.name.trim().toLowerCase() !==
+                        asset.symbol.trim().toLowerCase() ? (
                         <span className="commons-table__name muted">
                           {asset.name}
                         </span>

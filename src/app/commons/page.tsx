@@ -22,7 +22,7 @@ export const metadata: Metadata = buildPublicMetadata({
 export const dynamic = "force-dynamic";
 
 /**
- * Public Treasury + Commons + $FENN surface.
+ * Public Treasury + Commons + $VELL surface.
  * Holdings and commitments are separate facts — no available/remaining calc.
  * Official token resolution still drives purse balance reads (not shown publicly).
  */

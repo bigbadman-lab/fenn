@@ -5,7 +5,7 @@ type Props = {
 };
 
 /**
- * THE COMMONS — what FENN has committed to move.
+ * THE COMMONS — what VELL has committed to move.
  * Current amounts from commons_commitments only. No Treasury subtraction.
  */
 export function CommonsCommitments({ commons }: Props) {

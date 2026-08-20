@@ -4,7 +4,7 @@ import {
 } from "@/lib/treasury/fenn-token-public-identity";
 
 /**
- * /commons — stable $FENN identity (no live mint address on the public surface).
+ * /commons — stable $VELL identity (no live mint address on the public surface).
  */
 export function FennTokenIdentity() {
   return (

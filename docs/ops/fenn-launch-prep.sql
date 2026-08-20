@@ -4,9 +4,9 @@
 -- Requires migration 65 (Solana contract_address CHECK + official/public 101 uidx).
 --
 -- Does NOT set contract_address (mint stays NULL until npm run vell:activate).
--- Does NOT modify ETH / Robinhood (4663) treasury rows.
--- Demotes any leftover Robinhood official/public FENN flags so the public
--- resolver has a single Solana official source of truth.
+-- Does NOT modify ETH native Treasury rows.
+-- Demotes leftover Robinhood official/public FENN flags and untracks legacy
+-- Robinhood FENN so /commons no longer lists FENN beside Solana $VELL.
 
 DO $prep$
 DECLARE
@@ -38,6 +38,20 @@ BEGIN
   IF demoted > 0 THEN
     RAISE NOTICE
       'VELL_LAUNCH_PREP: demoted % Robinhood official/public row(s)',
+      demoted;
+  END IF;
+
+  -- Hide legacy Robinhood FENN from public Treasury reads (/commons).
+  UPDATE public.treasury_assets t
+  SET is_tracked = false
+  WHERE t.chain_id = 4663
+    AND lower(trim(t.symbol)) = 'fenn'
+    AND t.is_tracked IS TRUE;
+
+  GET DIAGNOSTICS demoted = ROW_COUNT;
+  IF demoted > 0 THEN
+    RAISE NOTICE
+      'VELL_LAUNCH_PREP: untracked % Robinhood FENN row(s) for public Commons',
       demoted;
   END IF;
 
