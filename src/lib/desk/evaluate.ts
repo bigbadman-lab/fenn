@@ -1,4 +1,7 @@
-import { isWalletInDeskAllowlist } from "@/lib/desk/config";
+import {
+  isEmailInDeskAllowlist,
+  isWalletInDeskAllowlist,
+} from "@/lib/desk/config";
 import {
   isNormalizedSolanaAddress,
   normalizeSolanaAddress,
@@ -27,6 +30,8 @@ export type DeskAccessEvaluation =
 /** Minimal identity shape — avoids importing Privy/serverEnv into pure evaluation. */
 export type DeskEvalIdentity = {
   wallets: ReadonlyArray<{ address: string }>;
+  /** Verified Privy email linked accounts (already normalised lowercase). */
+  emails?: ReadonlyArray<string>;
 };
 
 export type DeskEvalProfile = {
@@ -34,13 +39,19 @@ export type DeskEvalProfile = {
 };
 
 /**
- * Pure Desk gate over already-resolved identity + profile + allowlist.
- * Never accepts a client-supplied wallet — only profiles.wallet_address.
+ * Pure Desk gate over already-resolved identity + profile + allowlists.
+ * Never accepts a client-supplied wallet or email — only Privy-verified
+ * identity plus profiles.wallet_address.
+ *
+ * Access when the stored profile wallet is owned by the session and either:
+ * - that wallet is on FENN_DESK_WALLETS, or
+ * - a verified Privy email is on FENN_DESK_EMAILS.
  */
 export function evaluateDeskAccess(input: {
   identity: DeskEvalIdentity | null;
   profile: DeskEvalProfile | null;
-  allowlist: readonly string[];
+  walletAllowlist?: readonly string[];
+  emailAllowlist?: readonly string[];
 }): DeskAccessEvaluation {
   if (!input.identity) {
     return { ok: false, reason: "unauthenticated", status: 401 };
@@ -62,7 +73,15 @@ export function evaluateDeskAccess(input: {
     return { ok: false, reason: "wallet_not_owned", status: 403 };
   }
 
-  if (!isWalletInDeskAllowlist(walletAddress, input.allowlist)) {
+  const walletAllowlist = input.walletAllowlist ?? [];
+  const emailAllowlist = input.emailAllowlist ?? [];
+
+  const walletAllowed = isWalletInDeskAllowlist(walletAddress, walletAllowlist);
+  const emailAllowed = (input.identity.emails ?? []).some((email) =>
+    isEmailInDeskAllowlist(email, emailAllowlist),
+  );
+
+  if (!walletAllowed && !emailAllowed) {
     return { ok: false, reason: "desk_not_allowed", status: 403 };
   }
 

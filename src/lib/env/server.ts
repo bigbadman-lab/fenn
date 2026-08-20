@@ -3,7 +3,10 @@ import "server-only";
 import { z } from "zod";
 
 import { parseAdminWalletAllowlist } from "@/lib/admin/config";
-import { parseDeskWalletAllowlist } from "@/lib/desk/config";
+import {
+  parseDeskEmailAllowlist,
+  parseDeskWalletAllowlist,
+} from "@/lib/desk/config";
 import { getPublicEnv, type PublicEnv } from "@/lib/env/public";
 
 /**
@@ -48,7 +51,7 @@ const fennAdminWallets = z.preprocess(
   }),
 );
 
-/** Comma-separated Solana Desk wallets. Empty/missing = no Desk access. Invalid entries fail loud. */
+/** Comma-separated Solana Desk wallets. Empty/missing = no wallet-based Desk access. Invalid entries fail loud. */
 const fennDeskWallets = z.preprocess(
   (value) => (typeof value === "string" ? value : ""),
   z.string().superRefine((value, ctx) => {
@@ -61,6 +64,22 @@ const fennDeskWallets = z.preprocess(
           error instanceof Error
             ? error.message
             : "Invalid FENN_DESK_WALLETS",
+      });
+    }
+  }),
+);
+
+/** Comma-separated Desk keeper emails. Empty/missing = no email-based Desk access. Invalid entries fail loud. */
+const fennDeskEmails = z.preprocess(
+  (value) => (typeof value === "string" ? value : ""),
+  z.string().superRefine((value, ctx) => {
+    try {
+      parseDeskEmailAllowlist(value);
+    } catch (error) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          error instanceof Error ? error.message : "Invalid FENN_DESK_EMAILS",
       });
     }
   }),
@@ -97,10 +116,17 @@ const serverOnlySchema = z.object({
   FENN_ADMIN_WALLETS: fennAdminWallets,
   /**
    * Comma-separated Solana wallets authorised to access `/desk`.
-   * Empty/missing = no Desk access. Invalid entries fail loud at boot.
+   * Empty/missing = no wallet-based Desk access. Invalid entries fail loud at boot.
    * Never NEXT_PUBLIC_*. Independent of FENN_ADMIN_WALLETS.
+   * Either this or FENN_DESK_EMAILS may grant Desk access.
    */
   FENN_DESK_WALLETS: fennDeskWallets,
+  /**
+   * Comma-separated emails authorised to access `/desk` (Privy email login).
+   * Empty/missing = no email-based Desk access. Invalid entries fail loud at boot.
+   * Never NEXT_PUBLIC_*. Independent of FENN_ADMIN_WALLETS / FENN_DESK_WALLETS.
+   */
+  FENN_DESK_EMAILS: fennDeskEmails,
   /**
    * Trusted Greenwood access override wallets (test/founder).
    * Comma-separated Solana addresses. Malformed entries ignored at use time.
@@ -135,6 +161,7 @@ function readServerOnlyEnv(): ServerOnlyEnv {
     FENN_X_USERNAME: process.env.FENN_X_USERNAME,
     FENN_ADMIN_WALLETS: process.env.FENN_ADMIN_WALLETS,
     FENN_DESK_WALLETS: process.env.FENN_DESK_WALLETS,
+    FENN_DESK_EMAILS: process.env.FENN_DESK_EMAILS,
     GREENWOOD_ACCESS_WALLETS: process.env.GREENWOOD_ACCESS_WALLETS,
     CRON_SECRET: process.env.CRON_SECRET,
   });

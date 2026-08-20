@@ -5,7 +5,9 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  isEmailInDeskAllowlist,
   isWalletInDeskAllowlist,
+  parseDeskEmailAllowlist,
   parseDeskWalletAllowlist,
 } from "@/lib/desk/config";
 
@@ -45,11 +47,17 @@ describe("desk allowlist config", () => {
   it("env example and server env keep Desk allowlist server-only", () => {
     const example = readFileSync(join(here, "../../../.env.example"), "utf8");
     assert.match(example, /FENN_DESK_WALLETS=/);
+    assert.match(example, /FENN_DESK_EMAILS=/);
     assert.match(
       example,
       /Comma-separated Solana wallets authorised to access `\/desk`/,
     );
+    assert.match(
+      example,
+      /Comma-separated emails authorised to access `\/desk`/,
+    );
     assert.doesNotMatch(example, /NEXT_PUBLIC_FENN_DESK_WALLETS/);
+    assert.doesNotMatch(example, /NEXT_PUBLIC_FENN_DESK_EMAILS/);
     assert.doesNotMatch(
       example.split("FENN_DESK_WALLETS=")[1]?.split("\n\n")[0] ?? "",
       /Greenwood|CROSS|LEAF threshold/i,
@@ -57,10 +65,19 @@ describe("desk allowlist config", () => {
 
     const serverEnv = readFileSync(join(here, "../env/server.ts"), "utf8");
     assert.match(serverEnv, /FENN_DESK_WALLETS/);
+    assert.match(serverEnv, /FENN_DESK_EMAILS/);
     assert.match(serverEnv, /parseDeskWalletAllowlist/);
+    assert.match(serverEnv, /parseDeskEmailAllowlist/);
     assert.match(serverEnv, /import "server-only"/);
 
     const publicEnv = readFileSync(join(here, "../env/public.ts"), "utf8");
     assert.doesNotMatch(publicEnv, /FENN_DESK_WALLETS/);
+    assert.doesNotMatch(publicEnv, /FENN_DESK_EMAILS/);
+  });
+
+  it("email parser membership helpers exist", () => {
+    assert.equal(typeof isWalletInDeskAllowlist, "function");
+    assert.equal(typeof isEmailInDeskAllowlist, "function");
+    assert.equal(typeof parseDeskEmailAllowlist, "function");
   });
 });

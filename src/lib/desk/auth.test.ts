@@ -4,7 +4,12 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { parseDeskWalletAllowlist } from "@/lib/desk/config";
+import {
+  isEmailInDeskAllowlist,
+  isWalletInDeskAllowlist,
+  parseDeskEmailAllowlist,
+  parseDeskWalletAllowlist,
+} from "@/lib/desk/config";
 import {
   evaluateDeskAccess,
   type DeskEvalIdentity,
@@ -17,10 +22,16 @@ const repo = join(here, "../../..");
 const WALLET_A = "11111111111111111111111111111111";
 const WALLET_B = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
 const WALLET_C = "7EcDhSYGxXyoWPo9a6p9q7q7q7q7q7q7q7q7q7q7q7q7";
+const EMAIL_A = "keeper@askvell.com";
+const EMAIL_B = "other@example.com";
 
-function identity(wallets: string[]): DeskEvalIdentity {
+function identity(
+  wallets: string[],
+  emails: string[] = [],
+): DeskEvalIdentity {
   return {
     wallets: wallets.map((address) => ({ address })),
+    emails,
   };
 }
 
@@ -35,17 +46,40 @@ describe("evaluateDeskAccess", () => {
     const result = evaluateDeskAccess({
       identity: identity([WALLET_A, WALLET_B]),
       profile: profile(WALLET_A),
-      allowlist: deskAllowlist,
+      walletAllowlist: deskAllowlist,
+      emailAllowlist: [],
     });
     assert.equal(result.ok, true);
     if (result.ok) assert.equal(result.walletAddress, WALLET_A);
+  });
+
+  it("authorised verified email grants Desk without wallet allowlist", () => {
+    const result = evaluateDeskAccess({
+      identity: identity([WALLET_B], [EMAIL_A]),
+      profile: profile(WALLET_B),
+      walletAllowlist: [],
+      emailAllowlist: parseDeskEmailAllowlist(EMAIL_A),
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.walletAddress, WALLET_B);
+  });
+
+  it("email allowlist is case-insensitive", () => {
+    const result = evaluateDeskAccess({
+      identity: identity([WALLET_B], ["Keeper@AskVell.com"]),
+      profile: profile(WALLET_B),
+      walletAllowlist: [],
+      emailAllowlist: parseDeskEmailAllowlist(EMAIL_A),
+    });
+    assert.equal(result.ok, true);
   });
 
   it("unauthenticated user denied", () => {
     const result = evaluateDeskAccess({
       identity: null,
       profile: profile(WALLET_A),
-      allowlist: deskAllowlist,
+      walletAllowlist: deskAllowlist,
+      emailAllowlist: [],
     });
     assert.deepEqual(result, {
       ok: false,
@@ -58,7 +92,8 @@ describe("evaluateDeskAccess", () => {
     const result = evaluateDeskAccess({
       identity: identity([WALLET_A]),
       profile: null,
-      allowlist: deskAllowlist,
+      walletAllowlist: deskAllowlist,
+      emailAllowlist: [],
     });
     assert.deepEqual(result, {
       ok: false,
@@ -71,7 +106,22 @@ describe("evaluateDeskAccess", () => {
     const result = evaluateDeskAccess({
       identity: identity([WALLET_B]),
       profile: profile(WALLET_B),
-      allowlist: deskAllowlist,
+      walletAllowlist: deskAllowlist,
+      emailAllowlist: [],
+    });
+    assert.deepEqual(result, {
+      ok: false,
+      reason: "desk_not_allowed",
+      status: 403,
+    });
+  });
+
+  it("unrelated email does not grant Desk", () => {
+    const result = evaluateDeskAccess({
+      identity: identity([WALLET_B], [EMAIL_B]),
+      profile: profile(WALLET_B),
+      walletAllowlist: [],
+      emailAllowlist: parseDeskEmailAllowlist(EMAIL_A),
     });
     assert.deepEqual(result, {
       ok: false,
@@ -82,9 +132,10 @@ describe("evaluateDeskAccess", () => {
 
   it("authoritative stored wallet must still be linked to Privy", () => {
     const result = evaluateDeskAccess({
-      identity: identity([WALLET_B]),
+      identity: identity([WALLET_B], [EMAIL_A]),
       profile: profile(WALLET_A),
-      allowlist: deskAllowlist,
+      walletAllowlist: deskAllowlist,
+      emailAllowlist: parseDeskEmailAllowlist(EMAIL_A),
     });
     assert.deepEqual(result, {
       ok: false,
@@ -97,17 +148,19 @@ describe("evaluateDeskAccess", () => {
     const result = evaluateDeskAccess({
       identity: identity([WALLET_A, WALLET_C]),
       profile: profile(WALLET_C),
-      allowlist: deskAllowlist,
+      walletAllowlist: deskAllowlist,
+      emailAllowlist: [],
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.reason, "desk_not_allowed");
   });
 
-  it("missing env / empty allowlist fails closed", () => {
+  it("missing env / empty allowlists fails closed", () => {
     const result = evaluateDeskAccess({
-      identity: identity([WALLET_A]),
+      identity: identity([WALLET_A], [EMAIL_A]),
       profile: profile(WALLET_A),
-      allowlist: parseDeskWalletAllowlist(""),
+      walletAllowlist: parseDeskWalletAllowlist(""),
+      emailAllowlist: parseDeskEmailAllowlist(""),
     });
     assert.deepEqual(result, {
       ok: false,
@@ -121,7 +174,7 @@ describe("evaluateDeskAccess", () => {
     const authSource = readFileSync(join(here, "auth.ts"), "utf8");
     assert.doesNotMatch(evaluateSource, /body\.wallet|query\.wallet|searchParams/);
     assert.match(evaluateSource, /profile\.wallet_address/);
-    assert.match(authSource, /Never trusts wallet flags from the request body/);
+    assert.match(authSource, /Never trusts wallet\/email flags from the request body/);
   });
 });
 
@@ -130,7 +183,8 @@ describe("Desk access isolation", () => {
     const result = evaluateDeskAccess({
       identity: identity([WALLET_A]),
       profile: profile(WALLET_A),
-      allowlist: parseDeskWalletAllowlist(""),
+      walletAllowlist: parseDeskWalletAllowlist(""),
+      emailAllowlist: [],
     });
     assert.equal(result.ok, false);
   });
@@ -139,7 +193,8 @@ describe("Desk access isolation", () => {
     const result = evaluateDeskAccess({
       identity: identity([WALLET_A]),
       profile: profile(WALLET_A),
-      allowlist: [],
+      walletAllowlist: [],
+      emailAllowlist: [],
     });
     assert.equal(result.ok, false);
 
@@ -151,7 +206,9 @@ describe("Desk access isolation", () => {
       /parseAdminWalletAllowlist|isWalletInAdminAllowlist|parseGreenwoodAccessWallets/,
     );
     assert.match(authSource, /serverEnv\.FENN_DESK_WALLETS/);
+    assert.match(authSource, /serverEnv\.FENN_DESK_EMAILS/);
     assert.match(authSource, /parseDeskWalletAllowlist/);
+    assert.match(authSource, /parseDeskEmailAllowlist/);
   });
 
   it("requireFennAdmin remains a separate guard", () => {
@@ -177,7 +234,7 @@ describe("Desk surface privacy and architecture", () => {
     assert.match(shell, /Keeper/);
     assert.doesNotMatch(shell, /Connect Wallet|Access denied|Administrator/i);
     assert.doesNotMatch(shell, /Wrong wallet|Allowlist|Permission/i);
-    assert.doesNotMatch(shell, /walletAddress|FENN_DESK_WALLETS/);
+    assert.doesNotMatch(shell, /walletAddress|FENN_DESK_WALLETS|FENN_DESK_EMAILS/);
   });
 
   it("session API uses requireFennDeskAccess and no-store", () => {
@@ -253,5 +310,34 @@ describe("Desk surface privacy and architecture", () => {
     );
     assert.doesNotMatch(greenwood, /parseSolanaWalletAllowlist/);
     assert.match(greenwood, /ignores empty\/malformed|Malformed entries ignored/i);
+  });
+
+  it("verified Privy identity includes emails for Desk email gate", () => {
+    const privy = readFileSync(
+      join(repo, "src/lib/auth/get-verified-privy-user.ts"),
+      "utf8",
+    );
+    assert.match(privy, /emails: string\[\]/);
+    assert.match(privy, /extractVerifiedEmails/);
+    assert.match(privy, /account\.type !== "email"/);
+  });
+});
+
+describe("desk email allowlist config", () => {
+  it("parses and matches emails", () => {
+    assert.deepEqual(parseDeskEmailAllowlist(""), []);
+    assert.deepEqual(parseDeskEmailAllowlist(`${EMAIL_A}, ${EMAIL_B}`), [
+      EMAIL_A,
+      EMAIL_B,
+    ]);
+    assert.deepEqual(parseDeskEmailAllowlist(` ${EMAIL_A.toUpperCase()} ,${EMAIL_A}`), [
+      EMAIL_A,
+    ]);
+    assert.equal(isEmailInDeskAllowlist("Keeper@AskVell.com", [EMAIL_A]), true);
+    assert.equal(isEmailInDeskAllowlist(EMAIL_B, [EMAIL_A]), false);
+    assert.throws(
+      () => parseDeskEmailAllowlist("not-an-email"),
+      /Invalid email in FENN_DESK_EMAILS/,
+    );
   });
 });

@@ -5,7 +5,10 @@ import {
   getVerifiedPrivyUser,
   type VerifiedPrivyIdentity,
 } from "@/lib/auth/get-verified-privy-user";
-import { parseDeskWalletAllowlist } from "@/lib/desk/config";
+import {
+  parseDeskEmailAllowlist,
+  parseDeskWalletAllowlist,
+} from "@/lib/desk/config";
 import {
   evaluateDeskAccess,
   type DeskAccessReason,
@@ -47,7 +50,7 @@ export function fennDeskActorId(profileId: string): string {
   return `profile:${profileId}`;
 }
 
-function readDeskAllowlist(rawOverride?: string | null): string[] {
+function readDeskWalletAllowlist(rawOverride?: string | null): string[] {
   const raw =
     rawOverride !== undefined ? rawOverride : serverEnv.FENN_DESK_WALLETS;
   try {
@@ -61,19 +64,40 @@ function readDeskAllowlist(rawOverride?: string | null): string[] {
   }
 }
 
+function readDeskEmailAllowlist(rawOverride?: string | null): string[] {
+  const raw =
+    rawOverride !== undefined ? rawOverride : serverEnv.FENN_DESK_EMAILS;
+  try {
+    return parseDeskEmailAllowlist(raw);
+  } catch {
+    throw new DeskAuthError(
+      "Desk allowlist configuration is invalid",
+      500,
+      "configuration_error",
+    );
+  }
+}
+
 export type RequireFennDeskAccessOptions = {
   /**
-   * Raw allowlist string for tests. When omitted, uses serverEnv.FENN_DESK_WALLETS.
+   * Raw wallet allowlist string for tests. When omitted, uses serverEnv.FENN_DESK_WALLETS.
    * Never log this value.
    */
   allowlistRaw?: string | null;
+  /**
+   * Raw email allowlist string for tests. When omitted, uses serverEnv.FENN_DESK_EMAILS.
+   * Never log this value.
+   */
+  emailAllowlistRaw?: string | null;
 };
 
 /**
- * Require authenticated Privy identity + registered FENN profile whose
- * permanent Solana wallet is on the server-only FENN_DESK_WALLETS allowlist.
+ * Require authenticated Privy identity + registered FENN profile authorised
+ * for The Desk via server-only allowlists:
+ * - FENN_DESK_WALLETS (profile Solana wallet), or
+ * - FENN_DESK_EMAILS (verified Privy email)
  *
- * Never trusts wallet flags from the request body, query, or client claims.
+ * Never trusts wallet/email flags from the request body, query, or client claims.
  * Independent of FENN_ADMIN_WALLETS and GREENWOOD_ACCESS_WALLETS.
  *
  * 401 — missing/invalid Privy session
@@ -96,8 +120,14 @@ export async function requireFennDeskAccess(
 
   const admin = createAdminClient();
   const profile = await findProfileByPrivyUserId(admin, identity.privyUserId);
-  const allowlist = readDeskAllowlist(options?.allowlistRaw);
-  const evaluation = evaluateDeskAccess({ identity, profile, allowlist });
+  const walletAllowlist = readDeskWalletAllowlist(options?.allowlistRaw);
+  const emailAllowlist = readDeskEmailAllowlist(options?.emailAllowlistRaw);
+  const evaluation = evaluateDeskAccess({
+    identity,
+    profile,
+    walletAllowlist,
+    emailAllowlist,
+  });
 
   if (!evaluation.ok) {
     throw new DeskAuthError(

@@ -18,6 +18,8 @@ export type VerifiedPrivyWallet = {
 export type VerifiedPrivyIdentity = {
   privyUserId: string;
   wallets: VerifiedPrivyWallet[];
+  /** Normalised (lowercase) verified email linked accounts. */
+  emails: string[];
 };
 
 let privyClient: PrivyClient | null = null;
@@ -84,6 +86,25 @@ function extractSolanaWallets(
   return wallets;
 }
 
+function extractVerifiedEmails(linkedAccounts: LinkedAccount[]): string[] {
+  const emails: string[] = [];
+  const seen = new Set<string>();
+
+  for (const account of linkedAccounts) {
+    if (account.type !== "email") continue;
+    if (!("address" in account) || typeof account.address !== "string") continue;
+
+    const email = account.address.trim().toLowerCase();
+    if (!email.includes("@")) continue;
+    if (seen.has(email)) continue;
+
+    seen.add(email);
+    emails.push(email);
+  }
+
+  return emails;
+}
+
 /**
  * Verify Privy access token, then load the verified user (incl. linked wallets)
  * via the Privy API using the token subject. No identity token required.
@@ -110,9 +131,12 @@ export async function getVerifiedPrivyUser(request: Request): Promise<VerifiedPr
     throw new AuthError("Privy user subject mismatch");
   }
 
+  const linkedAccounts = user.linked_accounts ?? [];
+
   return {
     privyUserId: user.id,
-    wallets: extractSolanaWallets(user.linked_accounts ?? []),
+    wallets: extractSolanaWallets(linkedAccounts),
+    emails: extractVerifiedEmails(linkedAccounts),
   };
 }
 

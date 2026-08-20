@@ -8,7 +8,8 @@ Operational checklist. Not product lore.
 |----------|--------|--------|
 | `FENN_CLEARING_COOKIE_SECRET` | **required production secret** | min 32 characters; dedicated HMAC secret for Traveller cookies. **Required when `NODE_ENV=production` or `VERCEL_ENV=production`.** Never fall back to service role in production. |
 | `SUPABASE_SERVICE_ROLE_KEY` | required foundation | API only; not a cookie secret in production. |
-| `FENN_DESK_WALLETS` | required for Desk | Keepers who can moderate. |
+| `FENN_DESK_WALLETS` | optional for Desk | Keeper Solana wallets (still supported). |
+| `FENN_DESK_EMAILS` | recommended for Desk | Keeper emails for Privy email login. |
 | Rate limits / poll intervals | code defaults in `src/lib/clearing/config.ts` | Tune via deploy; `clearing_state` holds read-only + slow mode. |
 
 ### Environments
@@ -28,7 +29,7 @@ Rotating `FENN_CLEARING_COOKIE_SECRET` invalidates existing Traveller cookies. U
 1. Apply migrations **47**, **48**, **49** (authorised).
 2. Run `supabase/verify_clearing_foundation.sql` — expect OK, no public write grants.
 3. Confirm `FENN_CLEARING_COOKIE_SECRET` in production.
-4. Confirm Desk wallet on `FENN_DESK_WALLETS`.
+4. Confirm Desk access via `FENN_DESK_EMAILS` (email login) and/or `FENN_DESK_WALLETS`.
 5. Smoke:
    - mint Traveller + one message
    - Outlaw message
