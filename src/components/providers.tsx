@@ -51,7 +51,7 @@ export function Providers({ children }: ProvidersProps) {
       config={{
         // Order is controlled by loginMethodsAndOrder (takes precedence over loginMethods).
         loginMethodsAndOrder: {
-          primary: ["email", "phantom"],
+          primary: ["email"],
         },
         appearance: {
           // Night background — Privy modulates FG/BG from this hex.
@@ -59,15 +59,13 @@ export function Providers({ children }: ProvidersProps) {
           accentColor: "#9945FF",
           logo: fennPrivyLogo,
           landingHeader: "",
-          loginMessage: "bring a wallet.",
+          loginMessage: "enter with email.",
           showWalletLoginFirst: false,
-          walletList: ["phantom"],
           walletChainType: "solana-only",
         },
         embeddedWallets: {
           solana: {
-            // Create embedded Solana wallet only when the user has none yet
-            // (email users). Phantom users already have an external wallet.
+            // Email login: create an embedded Solana wallet when the user has none.
             createOnLogin: "users-without-wallets",
           },
         },

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PostLoginRegisterGuide } from "@/components/home/post-login-register-guide";
 import { FirePresenceProvider } from "@/components/shell/fire-presence-provider";
 import { ShellAuthControls } from "@/components/shell/shell-auth-controls";
 import { ShellFireStatus } from "@/components/shell/shell-fire-status";
@@ -13,6 +14,7 @@ type ApplicationShellProps = {
 export function ApplicationShell({ children }: ApplicationShellProps) {
   return (
     <FirePresenceProvider>
+      <PostLoginRegisterGuide />
       <div className="shell">
         <div className="shell__inner">
           <header className="shell__brand">
