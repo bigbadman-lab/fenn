@@ -11,7 +11,7 @@ How FENN knows what his on-chain token is — without hardcoding the contract.
 
 **Never put the official contract address into Canon.**
 
-Tomorrow: after `npm run launch:activate -- --contract 0x…`, the live fact path updates automatically. No canon edit, no memory rewrite, no redeploy required for FENN to learn the CA.
+Tomorrow: after `npm run vell:activate -- --contract <SolanaMintBase58>`, the live fact path updates automatically. No canon edit, no memory rewrite, no redeploy required for VELL to learn the mint.
 
 ## Stable Canon (`fenn.token.identity`)
 
@@ -19,8 +19,8 @@ Public, `public_agent`-retrievable:
 
 | Area | Facts |
 |------|--------|
-| Identity | FENN / $FENN, Robinhood Chain, chain ID **4663**, ERC-20, **18** decimals |
-| Supply | design total **1,000,000,000** FENN |
+| Identity | VELL / $VELL, Solana, chain sentinel **101**, SPL, **9** decimals |
+| Supply | design total **1,000,000,000** VELL |
 | Purse | intended **initial** allocation **10,000,000** (1%); not permanent balance |
 | LEAF | off-chain; not SPL; not $VELL; no automatic conversion |
 | Purse / Treasury | distinct; Treasury not free spend; user requests do not command spend |
@@ -35,10 +35,10 @@ Related sheets (reused, not duplicated wholesale):
 | Fact | Source |
 |------|--------|
 | `official_fenn_token` | Stage 12 public fact reader → `getPublicOfficialFennToken` |
-| Pre-launch | row may exist; `contract_address` null → fact **unavailable** → no invented CA |
-| Post-launch | after `launch:activate` → exact contract, chain 4663, explorer |
+| Pre-launch | row may exist; `contract_address` null → fact **unavailable** → no invented mint |
+| Post-launch | after `vell:activate` → exact mint, chain 101, Solscan |
 
-Address verification uses the live official address only (`verifyCandidateAgainstOfficialContract`).
+Address verification uses the live official mint only (`verifyCandidateAgainstOfficialContract`).
 
 ## Operator steps
 
@@ -50,7 +50,7 @@ npm run memory:index
 Launch day (does **not** edit canon):
 
 ```bash
-npm run launch:activate -- --contract 0xYOUR_VERIFIED_FENN_CONTRACT
+npm run vell:activate -- --contract YOUR_VERIFIED_VELL_MINT_BASE58
 ```
 
 ## Self-knowledge probes

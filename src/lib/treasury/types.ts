@@ -87,7 +87,7 @@ export type OfficialFennTokenAsset = {
 
 /** Public safe official-token fields for UI and GET /api/treasury. */
 export type PublicOfficialFennToken = {
-  symbol: "FENN";
+  symbol: "VELL";
   chainId: number;
   contractAddress: string;
   explorerUrl: string;

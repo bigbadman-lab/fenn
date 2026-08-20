@@ -1,23 +1,12 @@
--- FENN P2C.1 — Prepare dormant official $FENN row (OPS, not a migration)
+-- VELL launch prep — dormant official $VELL mint row on Solana (OPS, not a migration)
 --
 -- Run as ONE paste in Supabase SQL Editor (or a single psql session).
--- Does NOT insert a migration. Does NOT activate settlement.
--- Does NOT set contract_address.
--- Does NOT modify the existing ETH / native NULL-contract row.
--- Does NOT update ETH. Does NOT activate settlement.
+-- Requires migration 65 (Solana contract_address CHECK + official/public 101 uidx).
 --
--- Implementation (PL/pgSQL law):
---   The entire prep decision runs inside ONE DO block.
---   Scalars (n_official, n_dormant, existing_id, …) are variables only —
---   never relations. Prefer  name := (SELECT …)  over SELECT … INTO name
---   so a flaky multi-statement splitter cannot treat INTO as table-create
---   SQL or leave a bare name that later resolves as FROM-relation (42P01).
---
--- Requires:
---   migration 44  treasury_assets_one_official_public_4663_uidx
---   migration 62  treasury_assets_chain_contract_uidx
---                 null_contract_coexistence: ETH + dormant FENN both may use
---                 contract_address NULL on chain 4663
+-- Does NOT set contract_address (mint stays NULL until npm run vell:activate).
+-- Does NOT modify ETH / Robinhood (4663) treasury rows.
+-- Demotes any leftover Robinhood official/public FENN flags so the public
+-- resolver has a single Solana official source of truth.
 
 DO $prep$
 DECLARE
@@ -30,30 +19,49 @@ DECLARE
   existing_tracked boolean;
   existing_chain integer;
   live_addr    text;
+  demoted      integer;
 BEGIN
-  -- 1) Count official/public FENN candidates on Robinhood Chain
+  -- Demote legacy Robinhood official/public FENN flags (display mint is Solana).
+  UPDATE public.treasury_assets t
+  SET metadata = (t.metadata - 'official' - 'public_contract')
+                 || jsonb_build_object(
+                      'official', false,
+                      'public_contract', false,
+                      'superseded_by', 'solana_official_vell'
+                    )
+  WHERE t.chain_id = 4663
+    AND lower(trim(t.symbol)) IN ('fenn', 'vell')
+    AND (t.metadata->>'official') = 'true'
+    AND (t.metadata->>'public_contract') = 'true';
+
+  GET DIAGNOSTICS demoted = ROW_COUNT;
+  IF demoted > 0 THEN
+    RAISE NOTICE
+      'VELL_LAUNCH_PREP: demoted % Robinhood official/public row(s)',
+      demoted;
+  END IF;
+
+  -- Count Solana official/public candidates
   n_official := (
     SELECT count(*)::integer
     FROM public.treasury_assets t
-    WHERE t.chain_id = 4663
-      AND lower(trim(t.symbol)) = 'fenn'
+    WHERE t.chain_id = 101
+      AND lower(trim(t.symbol)) = 'vell'
       AND (t.metadata->>'official') = 'true'
       AND (t.metadata->>'public_contract') = 'true'
   );
 
-  -- 2) Multiple official/public FENN rows → fail loudly
   IF n_official > 1 THEN
     RAISE EXCEPTION
-      'FENN_LAUNCH_PREP_CONFLICT: % official/public FENN rows on chain 4663 — fix manually, do not duplicate',
+      'VELL_LAUNCH_PREP_CONFLICT: % official/public VELL rows on Solana (101) — fix manually',
       n_official;
   END IF;
 
-  -- 3) Exactly one live (non-null contract) → stop; never overwrite
   n_live := (
     SELECT count(*)::integer
     FROM public.treasury_assets t
-    WHERE t.chain_id = 4663
-      AND lower(trim(t.symbol)) = 'fenn'
+    WHERE t.chain_id = 101
+      AND lower(trim(t.symbol)) = 'vell'
       AND (t.metadata->>'official') = 'true'
       AND (t.metadata->>'public_contract') = 'true'
       AND t.contract_address IS NOT NULL
@@ -64,24 +72,23 @@ BEGIN
     live_addr := (
       SELECT max(t.contract_address)
       FROM public.treasury_assets t
-      WHERE t.chain_id = 4663
-        AND lower(trim(t.symbol)) = 'fenn'
+      WHERE t.chain_id = 101
+        AND lower(trim(t.symbol)) = 'vell'
         AND (t.metadata->>'official') = 'true'
         AND (t.metadata->>'public_contract') = 'true'
         AND t.contract_address IS NOT NULL
         AND length(trim(t.contract_address)) > 0
     );
     RAISE EXCEPTION
-      'FENN_LAUNCH_PREP_ALREADY_LIVE: official FENN already has contract_address=% — do not overwrite',
+      'VELL_LAUNCH_PREP_ALREADY_LIVE: official VELL already has mint=% — do not overwrite',
       live_addr;
   END IF;
 
-  -- 4) Exactly one dormant row → verify and leave as-is
   n_dormant := (
     SELECT count(*)::integer
     FROM public.treasury_assets t
-    WHERE t.chain_id = 4663
-      AND lower(trim(t.symbol)) = 'fenn'
+    WHERE t.chain_id = 101
+      AND lower(trim(t.symbol)) = 'vell'
       AND (t.metadata->>'official') = 'true'
       AND (t.metadata->>'public_contract') = 'true'
       AND t.contract_address IS NULL
@@ -101,40 +108,39 @@ BEGIN
       existing_decimals,
       existing_tracked
     FROM public.treasury_assets t
-    WHERE t.chain_id = 4663
-      AND lower(trim(t.symbol)) = 'fenn'
+    WHERE t.chain_id = 101
+      AND lower(trim(t.symbol)) = 'vell'
       AND (t.metadata->>'official') = 'true'
       AND (t.metadata->>'public_contract') = 'true'
       AND t.contract_address IS NULL
     LIMIT 1;
 
-    IF upper(trim(existing_symbol)) <> 'FENN' THEN
+    IF upper(trim(existing_symbol)) <> 'VELL' THEN
       RAISE EXCEPTION
-        'FENN_LAUNCH_PREP_CONFLICT: existing official row symbol=% (expected FENN)',
+        'VELL_LAUNCH_PREP_CONFLICT: existing official row symbol=% (expected VELL)',
         existing_symbol;
     END IF;
-    IF existing_chain IS DISTINCT FROM 4663 THEN
+    IF existing_chain IS DISTINCT FROM 101 THEN
       RAISE EXCEPTION
-        'FENN_LAUNCH_PREP_CONFLICT: existing official row chain_id=% (expected 4663)',
+        'VELL_LAUNCH_PREP_CONFLICT: existing official row chain_id=% (expected 101)',
         existing_chain;
     END IF;
-    IF existing_decimals IS DISTINCT FROM 18 THEN
+    IF existing_decimals IS DISTINCT FROM 9 THEN
       RAISE EXCEPTION
-        'FENN_LAUNCH_PREP_CONFLICT: existing official row decimals=% (expected 18)',
+        'VELL_LAUNCH_PREP_CONFLICT: existing official row decimals=% (expected 9)',
         existing_decimals;
     END IF;
     IF existing_tracked IS NOT TRUE THEN
       RAISE EXCEPTION
-        'FENN_LAUNCH_PREP_CONFLICT: existing official row is_tracked is false';
+        'VELL_LAUNCH_PREP_CONFLICT: existing official row is_tracked is false';
     END IF;
 
     RAISE NOTICE
-      'FENN_LAUNCH_PREP_OK: already prepared (dormant official FENN id=% contract_address=NULL)',
+      'VELL_LAUNCH_PREP_OK: already prepared (dormant official VELL id=% contract_address=NULL)',
       existing_id;
     RETURN;
   END IF;
 
-  -- 5) None → insert dormant FENN (ETH and all other assets are never touched)
   IF n_official = 0 AND n_dormant = 0 THEN
     INSERT INTO public.treasury_assets (
       symbol,
@@ -147,36 +153,33 @@ BEGIN
       metadata
     )
     VALUES (
-      'FENN',
-      'FENN',
-      4663,
+      'VELL',
+      'VELL',
+      101,
       NULL,
-      18,
+      9,
       true,
       10,
       jsonb_build_object(
-        'asset_type', 'erc20',
-        'network', 'robinhood_chain',
+        'asset_type', 'spl',
+        'network', 'mainnet-beta',
         'official', true,
         'public_contract', true
       )
     );
 
     RAISE NOTICE
-      'FENN_LAUNCH_PREP_OK: inserted dormant official FENN row (contract_address=NULL)';
+      'VELL_LAUNCH_PREP_OK: inserted dormant official VELL row (Solana mint NULL)';
     RETURN;
   END IF;
 
-  -- Defensive: any other cardinality combination
   RAISE EXCEPTION
-    'FENN_LAUNCH_PREP_CONFLICT: unexpected counts n_official=% n_dormant=% n_live=%',
+    'VELL_LAUNCH_PREP_CONFLICT: unexpected counts n_official=% n_dormant=% n_live=%',
     n_official, n_dormant, n_live;
 END
 $prep$;
 
--- ---------------------------------------------------------------------------
--- Verification (read-only) — ETH + FENN on 4663
--- ---------------------------------------------------------------------------
+-- Verification (read-only)
 SELECT
   symbol,
   name,
@@ -187,6 +190,10 @@ SELECT
   display_order,
   metadata
 FROM public.treasury_assets
-WHERE chain_id = 4663
-  AND lower(symbol) IN ('eth', 'fenn')
-ORDER BY display_order, symbol;
+WHERE (
+    chain_id = 101 AND lower(symbol) = 'vell'
+  )
+  OR (
+    chain_id = 4663 AND lower(symbol) IN ('eth', 'fenn', 'vell')
+  )
+ORDER BY chain_id, display_order, symbol;

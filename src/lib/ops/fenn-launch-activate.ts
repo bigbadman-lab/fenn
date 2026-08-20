@@ -1,27 +1,28 @@
 /**
- * P2C.2 — One-command official FENN contract activation.
+ * P2C.2 — One-command official $VELL mint activation (Solana).
  *
  * Writes ONLY treasury_assets.contract_address on the single dormant
- * official/public FENN row (NULL → validated address).
+ * official/public VELL row (NULL → validated Solana mint).
  *
- * Never: overwrites a live contract, touches ETH / other assets, changes
+ * Never: overwrites a live mint, touches Robinhood ETH/ERC-20 rows, changes
  * decimals/symbol/metadata, activates settlement, funds Purse, claims
  * economic effects, or posts to X.
  */
 
 import "server-only";
 
-import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
+import { SOLANA_MAINNET_CHAIN_ID } from "@/lib/treasury/chain-definition";
 import {
-  isNormalizedEvmAddress,
-  parseEvmAddress,
-} from "@/lib/wallet/evm";
+  isNormalizedSolanaAddress,
+  parseSolanaAddress,
+  solanaAddressesEqual,
+} from "@/lib/wallet/solana";
 
 export const FENN_LAUNCH_ACTIVATE_MODE = "FENN_LAUNCH_ACTIVATE" as const;
 
-export const EXPECTED_OFFICIAL_SYMBOL = "FENN" as const;
-export const EXPECTED_OFFICIAL_DECIMALS = 18 as const;
-export const EXPECTED_ASSET_TYPE = "erc20" as const;
+export const EXPECTED_OFFICIAL_SYMBOL = "VELL" as const;
+export const EXPECTED_OFFICIAL_DECIMALS = 9 as const;
+export const EXPECTED_ASSET_TYPE = "spl" as const;
 
 export type FennLaunchActivateStatus =
   | "CONFIGURED"
@@ -34,10 +35,10 @@ export type FennLaunchActivateErrorCode =
   | "official_row_missing"
   | "multiple_official_candidates"
   | "symbol_mismatch"
-  | "decimals_not_18"
+  | "decimals_not_9"
   | "chain_mismatch"
   | "not_tracked"
-  | "asset_type_not_erc20"
+  | "asset_type_not_spl"
   | "official_flag_missing"
   | "public_contract_flag_missing"
   | "official_contract_already_configured"
@@ -60,8 +61,8 @@ export type FennLaunchActivateReport = {
   status: FennLaunchActivateStatus;
   errorCode: FennLaunchActivateErrorCode | null;
   errorMessage: string | null;
-  symbol: "FENN" | null;
-  chainId: typeof ROBINHOOD_CHAIN_ID | null;
+  symbol: typeof EXPECTED_OFFICIAL_SYMBOL | null;
+  chainId: typeof SOLANA_MAINNET_CHAIN_ID | null;
   decimals: number | null;
   contractAddress: string | null;
   official: boolean | null;
@@ -145,8 +146,8 @@ function successConfigured(
     status,
     errorCode: null,
     errorMessage: null,
-    symbol: "FENN",
-    chainId: ROBINHOOD_CHAIN_ID,
+    symbol: EXPECTED_OFFICIAL_SYMBOL,
+    chainId: SOLANA_MAINNET_CHAIN_ID,
     decimals: EXPECTED_OFFICIAL_DECIMALS,
     contractAddress,
     official: true,
@@ -157,10 +158,9 @@ function successConfigured(
     next:
       status === "CONFIGURED"
         ? [
-            "homepage header will show the contract within ~30s (no redeploy)",
-            "wait for Purse Executor tick",
-            "fund Purse with exactly 10,000,000 VELL",
+            "homepage header will show the Solana mint within ~30s (no redeploy)",
             "run: npm run launch:check",
+            "Purse fund-launch remains deferred until Solana purse path exists",
           ]
         : null,
     notes,
@@ -202,9 +202,9 @@ function isDormantAddress(addr: string | null): boolean {
 export function validateActivateCandidateIdentity(
   row: ActivateCandidateRow,
 ): FennLaunchActivateErrorCode | null {
-  if (row.chain_id !== ROBINHOOD_CHAIN_ID) return "chain_mismatch";
-  if (row.symbol.trim().toLowerCase() !== "fenn") return "symbol_mismatch";
-  if (row.decimals !== EXPECTED_OFFICIAL_DECIMALS) return "decimals_not_18";
+  if (row.chain_id !== SOLANA_MAINNET_CHAIN_ID) return "chain_mismatch";
+  if (row.symbol.trim().toLowerCase() !== "vell") return "symbol_mismatch";
+  if (row.decimals !== EXPECTED_OFFICIAL_DECIMALS) return "decimals_not_9";
   if (!row.is_tracked) return "not_tracked";
   if (!row.metadata || typeof row.metadata !== "object") {
     return "official_flag_missing";
@@ -214,7 +214,7 @@ export function validateActivateCandidateIdentity(
     return "public_contract_flag_missing";
   }
   if (assetTypeOf(row.metadata) !== EXPECTED_ASSET_TYPE) {
-    return "asset_type_not_erc20";
+    return "asset_type_not_spl";
   }
   return null;
 }
@@ -227,7 +227,7 @@ async function defaultListActivateCandidates(): Promise<ActivateCandidateRow[]> 
     .select(
       "id, symbol, name, chain_id, contract_address, decimals, is_tracked, metadata",
     )
-    .eq("chain_id", ROBINHOOD_CHAIN_ID);
+    .eq("chain_id", SOLANA_MAINNET_CHAIN_ID);
 
   if (error) {
     throw new Error(`treasury_assets_list_failed: ${error.message}`);
@@ -250,8 +250,8 @@ async function defaultListActivateCandidates(): Promise<ActivateCandidateRow[]> 
 }
 
 /**
- * Atomic-style guarded update: only the dormant official FENN row may receive
- * contract_address. Zero rows updated ⇒ concurrent race / state change.
+ * Atomic-style guarded update: only the dormant official VELL row may receive
+ * a Solana mint. Zero rows updated ⇒ concurrent race / state change.
  */
 async function defaultGuardedSetOfficialContract(input: {
   id: string;
@@ -264,12 +264,11 @@ async function defaultGuardedSetOfficialContract(input: {
     .from("treasury_assets")
     .update({ contract_address: input.contractAddress })
     .eq("id", input.id)
-    .eq("chain_id", ROBINHOOD_CHAIN_ID)
+    .eq("chain_id", SOLANA_MAINNET_CHAIN_ID)
     .ilike("symbol", EXPECTED_OFFICIAL_SYMBOL)
     .eq("decimals", EXPECTED_OFFICIAL_DECIMALS)
     .eq("is_tracked", true)
     .is("contract_address", null)
-    // metadata text extraction matches boolean-or-string 'true' stored as JSON
     .filter("metadata->>official", "eq", "true")
     .filter("metadata->>public_contract", "eq", "true")
     .filter("metadata->>asset_type", "eq", EXPECTED_ASSET_TYPE)
@@ -305,7 +304,6 @@ async function defaultGuardedSetOfficialContract(input: {
   }
 
   const row = rows[0]!;
-  // Post-write identity gate (symbol/metadata must still match; no other columns touched)
   if (validateActivateCandidateIdentity(row) != null) {
     return {
       updated: false,
@@ -315,7 +313,7 @@ async function defaultGuardedSetOfficialContract(input: {
   }
   if (
     row.contract_address == null ||
-    row.contract_address.trim().toLowerCase() !== input.contractAddress
+    !solanaAddressesEqual(row.contract_address, input.contractAddress)
   ) {
     return {
       updated: false,
@@ -328,7 +326,7 @@ async function defaultGuardedSetOfficialContract(input: {
 }
 
 /**
- * Configure official FENN contract address on the dormant treasury row.
+ * Configure official $VELL Solana mint on the dormant treasury row.
  */
 export async function runFennLaunchActivate(
   input: { contract: string | null | undefined },
@@ -338,26 +336,26 @@ export async function runFennLaunchActivate(
   if (raw == null || String(raw).trim() === "") {
     return refused(
       "missing_contract",
-      "Missing --contract <address>. Usage: npm run launch:activate -- --contract 0x…",
+      "Missing --contract <mint>. Usage: npm run vell:activate -- --contract <SolanaMint>",
       false,
     );
   }
 
   let contractAddress: string;
   try {
-    contractAddress = parseEvmAddress(String(raw));
+    contractAddress = parseSolanaAddress(String(raw));
   } catch {
     return refused(
       "invalid_contract_address",
-      `Invalid EVM address (need normalized lowercase 0x + 40 hex): ${String(raw).slice(0, 80)}`,
+      `Invalid Solana mint (base58, 32–44 chars): ${String(raw).slice(0, 80)}`,
       false,
     );
   }
 
-  if (!isNormalizedEvmAddress(contractAddress)) {
+  if (!isNormalizedSolanaAddress(contractAddress)) {
     return refused(
       "invalid_contract_address",
-      "Invalid EVM address after normalize",
+      "Invalid Solana mint after normalize",
       false,
     );
   }
@@ -376,18 +374,18 @@ export async function runFennLaunchActivate(
     );
   }
 
-  // Official/public FENN on Robinhood only — never ETH or other assets
+  // Official/public VELL on Solana only — never Robinhood ETH/ERC-20 rows
   const candidates = allRows.filter(
     (r) =>
-      r.chain_id === ROBINHOOD_CHAIN_ID &&
-      r.symbol.trim().toLowerCase() === "fenn" &&
+      r.chain_id === SOLANA_MAINNET_CHAIN_ID &&
+      r.symbol.trim().toLowerCase() === "vell" &&
       isOfficialPublicMetadata(r.metadata),
   );
 
   if (candidates.length === 0) {
     return refused(
       "official_row_missing",
-      "No official/public FENN row on chain 4663 (run fenn-launch-prep.sql first)",
+      "No official/public VELL row on Solana chain 101 (run fenn-launch-prep.sql first)",
       false,
     );
   }
@@ -395,7 +393,7 @@ export async function runFennLaunchActivate(
   if (candidates.length > 1) {
     return refused(
       "multiple_official_candidates",
-      `Multiple official/public FENN rows (${candidates.length}) — refuse activation`,
+      `Multiple official/public VELL rows (${candidates.length}) — refuse activation`,
       false,
     );
   }
@@ -405,11 +403,11 @@ export async function runFennLaunchActivate(
   if (identityError) {
     return refused(
       identityError,
-      `Official FENN candidate failed identity check: ${identityError}`,
+      `Official VELL candidate failed identity check: ${identityError}`,
       false,
       {
-        symbol: "FENN",
-        chainId: ROBINHOOD_CHAIN_ID,
+        symbol: EXPECTED_OFFICIAL_SYMBOL,
+        chainId: SOLANA_MAINNET_CHAIN_ID,
         decimals: row.decimals,
         contractAddress: row.contract_address,
       },
@@ -418,19 +416,19 @@ export async function runFennLaunchActivate(
 
   // Already configured
   if (!isDormantAddress(row.contract_address)) {
-    const existing = parseEvmAddressSafe(row.contract_address!);
-    if (existing === contractAddress) {
+    const existing = parseSolanaAddressSafe(row.contract_address!);
+    if (existing && solanaAddressesEqual(existing, contractAddress)) {
       return successConfigured(contractAddress, false, "ALREADY_CONFIGURED", [
-        "contract already set to the same address; no write performed",
+        "mint already set to the same address; no write performed",
       ]);
     }
     return refused(
       "official_contract_already_configured",
-      `Official contract already configured as ${row.contract_address}; refusing overwrite with ${contractAddress}`,
+      `Official mint already configured as ${row.contract_address}; refusing overwrite with ${contractAddress}`,
       false,
       {
-        symbol: "FENN",
-        chainId: ROBINHOOD_CHAIN_ID,
+        symbol: EXPECTED_OFFICIAL_SYMBOL,
+        chainId: SOLANA_MAINNET_CHAIN_ID,
         decimals: EXPECTED_OFFICIAL_DECIMALS,
         contractAddress: existing ?? row.contract_address,
         official: true,
@@ -470,20 +468,20 @@ export async function runFennLaunchActivate(
   if (!result.updated) {
     return refused(
       "dormant_row_race",
-      "Guarded update matched 0 rows (contract may have been set concurrently) — refuse; re-run launch:check",
+      "Guarded update matched 0 rows (mint may have been set concurrently) — refuse; re-run launch:check",
       true,
     );
   }
 
   return successConfigured(contractAddress, true, "CONFIGURED", [
-    "updated treasury_assets.contract_address only on dormant official FENN row",
+    "updated treasury_assets.contract_address only on dormant official VELL row",
     "homepage polls /api/home/official-token — refresh to verify",
   ]);
 }
 
-function parseEvmAddressSafe(value: string): string | null {
+function parseSolanaAddressSafe(value: string): string | null {
   try {
-    return parseEvmAddress(value);
+    return parseSolanaAddress(value);
   } catch {
     return null;
   }

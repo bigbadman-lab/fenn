@@ -6,6 +6,7 @@ import {
   robinhoodAddressExplorerUrl,
   shortenWallet,
 } from "@/lib/greenwood/hollow/explorer";
+import { SOLANA_MAINNET_CHAIN_ID } from "@/lib/treasury/chain-definition";
 import {
   getOfficialFennTokenLookup,
 } from "@/lib/treasury/official-token";
@@ -14,6 +15,8 @@ import type {
   OfficialFennTokenLookup,
   PublicTreasurySnapshot,
 } from "@/lib/treasury/types";
+import { solanaAccountExplorerUrl } from "@/lib/commons/public-wallets";
+import { abbreviateSolanaAddress } from "@/lib/wallet/solana";
 import { abbreviateEvmAddress } from "@/lib/wallet/evm";
 
 export type DeskTreasuryStatus =
@@ -82,11 +85,16 @@ function deskOfficialFromLookup(
   }
   if (lookup.status === "ok") {
     const address = lookup.token.contractAddress;
+    const isSolanaMint = lookup.token.chainId === SOLANA_MAINNET_CHAIN_ID;
     return {
       status: "configured",
       contractAddress: address,
-      contractShort: abbreviateEvmAddress(address),
-      explorerUrl: robinhoodAddressExplorerUrl(address),
+      contractShort: isSolanaMint
+        ? abbreviateSolanaAddress(address)
+        : abbreviateEvmAddress(address),
+      explorerUrl: isSolanaMint
+        ? solanaAccountExplorerUrl(address)
+        : robinhoodAddressExplorerUrl(address),
       detail: "tracked · public",
     };
   }

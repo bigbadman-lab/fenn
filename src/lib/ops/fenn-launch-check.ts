@@ -18,7 +18,7 @@ import {
   PRODUCTION_HARD_MAX_SINGLE_BURN_FORMATTED,
   PRODUCTION_HARD_MAX_SINGLE_TRANSFER_FORMATTED,
 } from "@/lib/agent/economic-authority-limits";
-import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
+import { SOLANA_MAINNET_CHAIN_ID } from "@/lib/treasury/chain-definition";
 import { resolveOfficialFennToken } from "@/lib/treasury/official-token";
 import type {
   OfficialFennTokenLookup,
@@ -27,8 +27,6 @@ import type {
 import { getPurseConfig } from "@/lib/purse/config";
 import type { PurseConfigState } from "@/lib/purse/types";
 import { xAgentRequiresPursePrivateKey } from "@/lib/ops/x-runtime-env";
-import { parseEvmAddress } from "@/lib/wallet/evm";
-
 /** Launch readiness expectation only — not economic authority law. */
 export const EXPECTED_INITIAL_PURSE_ALLOCATION_FORMATTED =
   PURSE_ORIGINAL_ALLOCATION_FORMATTED; // "10000000"
@@ -177,7 +175,9 @@ export function classifyFennLaunchStatus(input: {
   const notes: string[] = [];
 
   const officialPublic = input.flaggedRows.filter(
-    (r) => r.chain_id === ROBINHOOD_CHAIN_ID && isOfficialPublicMetadata(r.metadata),
+    (r) =>
+      r.chain_id === SOLANA_MAINNET_CHAIN_ID &&
+      isOfficialPublicMetadata(r.metadata),
   );
 
   if (officialPublic.length > 1) {
@@ -193,11 +193,11 @@ export function classifyFennLaunchStatus(input: {
     only && !isDormantContract(only.contract_address) ? only : null;
 
   if (dormant) {
-    if (dormant.symbol.trim().toLowerCase() !== "fenn") {
+    if (dormant.symbol.trim().toLowerCase() !== "vell") {
       errors.push("official_row_symbol_mismatch");
     }
-    if (dormant.decimals !== 18) {
-      errors.push("official_row_decimals_not_18");
+    if (dormant.decimals !== 9) {
+      errors.push("official_row_decimals_not_9");
     }
     if (!dormant.is_tracked) {
       errors.push("official_row_not_tracked");
@@ -233,7 +233,7 @@ export function classifyFennLaunchStatus(input: {
         compareEconomicAmountFormatted(
           input.officialBalance,
           EXPECTED_INITIAL_PURSE_ALLOCATION_FORMATTED,
-          18,
+          9,
         ) >= 0;
     } catch {
       errors.push("purse_balance_unparseable");
@@ -322,7 +322,7 @@ export function classifyFennLaunchStatus(input: {
       allocationSatisfied,
     };
   }
-  if (token.chainId !== ROBINHOOD_CHAIN_ID) {
+  if (token.chainId !== SOLANA_MAINNET_CHAIN_ID) {
     return {
       status: "CONFIG_ERROR",
       errors: [...errors, "resolved_wrong_chain"],
@@ -332,10 +332,10 @@ export function classifyFennLaunchStatus(input: {
       allocationSatisfied,
     };
   }
-  if (token.decimals !== 18) {
+  if (token.decimals !== 9) {
     return {
       status: "CONFIG_ERROR",
-      errors: [...errors, "resolved_decimals_not_18"],
+      errors: [...errors, "resolved_decimals_not_9"],
       notes,
       officialRowPrepared: true,
       officialRowId: rowId,
@@ -431,7 +431,7 @@ async function defaultListOfficialFlaggedRows(): Promise<OfficialFlaggedRow[]> {
     .select(
       "id, symbol, name, chain_id, contract_address, decimals, is_tracked, metadata",
     )
-    .eq("chain_id", ROBINHOOD_CHAIN_ID);
+    .eq("chain_id", SOLANA_MAINNET_CHAIN_ID);
 
   if (error) {
     throw new Error(`treasury_assets_list_failed: ${error.message}`);
@@ -519,18 +519,15 @@ export async function runFennLaunchCheck(
     try {
       const read =
         deps.readOfficialPurseBalance ??
-        (async (input) => {
-          const { createRobinhoodPublicClient, readErc20Balance } =
-            await import("@/lib/treasury/chain");
-          const client = createRobinhoodPublicClient();
-          const bal = await readErc20Balance({
-            tokenAddress: parseEvmAddress(input.tokenAddress),
-            holder: parseEvmAddress(input.purseAddress),
-            decimals: input.decimals,
-            client,
-          });
-          return bal.formatted;
+        (async () => {
+          // Official mint is Solana SPL; EVM Purse ERC-20 balance reads do not apply.
+          return null;
         });
+      if (!deps.readOfficialPurseBalance) {
+        preNotes.push(
+          "solana_purse_balance_deferred: official mint is SPL; EVM ERC-20 purse balance not read",
+        );
+      }
       officialBalance = await read({
         purseAddress: purse.walletAddress,
         tokenAddress: lookup.token.contractAddress,

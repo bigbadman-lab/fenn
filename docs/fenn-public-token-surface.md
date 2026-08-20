@@ -1,13 +1,13 @@
-# P2E — public $FENN surface
+# P2E — public $VELL surface
 
-Public website verification for `$FENN` before and after launch.
+Public website verification for `$VELL` before and after launch.
 
 ## Surfaces
 
 | Surface | Role |
 |---------|------|
-| `/` | Fast official-contract verification — top of world/map section (`HomeIdentity` → `HomeOfficialContract`, above the map) |
-| `/commons` | Full identity · LEAF vs $FENN · official CA · Purse · Treasury |
+| `/` | Fast official-mint verification — top strip (`HomeHeaderContract`) |
+| `/commons` | Full identity · LEAF vs $VELL · official mint · Purse · Treasury |
 
 No dedicated `/token` route.
 
@@ -16,34 +16,30 @@ No dedicated `/token` route.
 | Kind | Source |
 |------|--------|
 | Stable identity (chain, supply, decimals, initial Purse) | `fenn-token-public-identity.ts` aligned with Canon `fenn.token.identity` |
-| Official contract address | `getPublicOfficialFennToken()` only (`treasury_assets` via resolver) |
-| Live balances | Existing Treasury / Purse snapshots |
+| Official mint address | `getPublicOfficialFennToken()` only (`treasury_assets` via resolver) |
+| Live balances | Existing Treasury / Purse snapshots (EVM rails until Solana purse exists) |
 
-**Never** put the official CA in Canon, env, or static UI.
+**Never** put the official mint in Canon, env, or static UI.
 
 ## Live update
 
 | Route | Cache |
 |-------|--------|
-| `/` | ISR `revalidate = 60` — CA appears within about one minute after `launch:activate` |
+| `/` | Header polls `/api/home/official-token` — mint appears without redeploy after `vell:activate` |
 | `/commons` | `force-dynamic` + world pulse 60s |
-
-No redeploy after `launch:activate`.
 
 ## Manual checks — tonight (pre-launch)
 
-1. Open `/` — see `$FENN · ROBINHOOD CHAIN`, **OFFICIAL CONTRACT**, **NOT YET INSCRIBED**. No `0x`, COPY, or explorer.
-2. Open `/commons` — see `$FENN` identity facts, LEAF ≠ $FENN, **OFFICIAL CONTRACT / NOT YET INSCRIBED**, Purse **INITIAL ALLOCATION** + **awaiting official token**, SOL still in Treasury.
+1. Open `/` — see `$VELL · SOLANA`, **OFFICIAL CONTRACT**, **NOT YET INSCRIBED**. No mint, COPY, or explorer.
+2. Open `/commons` — see `$VELL` identity facts (SPL, 9 decimals, mainnet-beta), LEAF ≠ $VELL, mint pending.
 
 ## Manual checks — launch day
 
 ```bash
-npm run launch:activate -- --contract 0xVERIFIED_FENN_CONTRACT
-# fund Purse with 10,000,000 FENN
-# wait Purse Executor tick
-npm run launch:check   # expect LIVE_READY
+npm run vell:activate -- --contract YOUR_VERIFIED_VELL_MINT_BASE58
+npm run launch:check   # expect mint configured; Solana purse balance deferred
 ```
 
-Then `/` and `/commons`: exact same official CA, COPY + VIEW CONTRACT, pending wording gone; initial allocation still labelled initial; ETH preserved.
+Then `/` and `/commons`: exact same official mint, COPY + VIEW, Solscan account link; pending wording gone.
 
 See also: [fenn-token-identity.md](./fenn-token-identity.md), [fenn-token-launch-runbook.md](./fenn-token-launch-runbook.md).

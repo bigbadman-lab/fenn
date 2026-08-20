@@ -8,6 +8,7 @@ import {
   FENN_TOKEN_PUBLIC_TICKER,
 } from "@/lib/treasury/fenn-token-public-identity";
 import type { PublicOfficialFennToken } from "@/lib/treasury/types";
+import { abbreviateSolanaAddress } from "@/lib/wallet/solana";
 import { WORLD_PULSE_LIVE_TICKER_MS } from "@/lib/world-pulse/intervals";
 
 type ApiBody =
@@ -21,10 +22,6 @@ async function copyText(value: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-function shortAddress(address: string): string {
-  return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
 /**
@@ -117,7 +114,9 @@ export function HomeHeaderContract() {
                 className="home-header-contract__address-code"
                 title={token.contractAddress}
               >
-                <span aria-hidden="true">{shortAddress(token.contractAddress)}</span>
+                <span aria-hidden="true">
+                  {abbreviateSolanaAddress(token.contractAddress)}
+                </span>
                 <span className="visually-hidden">{token.contractAddress}</span>
               </code>
             </p>

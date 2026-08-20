@@ -1,62 +1,63 @@
--- FENN P2C.1 — Launch-day official $FENN contract activation (OPS, not a migration)
+-- VELL launch — official Solana mint activation (OPS, not a migration)
 --
 -- EMERGENCY / MANUAL FALLBACK ONLY.
--- Primary launch-day path (P2C.2):
---   npm run launch:activate -- --contract 0x…
+-- Primary launch-day path:
+--   npm run vell:activate -- --contract <SolanaMintBase58>
 --
 -- Use this SQL only when the CLI cannot run. Same safety law:
--- TOMORROW ONLY — after $FENN is deployed and the contract address is verified.
+-- AFTER the SPL mint is deployed and the mint address is verified.
 --
 -- Single operator action:
---   1. Replace the placeholder 0xOFFICIAL_FENN_CONTRACT below with the real address
+--   1. Replace the placeholder OFFICIAL_VELL_MINT below with the real mint
 --   2. Run this file once against production Supabase
 --
 -- Updates ONLY treasury_assets.contract_address (and updated_at via trigger).
 -- Does NOT:
 --   - change decimals / metadata / chain / symbol
 --   - fund the Purse
---   - set purse_config.official_settlement_activated_at (Purse Executor does that)
+--   - set purse_config.official_settlement_activated_at
 --   - toggle economic_settlement_enabled
 --
--- Placeholder MUST remain exactly one token so this fails closed if forgotten.
+-- Placeholder MUST remain so this fails closed if forgotten.
+-- Requires migration 65 (Solana contract_address CHECK + official/public 101 uidx).
 
 BEGIN;
 
 -- ---------------------------------------------------------------------------
--- Set the launch contract (edit ONLY this line).
--- Must be lowercase 0x + 40 hex to satisfy is_normalized_evm_address CHECK.
+-- Set the launch mint (edit ONLY this line).
+-- Must be a valid Solana base58 address (is_normalized_solana_address).
 -- ---------------------------------------------------------------------------
 DO $$
 DECLARE
-  -- >>> REPLACE THIS VALUE WITH THE VERIFIED OFFICIAL $FENN CONTRACT <<<
-  v_raw text := '0xOFFICIAL_FENN_CONTRACT';
+  -- >>> REPLACE THIS VALUE WITH THE VERIFIED OFFICIAL $VELL MINT <<<
+  v_raw text := 'OFFICIAL_VELL_MINT';
   v_addr text;
   v_updated integer;
   v_id uuid;
 BEGIN
   -- Refuse obvious placeholder leftovers
   IF v_raw IS NULL
-     OR position('OFFICIAL_FENN_CONTRACT' in upper(v_raw)) > 0
+     OR position('OFFICIAL_VELL_MINT' in upper(v_raw)) > 0
      OR position('REPLACE' in upper(v_raw)) > 0
   THEN
     RAISE EXCEPTION
-      'FENN_LAUNCH_ACTIVATE_ABORT: replace 0xOFFICIAL_FENN_CONTRACT with the real address before running';
+      'VELL_LAUNCH_ACTIVATE_ABORT: replace OFFICIAL_VELL_MINT with the real Solana mint before running';
   END IF;
 
-  v_addr := lower(trim(v_raw));
+  v_addr := trim(v_raw);
 
-  IF NOT public.is_normalized_evm_address(v_addr) THEN
+  IF NOT public.is_normalized_solana_address(v_addr) THEN
     RAISE EXCEPTION
-      'FENN_LAUNCH_ACTIVATE_ABORT: contract address is not a normalized EVM address: %',
+      'VELL_LAUNCH_ACTIVATE_ABORT: mint is not a normalized Solana address: %',
       v_addr;
   END IF;
 
-  -- Exactly one dormant official target
+  -- Exactly one dormant official target (Solana sentinel 101)
   SELECT id INTO v_id
   FROM public.treasury_assets
-  WHERE chain_id = 4663
-    AND upper(trim(symbol)) = 'FENN'
-    AND decimals = 18
+  WHERE chain_id = 101
+    AND upper(trim(symbol)) = 'VELL'
+    AND decimals = 9
     AND is_tracked = true
     AND (metadata->>'official') = 'true'
     AND (metadata->>'public_contract') = 'true'
@@ -68,17 +69,17 @@ BEGIN
     IF EXISTS (
       SELECT 1
       FROM public.treasury_assets
-      WHERE chain_id = 4663
+      WHERE chain_id = 101
         AND (metadata->>'official') = 'true'
         AND (metadata->>'public_contract') = 'true'
         AND contract_address IS NOT NULL
     ) THEN
       RAISE EXCEPTION
-        'FENN_LAUNCH_ACTIVATE_ABORT: official contract already set — refusing overwrite';
+        'VELL_LAUNCH_ACTIVATE_ABORT: official mint already set — refusing overwrite';
     END IF;
 
     RAISE EXCEPTION
-      'FENN_LAUNCH_ACTIVATE_ABORT: no dormant official FENN row found (run fenn-launch-prep.sql first)';
+      'VELL_LAUNCH_ACTIVATE_ABORT: no dormant official VELL row found (run fenn-launch-prep.sql first)';
   END IF;
 
   UPDATE public.treasury_assets
@@ -90,12 +91,12 @@ BEGIN
 
   IF v_updated <> 1 THEN
     RAISE EXCEPTION
-      'FENN_LAUNCH_ACTIVATE_ABORT: expected 1 row updated, got %',
+      'VELL_LAUNCH_ACTIVATE_ABORT: expected 1 row updated, got %',
       v_updated;
   END IF;
 
   RAISE NOTICE
-    'FENN_LAUNCH_ACTIVATE_OK: id=% contract_address=%',
+    'VELL_LAUNCH_ACTIVATE_OK: id=% contract_address=%',
     v_id,
     v_addr;
 END $$;
@@ -114,8 +115,9 @@ SELECT
   is_tracked,
   metadata->>'official' AS official,
   metadata->>'public_contract' AS public_contract,
-  'official_contract_set' AS activate_status
+  metadata->>'asset_type' AS asset_type,
+  'official_mint_set' AS activate_status
 FROM public.treasury_assets
-WHERE chain_id = 4663
+WHERE chain_id = 101
   AND (metadata->>'official') = 'true'
   AND (metadata->>'public_contract') = 'true';

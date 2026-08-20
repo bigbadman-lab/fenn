@@ -2,8 +2,8 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { explorerAddressUrl } from "@/lib/greenwood/hollow/explorer";
-import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
+import { solanaAccountExplorerUrl } from "@/lib/commons/public-wallets";
+import { SOLANA_MAINNET_CHAIN_ID } from "@/lib/treasury/chain-definition";
 import { TreasuryError } from "@/lib/treasury/errors";
 import type {
   OfficialFennTokenAsset,
@@ -12,9 +12,9 @@ import type {
   PublicOfficialFennToken,
 } from "@/lib/treasury/types";
 import {
-  isNormalizedEvmAddress,
-  parseEvmAddress,
-} from "@/lib/wallet/evm";
+  isNormalizedSolanaAddress,
+  parseSolanaAddress,
+} from "@/lib/wallet/solana";
 
 async function defaultAdmin(): Promise<SupabaseClient> {
   const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -28,7 +28,11 @@ function metaFlagTrue(value: unknown): boolean {
 function hasOfficialPublicFlags(
   metadata: OfficialTokenCandidateRow["metadata"],
 ): boolean {
-  if (metadata == null || typeof metadata !== "object" || Array.isArray(metadata)) {
+  if (
+    metadata == null ||
+    typeof metadata !== "object" ||
+    Array.isArray(metadata)
+  ) {
     return false;
   }
   return (
@@ -36,16 +40,20 @@ function hasOfficialPublicFlags(
   );
 }
 
+function isOfficialPublicSymbol(symbol: string): boolean {
+  const s = symbol.trim().toLowerCase();
+  return s === "vell" || s === "fenn";
+}
+
 /**
- * Pure selection of the official public FENN token from candidate rows.
- * Prefer trusted DB filters first; this is the single arbitration rule.
+ * Pure selection of the official public $VELL mint from candidate rows.
  *
  * Criteria (all required):
- * - chain_id = 4663
- * - contract_address present
+ * - chain_id = 101 (Solana mainnet sentinel)
+ * - contract_address present (Solana mint)
  * - is_tracked = true
  * - metadata.official and metadata.public_contract truthy
- * - symbol is FENN (case-insensitive consistency check)
+ * - symbol is VELL (FENN accepted only as legacy synonym)
  *
  * Ambiguous (multiple) or invalid rows fail closed — no arbitrary pick.
  */
@@ -53,7 +61,7 @@ export function resolveOfficialFennToken(
   rows: OfficialTokenCandidateRow[],
 ): OfficialFennTokenLookup {
   const candidates = rows.filter((row) => {
-    if (row.chain_id !== ROBINHOOD_CHAIN_ID) return false;
+    if (row.chain_id !== SOLANA_MAINNET_CHAIN_ID) return false;
     if (!row.is_tracked) return false;
     if (row.contract_address == null || row.contract_address.trim() === "") {
       return false;
@@ -72,8 +80,8 @@ export function resolveOfficialFennToken(
     };
   }
 
-  const row = candidates[0];
-  if (row.symbol.trim().toLowerCase() !== "fenn") {
+  const row = candidates[0]!;
+  if (!isOfficialPublicSymbol(row.symbol)) {
     return { status: "invalid", reason: "symbol_mismatch" };
   }
 
@@ -85,22 +93,22 @@ export function resolveOfficialFennToken(
     return { status: "invalid", reason: "invalid_decimals" };
   }
 
-  const raw = row.contract_address!.trim().toLowerCase();
-  if (!isNormalizedEvmAddress(raw)) {
+  const raw = row.contract_address!.trim();
+  if (!isNormalizedSolanaAddress(raw)) {
     return { status: "invalid", reason: "invalid_address" };
   }
 
   let contractAddress: string;
   try {
-    contractAddress = parseEvmAddress(raw);
+    contractAddress = parseSolanaAddress(raw);
   } catch {
     return { status: "invalid", reason: "invalid_address" };
   }
 
   const token: OfficialFennTokenAsset = {
-    symbol: "FENN",
+    symbol: "VELL",
     name: row.name,
-    chainId: ROBINHOOD_CHAIN_ID,
+    chainId: SOLANA_MAINNET_CHAIN_ID,
     contractAddress,
     decimals: row.decimals,
   };
@@ -112,19 +120,17 @@ export function resolveOfficialFennToken(
 export function toPublicOfficialFennToken(
   token: OfficialFennTokenAsset,
 ): PublicOfficialFennToken | null {
-  const explorerUrl = explorerAddressUrl(token.chainId, token.contractAddress);
-  if (!explorerUrl) return null;
+  if (!isNormalizedSolanaAddress(token.contractAddress)) return null;
   return {
-    symbol: "FENN",
+    symbol: "VELL",
     chainId: token.chainId,
     contractAddress: token.contractAddress,
-    explorerUrl,
+    explorerUrl: solanaAccountExplorerUrl(token.contractAddress),
   };
 }
 
 /**
- * Load official FENN token candidates from treasury_assets.
- * Filtered at the database where practical; pure resolve applies the rule set.
+ * Load official $VELL mint candidates from treasury_assets.
  */
 export async function listOfficialFennTokenCandidates(
   admin?: SupabaseClient,
@@ -135,14 +141,14 @@ export async function listOfficialFennTokenCandidates(
     .select(
       "id, symbol, name, chain_id, contract_address, decimals, is_tracked, metadata",
     )
-    .eq("chain_id", ROBINHOOD_CHAIN_ID)
+    .eq("chain_id", SOLANA_MAINNET_CHAIN_ID)
     .eq("is_tracked", true)
     .not("contract_address", "is", null);
 
   if (error) {
     throw new TreasuryError(
       "treasury_config_failed",
-      "Failed to load official FENN token candidates",
+      "Failed to load official VELL mint candidates",
       500,
     );
   }
@@ -172,24 +178,24 @@ export async function getOfficialFennTokenLookup(
 
 function logLookupFailure(lookup: OfficialFennTokenLookup): void {
   if (lookup.status === "ambiguous") {
-    console.error("[treasury] official FENN token ambiguous", {
+    console.error("[treasury] official VELL mint ambiguous", {
       code: "official_token_ambiguous",
-      chainId: ROBINHOOD_CHAIN_ID,
+      chainId: SOLANA_MAINNET_CHAIN_ID,
       count: lookup.count,
     });
     return;
   }
   if (lookup.status === "invalid") {
-    console.error("[treasury] official FENN token invalid", {
+    console.error("[treasury] official VELL mint invalid", {
       code: "official_token_invalid",
       reason: lookup.reason,
-      chainId: ROBINHOOD_CHAIN_ID,
+      chainId: SOLANA_MAINNET_CHAIN_ID,
     });
   }
 }
 
 /**
- * Trusted server-side official FENN token definition (no balances).
+ * Trusted server-side official $VELL mint definition (no balances).
  * Fails closed (null) on missing, ambiguous, or invalid configuration.
  */
 export async function getOfficialFennTokenAsset(
@@ -202,18 +208,18 @@ export async function getOfficialFennTokenAsset(
     return null;
   } catch (error) {
     if (error instanceof TreasuryError) {
-      console.error("[treasury] official FENN token lookup failed", {
+      console.error("[treasury] official VELL mint lookup failed", {
         code: error.code,
       });
     } else {
-      console.error("[treasury] official FENN token lookup failed", error);
+      console.error("[treasury] official VELL mint lookup failed", error);
     }
     return null;
   }
 }
 
 /**
- * Public null-safe official FENN token for pages and API.
+ * Public null-safe official $VELL mint for pages and API.
  * Never throws for empty / ambiguous / invalid config — fails closed to null.
  */
 export async function getPublicOfficialFennToken(

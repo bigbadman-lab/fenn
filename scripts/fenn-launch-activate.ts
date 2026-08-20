@@ -2,8 +2,8 @@
  * P2C.2 — One-command official $VELL contract configuration.
  *
  * Usage:
- *   npm run vell:activate -- --contract 0x…
- *   npm run launch:activate -- --contract 0x…   (alias)
+ *   npm run vell:activate -- --contract <SolanaMintBase58>
+ *   npm run launch:activate -- --contract <SolanaMintBase58>   (alias)
  *
  * Writes treasury_assets.contract_address on the dormant official row.
  * Homepage header polls /api/home/official-token — no redeploy required.

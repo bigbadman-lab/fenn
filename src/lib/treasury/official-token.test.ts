@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { ROBINHOOD_CHAIN_ID } from "./chain-definition";
+import { SOLANA_MAINNET_CHAIN_ID } from "./chain-definition";
 import {
   resolveOfficialFennToken,
   toPublicOfficialFennToken,
@@ -14,8 +14,9 @@ import type { OfficialTokenCandidateRow } from "./types";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "../../..");
-const FENN = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const OTHER = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+/** Valid base58 pubkeys for unit tests (not production mints). */
+const VELL_MINT = "So11111111111111111111111111111111111111112";
+const OTHER_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 function candidate(
   overrides: Partial<OfficialTokenCandidateRow> = {},
@@ -24,11 +25,11 @@ function candidate(
     id: "1",
     symbol: "VELL",
     name: "VELL",
-    chain_id: ROBINHOOD_CHAIN_ID,
-    contract_address: FENN,
-    decimals: 18,
+    chain_id: SOLANA_MAINNET_CHAIN_ID,
+    contract_address: VELL_MINT,
+    decimals: 9,
     is_tracked: true,
-    metadata: { official: true, public_contract: true },
+    metadata: { official: true, public_contract: true, asset_type: "spl" },
     ...overrides,
   };
 }
@@ -46,17 +47,17 @@ describe("resolveOfficialFennToken", () => {
     );
   });
 
-  it("selects one valid official public FENN row", () => {
+  it("selects one valid official public VELL mint", () => {
     const result = resolveOfficialFennToken([candidate()]);
     assert.equal(result.status, "ok");
     if (result.status !== "ok") return;
     assert.equal(result.token.symbol, "VELL");
-    assert.equal(result.token.chainId, ROBINHOOD_CHAIN_ID);
-    assert.equal(result.token.contractAddress, FENN);
-    assert.equal(result.token.decimals, 18);
+    assert.equal(result.token.chainId, SOLANA_MAINNET_CHAIN_ID);
+    assert.equal(result.token.contractAddress, VELL_MINT);
+    assert.equal(result.token.decimals, 9);
   });
 
-  it("accepts case-insensitive FENN symbol", () => {
+  it("accepts case-insensitive VELL/FENN symbol", () => {
     const result = resolveOfficialFennToken([
       candidate({ symbol: "fenn" }),
     ]);
@@ -72,12 +73,10 @@ describe("resolveOfficialFennToken", () => {
     assert.deepEqual(result, { status: "none" });
   });
 
-  it("ignores native ETH (null contract)", () => {
+  it("ignores null mint (dormant)", () => {
     const result = resolveOfficialFennToken([
       candidate({
-        symbol: "ETH",
         contract_address: null,
-        metadata: { official: true, public_contract: true },
       }),
     ]);
     assert.deepEqual(result, { status: "none" });
@@ -85,16 +84,16 @@ describe("resolveOfficialFennToken", () => {
 
   it("ignores wrong chain rows", () => {
     const result = resolveOfficialFennToken([
-      candidate({ chain_id: 1 }),
+      candidate({ chain_id: 4663 }),
     ]);
     assert.deepEqual(result, { status: "none" });
   });
 
-  it("ignores unofficial ERC-20 rows", () => {
+  it("ignores unofficial SPL rows", () => {
     const result = resolveOfficialFennToken([
       candidate({
         symbol: "USDC",
-        metadata: { asset_type: "erc20" },
+        metadata: { asset_type: "spl" },
       }),
       candidate({
         metadata: { official: true }, // missing public_contract
@@ -106,7 +105,7 @@ describe("resolveOfficialFennToken", () => {
   it("fails closed on multiple official public rows", () => {
     const result = resolveOfficialFennToken([
       candidate({ id: "a" }),
-      candidate({ id: "b", contract_address: OTHER }),
+      candidate({ id: "b", contract_address: OTHER_MINT }),
     ]);
     assert.deepEqual(result, { status: "ambiguous", count: 2 });
   });
@@ -121,7 +120,7 @@ describe("resolveOfficialFennToken", () => {
     });
   });
 
-  it("fails closed when symbol is not FENN", () => {
+  it("fails closed when symbol is not VELL/FENN", () => {
     const result = resolveOfficialFennToken([
       candidate({ symbol: "FAKE" }),
     ]);
@@ -139,25 +138,33 @@ describe("resolveOfficialFennToken", () => {
     ]);
     assert.equal(result.status, "ok");
   });
+
+  it("preserves Solana mint casing (no lowercasing)", () => {
+    const mixed = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+    const result = resolveOfficialFennToken([
+      candidate({ contract_address: mixed }),
+    ]);
+    assert.equal(result.status, "ok");
+    if (result.status !== "ok") return;
+    assert.equal(result.token.contractAddress, mixed);
+  });
 });
 
 describe("toPublicOfficialFennToken", () => {
-  it("returns safe public fields with Robinhood explorer URL", () => {
+  it("returns safe public fields with Solana explorer URL", () => {
     const token = toPublicOfficialFennToken({
       symbol: "VELL",
       name: "VELL",
-      chainId: ROBINHOOD_CHAIN_ID,
-      contractAddress: FENN,
-      decimals: 18,
+      chainId: SOLANA_MAINNET_CHAIN_ID,
+      contractAddress: VELL_MINT,
+      decimals: 9,
     });
     assert.ok(token);
     assert.equal(token!.symbol, "VELL");
-    assert.equal(token!.chainId, ROBINHOOD_CHAIN_ID);
-    assert.equal(token!.contractAddress, FENN);
-    assert.equal(
-      token!.explorerUrl,
-      `https://robinhoodchain.blockscout.com/address/${FENN}`,
-    );
+    assert.equal(token!.chainId, SOLANA_MAINNET_CHAIN_ID);
+    assert.equal(token!.contractAddress, VELL_MINT);
+    assert.match(token!.explorerUrl, /solscan\.io\/account\//);
+    assert.match(token!.explorerUrl, new RegExp(VELL_MINT));
     const json = JSON.stringify(token);
     assert.doesNotMatch(json, /metadata|official|public_contract|decimals|"id"/);
     assert.doesNotMatch(json, /ROBINHOOD_CHAIN_RPC|rpcUrl|private/i);
@@ -192,17 +199,17 @@ describe("getPublicOfficialFennToken fail-closed", () => {
       token: {
         symbol: "VELL",
         name: "VELL",
-        chainId: ROBINHOOD_CHAIN_ID,
-        contractAddress: FENN,
-        decimals: 18,
+        chainId: SOLANA_MAINNET_CHAIN_ID,
+        contractAddress: VELL_MINT,
+        decimals: 9,
       },
     }));
     assert.ok(publicToken);
-    assert.equal(publicToken!.contractAddress, FENN);
+    assert.equal(publicToken!.contractAddress, VELL_MINT);
   });
 });
 
-describe("official FENN source safety + surfaces", () => {
+describe("official VELL source safety + surfaces", () => {
   it("does not introduce env, mock, or trading paths", () => {
     const files = [
       "src/lib/treasury/official-token.ts",
@@ -303,23 +310,16 @@ describe("official FENN source safety + surfaces", () => {
     assert.match(opsBody, /official.*true/i);
   });
 
-  it("migration 62 allows multiple NULL contracts; uniqueness only for non-null", () => {
+  it("migration 65 allows Solana mints; uniqueness for official/public on 101", () => {
     const migPath = join(
       repo,
-      "supabase/migrations/20260809210000_62_treasury_assets_null_contract_uidx.sql",
+      "supabase/migrations/20260820120000_65_treasury_assets_solana_official.sql",
     );
     assert.ok(existsSync(migPath));
     const mig = readFileSync(migPath, "utf8");
-    assert.match(mig, /DROP INDEX IF EXISTS public\.treasury_assets_chain_contract_uidx/);
-    assert.match(mig, /CREATE UNIQUE INDEX treasury_assets_chain_contract_uidx/);
-    assert.match(mig, /WHERE contract_address IS NOT NULL/);
-    // Index body must not reintroduce NULLS NOT DISTINCT uniqueness
-    const createBlock = mig.slice(mig.indexOf("CREATE UNIQUE INDEX"));
-    assert.doesNotMatch(createBlock, /NULLS NOT DISTINCT/);
-    assert.doesNotMatch(
-      mig,
-      /DROP INDEX.*treasury_assets_one_official_public_4663_uidx/i,
-    );
+    assert.match(mig, /is_normalized_solana_address/);
+    assert.match(mig, /treasury_assets_one_official_public_101_uidx/);
+    assert.match(mig, /chain_id = 101/);
     assert.doesNotMatch(mig, /DELETE FROM public\.treasury_assets/i);
     assert.doesNotMatch(mig, /UPDATE public\.treasury_assets/i);
 
@@ -327,48 +327,30 @@ describe("official FENN source safety + surfaces", () => {
       join(repo, "docs/ops/fenn-launch-prep.sql"),
       "utf8",
     );
-    assert.match(prep, /migration 62|62_treasury_assets_null_contract/i);
-    assert.match(prep, /Does NOT modify the existing ETH/i);
-    assert.match(prep, /null_contract_coexistence/);
-
-    const stage7Origin = readFileSync(
-      join(repo, "supabase/migrations/20260722180007_07_treasury_commons.sql"),
-      "utf8",
-    );
-    assert.match(stage7Origin, /NULLS NOT DISTINCT/);
+    assert.match(prep, /migration 65|65_treasury_assets_solana/i);
+    assert.match(prep, /Does NOT modify ETH|Does NOT modify.*Robinhood/i);
+    assert.match(prep, /chain_id = 101/);
+    assert.match(prep, /'asset_type',\s*'spl'/);
   });
 
-  it("dormant NULL FENN does not resolve alongside native ETH null candidate", () => {
-    const ethNative: OfficialTokenCandidateRow = {
-      id: "eth",
-      symbol: "ETH",
-      name: "Ether",
-      chain_id: ROBINHOOD_CHAIN_ID,
-      contract_address: null,
-      decimals: 18,
-      is_tracked: true,
-      metadata: { asset_type: "native", network: "robinhood_chain" },
-    };
-    const dormantFenn = candidate({
-      id: "fenn-dormant",
+  it("dormant NULL VELL does not resolve", () => {
+    const dormantVell = candidate({
+      id: "vell-dormant",
       contract_address: null,
     });
-    assert.equal(
-      resolveOfficialFennToken([ethNative, dormantFenn]).status,
-      "none",
-    );
+    assert.equal(resolveOfficialFennToken([dormantVell]).status, "none");
 
-    const live = candidate({ id: "fenn-live" });
-    const r = resolveOfficialFennToken([ethNative, live]);
+    const live = candidate({ id: "vell-live" });
+    const r = resolveOfficialFennToken([live]);
     assert.equal(r.status, "ok");
     if (r.status === "ok") {
-      assert.equal(r.token.contractAddress, FENN);
+      assert.equal(r.token.contractAddress, VELL_MINT);
     }
   });
 
   it("multiple official/public candidates still fail closed at resolver", () => {
-    const a = candidate({ id: "a", contract_address: FENN });
-    const b = candidate({ id: "b", contract_address: OTHER });
+    const a = candidate({ id: "a", contract_address: VELL_MINT });
+    const b = candidate({ id: "b", contract_address: OTHER_MINT });
     assert.equal(resolveOfficialFennToken([a, b]).status, "ambiguous");
   });
 

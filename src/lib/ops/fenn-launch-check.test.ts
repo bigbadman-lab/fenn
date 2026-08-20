@@ -1,5 +1,5 @@
 /**
- * P2C.1 — launch ops: dormant row, launch:check status laws, resolver dormancy.
+ * P2C.1 — launch ops: dormant Solana mint row, launch:check status laws.
  * No chain, no writes to real DB in unit tests.
  */
 
@@ -8,7 +8,7 @@ import { describe, it } from "node:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
+import { SOLANA_MAINNET_CHAIN_ID } from "@/lib/treasury/chain-definition";
 import { resolveOfficialFennToken } from "@/lib/treasury/official-token";
 import type { OfficialTokenCandidateRow } from "@/lib/treasury/types";
 import {
@@ -23,9 +23,12 @@ import { EconomicAuthorityLimitsError } from "@/lib/agent/economic-authority-lim
 
 const repo = process.cwd();
 
+const VELL_MINT = "So11111111111111111111111111111111111111112";
+const OTHER_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+
 const META = {
-  asset_type: "erc20",
-  network: "robinhood_chain",
+  asset_type: "spl",
+  network: "mainnet-beta",
   official: true,
   public_contract: true,
 };
@@ -35,16 +38,16 @@ function dormant(over: Partial<OfficialFlaggedRow> = {}): OfficialFlaggedRow {
     id: "dormant-1",
     symbol: "VELL",
     name: "VELL",
-    chain_id: ROBINHOOD_CHAIN_ID,
+    chain_id: SOLANA_MAINNET_CHAIN_ID,
     contract_address: null,
-    decimals: 18,
+    decimals: 9,
     is_tracked: true,
     metadata: { ...META },
     ...over,
   };
 }
 
-function live(addr = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"): OfficialFlaggedRow {
+function live(addr = VELL_MINT): OfficialFlaggedRow {
   return {
     ...dormant({ id: "live-1" }),
     contract_address: addr,
@@ -73,20 +76,20 @@ function asCandidate(row: OfficialFlaggedRow): OfficialTokenCandidateRow {
 }
 
 describe("P2C.1 dormant official row + resolver", () => {
-  it("1. dormant NULL-address row does not resolve official FENN", () => {
+  it("1. dormant NULL-address row does not resolve official VELL", () => {
     const row = asCandidate(dormant());
     assert.equal(isDormantOfficialRowUnresolved([row]), true);
     assert.equal(resolveOfficialFennToken([row]).status, "none");
   });
 
-  it("same row material with valid address resolves", () => {
+  it("same row material with valid mint resolves", () => {
     const row = asCandidate(live());
     const r = resolveOfficialFennToken([row]);
     assert.equal(r.status, "ok");
     if (r.status === "ok") {
       assert.equal(r.token.contractAddress, live().contract_address);
-      assert.equal(r.token.decimals, 18);
-      assert.equal(r.token.chainId, 4663);
+      assert.equal(r.token.decimals, 9);
+      assert.equal(r.token.chainId, 101);
     }
   });
 
@@ -98,7 +101,7 @@ describe("P2C.1 dormant official row + resolver", () => {
     if (r.status === "invalid") assert.equal(r.reason, "invalid_decimals");
   });
 
-  it("5b. resolver accepts integer 6 but launch law requires 18 (CONFIG_ERROR)", () => {
+  it("5b. resolver accepts integer 6 but launch law requires 9 (CONFIG_ERROR)", () => {
     const liv = live();
     liv.decimals = 6;
     const lookup = resolveOfficialFennToken([asCandidate(liv)]);
@@ -115,13 +118,13 @@ describe("P2C.1 dormant official row + resolver", () => {
       confirmedOfficialMovements: 0,
     });
     assert.equal(c.status, "CONFIG_ERROR");
-    assert.ok(c.errors.includes("resolved_decimals_not_18"));
+    assert.ok(c.errors.includes("resolved_decimals_not_9"));
   });
 
   it("4. duplicate official candidates → ambiguous", () => {
-    const a = asCandidate(live("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    const a = asCandidate(live(VELL_MINT));
     const b = asCandidate({
-      ...live("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+      ...live(OTHER_MINT),
       id: "live-2",
     });
     const r = resolveOfficialFennToken([a, b]);
@@ -178,7 +181,7 @@ describe("P2C.1 classifyFennLaunchStatus", () => {
 
   it("5. wrong decimals on dormant → CONFIG_ERROR", () => {
     const c = classifyFennLaunchStatus({
-      flaggedRows: [dormant({ decimals: 9 })],
+      flaggedRows: [dormant({ decimals: 18 })],
       lookup: { status: "none" },
       purse: goodPurse,
       limitsOk: true,
@@ -186,7 +189,7 @@ describe("P2C.1 classifyFennLaunchStatus", () => {
       confirmedOfficialMovements: null,
     });
     assert.equal(c.status, "CONFIG_ERROR");
-    assert.ok(c.errors.includes("official_row_decimals_not_18"));
+    assert.ok(c.errors.includes("official_row_decimals_not_9"));
   });
 
   it("7. address configured but activation null → AWAITING_ACTIVATION", () => {
@@ -338,7 +341,7 @@ describe("P2C.1 runFennLaunchCheck side-effect free", () => {
       loadLaunchFundingOperation: async () => null,
       readOfficialPurseBalance: async (input) => {
         assert.equal(input.tokenAddress, liv.contract_address);
-        assert.equal(input.decimals, 18);
+        assert.equal(input.decimals, 9);
         return "10000000";
       },
       countConfirmedOfficialMovements: async () => 0,
@@ -415,11 +418,10 @@ describe("P2C.1 ops artifacts", () => {
 
     const prepSql = readFileSync(prep, "utf8");
     assert.match(prepSql, /contract_address/i);
-    assert.match(prepSql, /NULL,\s*\n\s*18/);
+    assert.match(prepSql, /NULL,\s*\n\s*9/);
     assert.match(prepSql, /'official',\s*true/);
     assert.match(prepSql, /'public_contract',\s*true/);
-    assert.match(prepSql, /FENN_LAUNCH_PREP/);
-    // Single DO $tag$ scope — scalars, not session TEMP/CTE across statements
+    assert.match(prepSql, /VELL_LAUNCH_PREP/);
     assert.match(prepSql, /DO\s+\$prep\$/);
     assert.match(prepSql, /n_official\s*:=\s*\(/);
     assert.match(prepSql, /n_dormant\s*:=\s*\(/);
@@ -430,13 +432,14 @@ describe("P2C.1 ops artifacts", () => {
     assert.doesNotMatch(prepSql, /try_activate_official_settlement/);
     assert.doesNotMatch(prepSql, /official_settlement_activated_at/i);
     assert.doesNotMatch(prepSql, /purse_config/i);
-    assert.doesNotMatch(prepSql, /UPDATE\s+public\.treasury_assets/i);
+    assert.doesNotMatch(prepSql, /SET\s+contract_address\s*=/i);
     assert.doesNotMatch(prepSql, /DELETE\s+FROM\s+public\.treasury_assets/i);
+    assert.match(prepSql, /superseded_by.*solana_official_vell/);
 
     const actSql = readFileSync(act, "utf8");
-    assert.match(actSql, /0xOFFICIAL_FENN_CONTRACT/);
+    assert.match(actSql, /OFFICIAL_VELL_MINT/);
     assert.match(actSql, /contract_address IS NULL/);
-    assert.match(actSql, /is_normalized_evm_address/);
+    assert.match(actSql, /is_normalized_solana_address/);
     assert.match(actSql, /refusing overwrite|already has contract|already set/i);
     assert.doesNotMatch(actSql, /SET\s+official_settlement_activated_at|SET\s+economic_settlement_enabled/i);
     assert.doesNotMatch(actSql, /UPDATE\s+purse_config/i);

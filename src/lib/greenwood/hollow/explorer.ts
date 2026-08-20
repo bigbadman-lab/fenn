@@ -1,4 +1,12 @@
-import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
+import { SOLANA_EXPLORER_ACCOUNT_BASE } from "@/lib/commons/public-wallets";
+import {
+  ROBINHOOD_CHAIN_ID,
+  SOLANA_MAINNET_CHAIN_ID,
+} from "@/lib/treasury/chain-definition";
+import {
+  isNormalizedSolanaAddress,
+  normalizeSolanaAddress,
+} from "@/lib/wallet/solana";
 
 /**
  * Canonical Robinhood Chain Blockscout base (no trailing slash).
@@ -39,11 +47,12 @@ const ADDRESS_EXPLORER_BY_CHAIN: Readonly<Record<number, string>> = {
   1: "https://etherscan.io/address/",
   8453: "https://basescan.org/address/",
   [ROBINHOOD_CHAIN_ID]: `${ROBINHOOD_CHAIN_EXPLORER_BASE}/address/`,
+  [SOLANA_MAINNET_CHAIN_ID]: `${SOLANA_EXPLORER_ACCOUNT_BASE}/`,
 };
 
 /**
- * Robinhood Chain address explorer for Desk wallet links.
- * Label callers as Robinhood Chain — not a universal authority.
+ * Address explorer for Desk / official-token links.
+ * Solana preserves base58 casing; EVM paths normalize to lowercase.
  */
 export function explorerAddressUrl(
   chainId: number | null | undefined,
@@ -52,6 +61,13 @@ export function explorerAddressUrl(
   if (chainId == null || !address) return null;
   const base = ADDRESS_EXPLORER_BY_CHAIN[chainId];
   if (!base) return null;
+
+  if (chainId === SOLANA_MAINNET_CHAIN_ID) {
+    const normalized = normalizeSolanaAddress(address);
+    if (!isNormalizedSolanaAddress(normalized)) return null;
+    return `${base}${normalized}`;
+  }
+
   const normalized = address.trim().toLowerCase();
   if (!/^0x[a-f0-9]{40}$/.test(normalized)) return null;
   return `${base}${normalized}`;

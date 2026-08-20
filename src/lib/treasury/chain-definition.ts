@@ -18,3 +18,11 @@ export const ROBINHOOD_NATIVE_CURRENCY = {
 
 export const ROBINHOOD_CHAIN_SOURCE =
   "https://docs.robinhood.com/chain/connecting/" as const;
+
+/**
+ * App sentinel for Solana mainnet in treasury_assets.chain_id.
+ * Not CAIP; used only for official $VELL mint identity rows.
+ */
+export const SOLANA_MAINNET_CHAIN_ID = 101 as const;
+
+export const SOLANA_MAINNET_NETWORK = "mainnet-beta" as const;

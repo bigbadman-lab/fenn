@@ -1,5 +1,5 @@
 /**
- * P2C.2 — one-command official token activation CLI.
+ * P2C.2 — one-command official Solana mint activation CLI.
  * Injected deps only: no real DB / chain / X in unit tests.
  */
 
@@ -8,7 +8,7 @@ import { describe, it } from "node:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { ROBINHOOD_CHAIN_ID } from "@/lib/treasury/chain-definition";
+import { SOLANA_MAINNET_CHAIN_ID } from "@/lib/treasury/chain-definition";
 import {
   formatFennLaunchActivateReport,
   parseContractCliArg,
@@ -20,25 +20,25 @@ import {
 
 const repo = process.cwd();
 
-const OFFICIAL_ADDR = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const OTHER_ADDR = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-const INVALID_ADDR = "0xnot-an-address";
+const OFFICIAL_MINT = "So11111111111111111111111111111111111111112";
+const OTHER_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const INVALID_MINT = "0xnot-an-address";
 
 const META = {
-  asset_type: "erc20",
-  network: "robinhood_chain",
+  asset_type: "spl",
+  network: "mainnet-beta",
   official: true,
   public_contract: true,
 };
 
 function dormant(over: Partial<ActivateCandidateRow> = {}): ActivateCandidateRow {
   return {
-    id: "dormant-fenn-1",
+    id: "dormant-vell-1",
     symbol: "VELL",
     name: "VELL",
-    chain_id: ROBINHOOD_CHAIN_ID,
+    chain_id: SOLANA_MAINNET_CHAIN_ID,
     contract_address: null,
-    decimals: 18,
+    decimals: 9,
     is_tracked: true,
     metadata: { ...META },
     ...over,
@@ -50,7 +50,7 @@ function ethNative(): ActivateCandidateRow {
     id: "eth-1",
     symbol: "ETH",
     name: "Ether",
-    chain_id: ROBINHOOD_CHAIN_ID,
+    chain_id: 4663,
     contract_address: null,
     decimals: 18,
     is_tracked: true,
@@ -62,11 +62,11 @@ function ethNative(): ActivateCandidateRow {
 }
 
 function live(
-  addr = OFFICIAL_ADDR,
+  addr = OFFICIAL_MINT,
   over: Partial<ActivateCandidateRow> = {},
 ): ActivateCandidateRow {
   return dormant({
-    id: "live-fenn-1",
+    id: "live-vell-1",
     contract_address: addr,
     ...over,
   });
@@ -74,15 +74,15 @@ function live(
 
 describe("P2C.2 parseContractCliArg", () => {
   it("reads --contract value", () => {
-    const r = parseContractCliArg(["--contract", OFFICIAL_ADDR]);
+    const r = parseContractCliArg(["--contract", OFFICIAL_MINT]);
     assert.equal(r.present, true);
-    assert.equal(r.value, OFFICIAL_ADDR);
+    assert.equal(r.value, OFFICIAL_MINT);
   });
 
   it("reads --contract=value", () => {
-    const r = parseContractCliArg([`--contract=${OFFICIAL_ADDR}`]);
+    const r = parseContractCliArg([`--contract=${OFFICIAL_MINT}`]);
     assert.equal(r.present, true);
-    assert.equal(r.value, OFFICIAL_ADDR);
+    assert.equal(r.value, OFFICIAL_MINT);
   });
 
   it("5. missing argument", () => {
@@ -93,7 +93,7 @@ describe("P2C.2 parseContractCliArg", () => {
 });
 
 describe("P2C.2 validateActivateCandidateIdentity", () => {
-  it("accepts dormant official ERC20 FENN", () => {
+  it("accepts dormant official SPL VELL", () => {
     assert.equal(validateActivateCandidateIdentity(dormant()), null);
   });
 
@@ -107,23 +107,23 @@ describe("P2C.2 validateActivateCandidateIdentity", () => {
   it("8. wrong decimals", () => {
     assert.equal(
       validateActivateCandidateIdentity(dormant({ decimals: 6 })),
-      "decimals_not_18",
+      "decimals_not_9",
     );
   });
 
-  it("10. non-ERC20", () => {
+  it("10. non-SPL", () => {
     assert.equal(
       validateActivateCandidateIdentity(
-        dormant({ metadata: { ...META, asset_type: "native" } }),
+        dormant({ metadata: { ...META, asset_type: "erc20" } }),
       ),
-      "asset_type_not_erc20",
+      "asset_type_not_spl",
     );
   });
 
   it("11. missing official/public flags", () => {
     assert.equal(
       validateActivateCandidateIdentity(
-        dormant({ metadata: { asset_type: "erc20" } }),
+        dormant({ metadata: { asset_type: "spl" } }),
       ),
       "official_flag_missing",
     );
@@ -131,7 +131,7 @@ describe("P2C.2 validateActivateCandidateIdentity", () => {
       validateActivateCandidateIdentity(
         dormant({
           metadata: {
-            asset_type: "erc20",
+            asset_type: "spl",
             official: true,
           },
         }),
@@ -142,13 +142,13 @@ describe("P2C.2 validateActivateCandidateIdentity", () => {
 });
 
 describe("P2C.2 runFennLaunchActivate", () => {
-  it("1. valid dormant FENN → CONFIGURED", async () => {
+  it("1. valid dormant VELL → CONFIGURED", async () => {
     let writeCalls = 0;
     let writtenId: string | null = null;
     let writtenAddr: string | null = null;
 
     const report = await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
         listActivateCandidates: async () => [ethNative(), dormant()],
         guardedSetOfficialContract: async (input) => {
@@ -166,26 +166,26 @@ describe("P2C.2 runFennLaunchActivate", () => {
     assert.equal(report.status, "CONFIGURED");
     assert.equal(report.mode, "FENN_LAUNCH_ACTIVATE");
     assert.equal(report.symbol, "VELL");
-    assert.equal(report.chainId, 4663);
-    assert.equal(report.decimals, 18);
-    assert.equal(report.contractAddress, OFFICIAL_ADDR);
+    assert.equal(report.chainId, 101);
+    assert.equal(report.decimals, 9);
+    assert.equal(report.contractAddress, OFFICIAL_MINT);
     assert.equal(report.official, true);
     assert.equal(report.publicContract, true);
     assert.equal(report.settlementActivated, false);
     assert.equal(report.chainBroadcastAttempted, false);
     assert.equal(report.sideEffectsAttempted, true);
     assert.equal(writeCalls, 1);
-    assert.equal(writtenId, "dormant-fenn-1");
-    assert.equal(writtenAddr, OFFICIAL_ADDR);
+    assert.equal(writtenId, "dormant-vell-1");
+    assert.equal(writtenAddr, OFFICIAL_MINT);
     assert.ok(report.next?.some((s) => s.includes("launch:check")));
   });
 
   it("2. same-address rerun → ALREADY_CONFIGURED", async () => {
     let writeCalls = 0;
     const report = await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
-        listActivateCandidates: async () => [live(OFFICIAL_ADDR)],
+        listActivateCandidates: async () => [live(OFFICIAL_MINT)],
         guardedSetOfficialContract: async () => {
           writeCalls += 1;
           return { updated: false, row: null };
@@ -195,15 +195,15 @@ describe("P2C.2 runFennLaunchActivate", () => {
     assert.equal(report.status, "ALREADY_CONFIGURED");
     assert.equal(report.sideEffectsAttempted, false);
     assert.equal(writeCalls, 0);
-    assert.equal(report.contractAddress, OFFICIAL_ADDR);
+    assert.equal(report.contractAddress, OFFICIAL_MINT);
   });
 
   it("3. different-address rerun → REFUSED", async () => {
     let writeCalls = 0;
     const report = await runFennLaunchActivate(
-      { contract: OTHER_ADDR },
+      { contract: OTHER_MINT },
       {
-        listActivateCandidates: async () => [live(OFFICIAL_ADDR)],
+        listActivateCandidates: async () => [live(OFFICIAL_MINT)],
         guardedSetOfficialContract: async () => {
           writeCalls += 1;
           return { updated: false, row: null };
@@ -216,10 +216,10 @@ describe("P2C.2 runFennLaunchActivate", () => {
     assert.equal(writeCalls, 0);
   });
 
-  it("4. invalid EVM address → no write", async () => {
+  it("4. invalid Solana mint → no write", async () => {
     let writeCalls = 0;
     const report = await runFennLaunchActivate(
-      { contract: INVALID_ADDR },
+      { contract: INVALID_MINT },
       {
         listActivateCandidates: async () => [dormant()],
         guardedSetOfficialContract: async () => {
@@ -251,10 +251,10 @@ describe("P2C.2 runFennLaunchActivate", () => {
     assert.equal(writeCalls, 0);
   });
 
-  it("6. missing FENN row → no write", async () => {
+  it("6. missing VELL row → no write", async () => {
     let writeCalls = 0;
     const report = await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
         listActivateCandidates: async () => [ethNative()],
         guardedSetOfficialContract: async () => {
@@ -271,7 +271,7 @@ describe("P2C.2 runFennLaunchActivate", () => {
   it("7. duplicate candidates → no write", async () => {
     let writeCalls = 0;
     const report = await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
         listActivateCandidates: async () => [
           dormant({ id: "a" }),
@@ -291,7 +291,7 @@ describe("P2C.2 runFennLaunchActivate", () => {
   it("8. wrong decimals → no write", async () => {
     let writeCalls = 0;
     const report = await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
         listActivateCandidates: async () => [dormant({ decimals: 6 })],
         guardedSetOfficialContract: async () => {
@@ -301,15 +301,14 @@ describe("P2C.2 runFennLaunchActivate", () => {
       },
     );
     assert.equal(report.status, "REFUSED");
-    assert.equal(report.errorCode, "decimals_not_18");
+    assert.equal(report.errorCode, "decimals_not_9");
     assert.equal(writeCalls, 0);
   });
 
   it("9. wrong chain → no write", async () => {
     let writeCalls = 0;
-    // Wrong-chain FENN never enters official candidates; treated as missing
     const report = await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
         listActivateCandidates: async () => [
           dormant({ chain_id: 1, id: "wrong-chain" }),
@@ -325,16 +324,16 @@ describe("P2C.2 runFennLaunchActivate", () => {
     assert.equal(writeCalls, 0);
   });
 
-  it("10. non-ERC20 candidate → no write", async () => {
+  it("10. non-SPL candidate → no write", async () => {
     let writeCalls = 0;
     const report = await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
         listActivateCandidates: async () => [
           dormant({
             metadata: {
               ...META,
-              asset_type: "native",
+              asset_type: "erc20",
             },
           }),
         ],
@@ -345,18 +344,18 @@ describe("P2C.2 runFennLaunchActivate", () => {
       },
     );
     assert.equal(report.status, "REFUSED");
-    assert.equal(report.errorCode, "asset_type_not_erc20");
+    assert.equal(report.errorCode, "asset_type_not_spl");
     assert.equal(writeCalls, 0);
   });
 
   it("11. official/public flags missing → no write", async () => {
     let writeCalls = 0;
     const report = await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
         listActivateCandidates: async () => [
           dormant({
-            metadata: { asset_type: "erc20", network: "robinhood_chain" },
+            metadata: { asset_type: "spl", network: "mainnet-beta" },
           }),
         ],
         guardedSetOfficialContract: async () => {
@@ -366,15 +365,14 @@ describe("P2C.2 runFennLaunchActivate", () => {
       },
     );
     assert.equal(report.status, "REFUSED");
-    // filtered out of official/public pool
     assert.equal(report.errorCode, "official_row_missing");
     assert.equal(writeCalls, 0);
   });
 
-  it("12. ETH untouched — write only uses dormant FENN id", async () => {
+  it("12. ETH untouched — write only uses dormant VELL id", async () => {
     let writtenId: string | null = null;
     await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
         listActivateCandidates: async () => [ethNative(), dormant()],
         guardedSetOfficialContract: async (input) => {
@@ -387,13 +385,13 @@ describe("P2C.2 runFennLaunchActivate", () => {
         },
       },
     );
-    assert.equal(writtenId, "dormant-fenn-1");
+    assert.equal(writtenId, "dormant-vell-1");
   });
 
   it("13–18. no purse_config / settlement / broadcast / amounts in report or write payload", async () => {
     const writePayloads: unknown[] = [];
     const report = await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
         listActivateCandidates: async () => [dormant()],
         guardedSetOfficialContract: async (input) => {
@@ -409,7 +407,7 @@ describe("P2C.2 runFennLaunchActivate", () => {
     assert.equal(report.settlementActivated, false);
     assert.equal(report.chainBroadcastAttempted, false);
     assert.deepEqual(writePayloads, [
-      { id: "dormant-fenn-1", contractAddress: OFFICIAL_ADDR },
+      { id: "dormant-vell-1", contractAddress: OFFICIAL_MINT },
     ]);
     const text = formatFennLaunchActivateReport(report);
     assert.doesNotMatch(text, /purse_config|try_activate_official_settlement|x\.com|postTweet/i);
@@ -421,7 +419,7 @@ describe("P2C.2 runFennLaunchActivate", () => {
 
   it("19. guarded update cannot overwrite concurrent activation", async () => {
     const report = await runFennLaunchActivate(
-      { contract: OFFICIAL_ADDR },
+      { contract: OFFICIAL_MINT },
       {
         listActivateCandidates: async () => [dormant()],
         guardedSetOfficialContract: async (): Promise<GuardedSetContractResult> => ({
@@ -435,11 +433,11 @@ describe("P2C.2 runFennLaunchActivate", () => {
     assert.equal(report.sideEffectsAttempted, true);
   });
 
-  it("uppercase input normalizes before write", async () => {
+  it("preserves Solana mint casing (no lowercasing)", async () => {
     let written: string | null = null;
-    const upper = "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const mixed = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
     const report = await runFennLaunchActivate(
-      { contract: upper },
+      { contract: mixed },
       {
         listActivateCandidates: async () => [dormant()],
         guardedSetOfficialContract: async (input) => {
@@ -452,8 +450,8 @@ describe("P2C.2 runFennLaunchActivate", () => {
       },
     );
     assert.equal(report.status, "CONFIGURED");
-    assert.equal(written, OFFICIAL_ADDR);
-    assert.equal(report.contractAddress, OFFICIAL_ADDR);
+    assert.equal(written, mixed);
+    assert.equal(report.contractAddress, mixed);
   });
 });
 
@@ -476,7 +474,6 @@ describe("P2C.2 artifacts + safety surface", () => {
     assert.doesNotMatch(src, /purse_config/);
     assert.doesNotMatch(src, /executePending|executeTransfer|claim_x/);
     assert.doesNotMatch(src, /postTweet|publishToX|x_post/i);
-    // Single-column intent
     assert.match(src, /update\(\{\s*contract_address:/);
 
     const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf8")) as {
@@ -485,7 +482,7 @@ describe("P2C.2 artifacts + safety surface", () => {
     assert.match(pkg.scripts["launch:activate"] ?? "", /fenn-launch-activate/);
 
     const rb = readFileSync(runbook, "utf8");
-    assert.match(rb, /launch:activate/);
+    assert.match(rb, /launch:activate|vell:activate/);
     assert.match(rb, /PRIMARY|--contract/i);
   });
 
