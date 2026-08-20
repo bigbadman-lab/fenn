@@ -8093,3 +8093,80 @@ input[type="file"].deed-proof-field__control {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Local-only VELL X reply terminal (/dev/vell-x-reply)               */
+/* ------------------------------------------------------------------ */
+
+.vell-x-reply-page {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0.5rem 0 2rem;
+}
+
+.vell-x-reply__head {
+  margin: 0 0 1.25rem;
+}
+
+.vell-x-reply__kicker {
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-leaf);
+}
+
+.vell-x-reply__note {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.vell-x-reply__label {
+  display: block;
+  margin: 1rem 0 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-bone) 72%, transparent);
+}
+
+.vell-x-reply__incoming,
+.vell-x-reply__outgoing,
+.vell-x-reply__username {
+  width: 100%;
+  max-width: 100%;
+  font: inherit;
+  color: var(--color-bone);
+  background: color-mix(in srgb, var(--color-night) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-bone) 18%, transparent);
+  padding: 0.65rem 0.75rem;
+  resize: vertical;
+}
+
+.vell-x-reply__username {
+  max-width: 16rem;
+  resize: none;
+}
+
+.vell-x-reply__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem 1rem;
+  margin: 0.85rem 0 0;
+}
+
+.vell-x-reply__error {
+  margin: 0.75rem 0 0;
+  color: color-mix(in srgb, #f0a0a0 85%, var(--color-bone));
+}
+
+.vell-x-reply__count {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.vell-x-reply__count--over {
+  color: color-mix(in srgb, #f0a0a0 85%, var(--color-bone));
+}
+
